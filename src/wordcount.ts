@@ -6,7 +6,10 @@ import { Disposable, StatusBarAlignment, StatusBarItem, window } from "vscode";
     word counter extension.
 */
 export class WordAndNodeCounter {
-    private _statusBarItem: StatusBarItem;
+    constructor() {
+        this._statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
+    }
+    private _statusBarItem: StatusBarItem
 
     private plural(n: number, word: string): string {
         return `${n} ${n === 1 ? word : `${word}s`}`;
@@ -49,14 +52,16 @@ export class WordAndNodeCounter {
             if (line.match(/\}/) !== null) {
                 scope = "root";
                 // Add just the part of the line after the }, if anything.
-                return WordAndNodeCounter.lineReducer({ scope, lines }, (line.match(/}(.*)/)[1]));
+                const match = line.match(/}(.*)/);
+                return WordAndNodeCounter.lineReducer({ scope, lines }, match ? match[1] : "");
             }
             return stack;
         }
         if (scope === "comment") { // Continuing multiline comment
             if (line.match(/\*\//) !== null) {
                 scope = "root";
-                return WordAndNodeCounter.lineReducer({ scope, lines }, (line.match(/\*\/(.*)/)[1]));
+                const match = line.match(/\*\/(.*)/);
+                return WordAndNodeCounter.lineReducer({ scope, lines }, match ? match[1] : "");
             }
             return stack;
         }

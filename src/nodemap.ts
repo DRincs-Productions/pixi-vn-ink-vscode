@@ -82,7 +82,13 @@ class StitchNode extends DivertTarget {
             .split("\n")
             .map((line, index) => ({ found: line.match(/^\s*[-\*\+]\s*\((\w+)\)/), index }))
             .filter(({ found }) => found !== null)
-            .map(({ found, index }) => new LabelNode(found[1], index, this));
+            .map(({ found, index }) => {
+                if (found) {
+                    return new LabelNode(found[1], index, this);
+                }
+                return null;
+            })
+            .filter(label => label !== null);
     }
 }
 
@@ -113,19 +119,20 @@ class KnotNode extends DivertTarget {
                 , index: number) => {
                 if (line.match(/^\s*={1}\s*(\w+)/)) {
                     // Found the start of a new stitch.
-                    const newName = line.match(/^\s*={1}\s*(\w+)/)[1];
-                    const node = new StitchNode(lastName, lastStart, index, this, currentNode.join("\n"));
+                    const matchResult = line.match(/^\s*={1}\s*(\w+)/);
+                    const newName = matchResult ? matchResult[1] : "";
+                    const node = new StitchNode(lastName || "", lastStart, index, this, currentNode.join("\n"));
                     nodes.push(node);
                     if (index === lines.length - 1) {
                         // The new stitch is also the last line of the knot.
-                        const node = new StitchNode(newName, index, index + 1, this, currentNode.join("\n"), this.lastLine);
+                        const node = new StitchNode(newName || "", index, index + 1, this, currentNode.join("\n"), this.lastLine);
                         nodes.push(node);
                     }
                     return { nodes, currentNode: [line], lastStart: index, lastName: newName };
                 }
                 if (index === lines.length - 1) {
                     // Found the last line.
-                    const node = new StitchNode(lastName, lastStart, index + 1, this, currentNode.join("\n"), this.lastLine);
+                    const node = new StitchNode(lastName || "", lastStart, index + 1, this, currentNode.join("\n"), this.lastLine);
                     nodes.push(node);
                     return { nodes, currentNode: [line], lastStart: index, lastName: null };
                 }
@@ -137,7 +144,7 @@ class KnotNode extends DivertTarget {
 
     public toCompletionItem(): CompletionItem {
         const itemKind = this.isFunction ? CompletionItemKind.Function : CompletionItemKind.Reference;
-        return new CompletionItem(this.name, itemKind);
+        return new CompletionItem(this.name || "", itemKind);
     }
 }
 
@@ -151,14 +158,14 @@ class NodeMap {
         this.knots = lines
             .reduce((
                 { nodes, currentNode, lastStart, lastName, isFunction }
-                    : { nodes: KnotNode[], currentNode: string[], lastStart: number, lastName: string | null, isFunction }
+                    : { nodes: KnotNode[], currentNode: string[], lastStart: number, lastName: string | null, isFunction: any }
                 , line: string
                 , index: number) => {
                 if (line.match(/^\s*===(\s*function)?\s*(\w+)/)) {
                     // Found the start of a new knot.
                     const match = line.match(/^\s*===(\s*function)?\s*(\w+)/);
-                    const newName = match[2];
-                    const foundFunction = (!!match[1]);
+                    const newName = match ? match[2] : "";
+                    const foundFunction = (match && !!match[1]);
                     const node = new KnotNode(lastName, lastStart, index, this, currentNode.join("\n"), isFunction);
                     nodes.push(node);
                     return { nodes, currentNode: [line], lastStart: index, lastName: newName, isFunction: foundFunction };
@@ -207,7 +214,10 @@ let mapsDone: boolean = false;
 export function generateMaps(): Thenable<void> {
     return workspace.findFiles("**/*.ink")
         .then(uris => {
-            return Promise.all(uris.map(({ fsPath }) => NodeMap.from(fsPath))).catch(err => console.log);
+            return Promise.all(uris.map(({ fsPath }) => NodeMap.from(fsPath))).catch(err => {
+                console.log(err);
+                return [];
+            });
         })
         .then((maps: NodeMap[]) => {
             maps.forEach(map => nodeMaps[map.filePath] = map);
@@ -271,7 +281,7 @@ function getDivertsInScope(filePath: string, line: number): DivertTarget[] {
 export function getDefinitionByNameAndScope(name: string, filePath: string, line: number): Location {
     const divert = getDivertsInScope(filePath, line)
         .find(target => target.name === name);
-    return new Location(Uri.file(divert.parentFile.filePath), new Position(divert.line, 0));
+    return new Location(Uri.file((divert as any).parentFile.filePath), new Position((divert as any).line, 0));
 }
 
 /* Returns completion items for divert target names for a given line and file. */
