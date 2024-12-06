@@ -1,6 +1,6 @@
 # ink README
 
-Support for Inkle's [Ink](https://github.com/inkle/ink) language in Visual Studio Code.
+Support for Inkle's [*ink*](https://www.inklestudios.com/ink/) language in [Pixi’VN](https://pixi-vn.web.app/) projects in Visual Studio Code.
 
 ## Features
 
@@ -10,23 +10,3 @@ Support for Inkle's [Ink](https://github.com/inkle/ink) language in Visual Studi
 - Show definition support for knots
 - Node (knot/stitch) count in Ink files.
 - Sensible language configuration defaults for Ink.
-
-## Release Notes
-
-### 1.3.0
-- Completions now support labels
-- Show definitions now works on knots as divert targets
-
-### 1.2.0
-- Add basic support for IntelliSense, providing completions for knots and stitches of the current knot; triggered by typing ->
-
-### 1.1.0
-- Add word/node count feature.
-
-### 1.0.0
-
-Initial release.
-
-# License
-
-MIT. See LICENSE.
