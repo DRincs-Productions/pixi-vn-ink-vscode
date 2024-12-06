@@ -2,7 +2,7 @@
     "name": "pixi-vn-ink-vscode",
     "displayName": "ink - Pixi'VN",
     "description": "Pixi'VN - Inkle's Ink scripting language support for Visual Studio Code",
-    "version": "1.4.0",
+    "version": "0.1.0",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/DRincs-Productions/pixi-vn-ink-vscode.git"
