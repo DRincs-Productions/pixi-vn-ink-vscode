@@ -29,14 +29,14 @@ jobs:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
 
-  create-release:
-    name: Create Release
-    needs: publish-npm
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-    - uses: actions/checkout@v3
-    - uses: ncipollo/release-action@v1
-      with:
-        body: "Release ${{ github.ref }}"
+  # create-release:
+  #   name: Create Release
+  #   needs: publish-npm
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - uses: ncipollo/release-action@v1
+  #     with:
+  #       body: "Release ${{ github.ref }}"
