@@ -1,6 +1,6 @@
 'use strict';
 
-import { window, workspace, commands, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem, TextDocument } from "vscode";
+import { Disposable, StatusBarAlignment, StatusBarItem, window } from "vscode";
 
 /* Provides word count functionality. Mostly adapted from the example
     word counter extension.
@@ -8,15 +8,15 @@ import { window, workspace, commands, Disposable, ExtensionContext, StatusBarAli
 export class WordAndNodeCounter {
     private _statusBarItem: StatusBarItem;
 
-    private plural (n: number, word: string) : string {
+    private plural(n: number, word: string): string {
         return `${n} ${n === 1 ? word : `${word}s`}`;
     }
 
-    public updateWordCount () {
+    public updateWordCount() {
         // Create this as needed.
         if (!this._statusBarItem)
             this._statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
-        
+
         // Get the current text editor.
         let editor = window.activeTextEditor;
         if (!editor) {
@@ -41,7 +41,7 @@ export class WordAndNodeCounter {
         }
     }
 
-    private static lineReducer (stack: { scope: string, lines: string[]}, line: string): { scope: string, lines: string[] } {
+    private static lineReducer(stack: { scope: string, lines: string[] }, line: string): { scope: string, lines: string[] } {
         // Reducer function to remove undesirable lines and inline content.
         let { scope, lines } = stack;
         if (line.match(/^\s*$/)) return stack; // Empty line
@@ -83,7 +83,7 @@ export class WordAndNodeCounter {
         return { scope, lines };
     }
 
-    public _getWordCount (docContent: string): number {
+    public _getWordCount(docContent: string): number {
 
         // TODO: Write code for accurate word count of Ink document.
         // TODO: Add node count.
@@ -101,7 +101,7 @@ export class WordAndNodeCounter {
             .length;
     }
 
-    public _getNodeCount (docContent: string): number {
+    public _getNodeCount(docContent: string): number {
         return docContent.split("\n").filter(line => line.match(/^\s*=/)).length;
     }
 
@@ -114,7 +114,7 @@ export class WordNodeCounterController {
     private _wordCounter: WordAndNodeCounter;
     private _disposable: Disposable;
 
-    constructor (wordCounter: WordAndNodeCounter) {
+    constructor(wordCounter: WordAndNodeCounter) {
         this._wordCounter = wordCounter;
         this._wordCounter.updateWordCount();
 
@@ -127,11 +127,11 @@ export class WordNodeCounterController {
         this._disposable = Disposable.from(...subscriptions);
     }
 
-    private _onEvent () {
+    private _onEvent() {
         this._wordCounter.updateWordCount();
     }
 
-    public dispose () {
+    public dispose() {
         this._disposable.dispose();
     }
 }

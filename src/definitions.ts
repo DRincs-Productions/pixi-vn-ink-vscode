@@ -1,10 +1,10 @@
-import { DefinitionProvider, Location, TextDocument, Position, Range } from "vscode";
+import { DefinitionProvider, Location, Position, Range, TextDocument } from "vscode";
 import { getDefinitionByNameAndScope } from "./nodemap";
 
 
 export class InkDefinitionProvider implements DefinitionProvider {
 
-    public provideDefinition (document: TextDocument, position: Position) : Location {
+    public provideDefinition(document: TextDocument, position: Position): Location {
         const lineStart = new Position(position.line, 0);
         const lineEnd = new Position(position.line + 1, 0);
         const before = new Range(lineStart, position);

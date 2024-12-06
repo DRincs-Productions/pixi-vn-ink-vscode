@@ -1,13 +1,13 @@
 'use strict';
 /* Ink for VS Code Extension Main File */
 
-import { ExtensionContext, DocumentFilter, ProgressLocation, languages, window } from "vscode";
-import { WordAndNodeCounter, WordNodeCounterController } from "./wordcount";
+import { DocumentFilter, ExtensionContext, ProgressLocation, languages, window } from "vscode";
 import { DivertCompletionProvider } from "./completion";
-import * as NodeMap from "./nodemap";
 import { InkDefinitionProvider } from "./definitions";
+import * as NodeMap from "./nodemap";
+import { WordAndNodeCounter, WordNodeCounterController } from "./wordcount";
 
-const INK : DocumentFilter = { language: 'ink' };
+const INK: DocumentFilter = { language: 'ink' };
 
 export function activate(ctx: ExtensionContext) {
 
