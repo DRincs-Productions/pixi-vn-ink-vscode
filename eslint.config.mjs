@@ -5,8 +5,8 @@
  */
 // @ts-check
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import stylistic from '@stylistic/eslint-plugin';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
 	{

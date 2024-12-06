@@ -14,13 +14,14 @@ const PERMANENT_DIVERTS = [
     new CompletionItem("END", CompletionItemKind.Keyword),
     new CompletionItem("DONE", CompletionItemKind.Keyword),
     new CompletionItem("->", CompletionItemKind.Keyword)
-]
+];
 
 class DivertTarget {
     constructor(public readonly name: string | null) { }
-    public line: number;
-    public readonly parentFile: NodeMap;
     public toCompletionItem(): CompletionItem {
+        if (!this.name) {
+            return new CompletionItem("ERROR: Divert target has no name", CompletionItemKind.Keyword);
+        }
         return new CompletionItem(this.name, CompletionItemKind.Reference);
     }
 }
@@ -47,7 +48,7 @@ class LabelNode extends DivertTarget {
 }
 
 class StitchNode extends DivertTarget {
-    public readonly labels: LabelNode[]
+    public readonly labels: LabelNode[];
 
     public get line() {
         return this.startLine;
@@ -175,7 +176,9 @@ class NodeMap {
         this.includes = lines
             .filter(line => line.match(/^\s*INCLUDE\s+(\w+\.ink)/))
             .map(line => {
-                const filename = line.match(/^\s*INCLUDE\s+(\w+\.ink)/)[1];
+                const filenameTemp = line.match(/^\s*INCLUDE\s+(\w+\.ink)/);
+                if (!filenameTemp) { return ""; }
+                const filename = filenameTemp[1];
                 const dirname = path.dirname(filePath);
                 return path.normalize(dirname + path.sep + filename);
             });
@@ -184,7 +187,7 @@ class NodeMap {
     public static from(filePath: string): Promise<NodeMap> {
         return new Promise<string>((resolve, reject) => {
             fs.readFile(filePath, 'utf8', (err, data: string) => {
-                if (err) return reject(err);
+                if (err) { return reject(err); }
                 return resolve(data);
             });
         })
@@ -214,17 +217,17 @@ export function generateMaps(): Thenable<void> {
 
 function getIncludeScope(filePath: string, knownScope: string[] = []): string[] {
     const fileMap = nodeMaps[filePath];
-    if (!fileMap) return knownScope;
-    if (knownScope.indexOf(filePath) === -1) knownScope.push(filePath);
+    if (!fileMap) { return knownScope; }
+    if (knownScope.indexOf(filePath) === -1) { knownScope.push(filePath); }
     const newScope = fileMap.includes.filter(include => knownScope.indexOf(include) === -1);
-    if (newScope.length < 1) return knownScope;
+    if (newScope.length < 1) { return knownScope; }
     return getIncludeScope(filePath, getIncludeScope(newScope[0], knownScope));
 
 }
 
 function stitchFor(filePath: string, line: number): StitchNode | null {
-    const nodemap = nodeMaps[filePath]
-    if (!nodemap) return null;
+    const nodemap = nodeMaps[filePath];
+    if (!nodemap) { return null; }
     const knot = nodemap.knots.find(knot => knot.startLine <= line && knot.endLine > line);
     if (!knot) {
         console.log("Can't identify knot for line ", line);
