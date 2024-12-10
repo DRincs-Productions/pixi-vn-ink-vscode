@@ -13,7 +13,7 @@
     "bugs": {
         "url": "https://github.com/DRincs-Productions/pixi-vn-ink-vscode/issues"
     },
-    "homepage": "https://pixi-vn.web.app/",
+    "homepage": "https://github.com/DRincs-Productions/pixi-vn",
     "funding": "https://github.com/DRincs-Productions/pixi-vn?sponsor=1",
     "engines": {
         "vscode": "^1.74.0"
