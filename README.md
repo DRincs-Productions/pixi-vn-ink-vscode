@@ -1,6 +1,6 @@
 # ink README
 
-Support for Inkle's [*ink*](https://www.inklestudios.com/ink/) language in [Pixi’VN](https://pixi-vn.web.app/) projects in Visual Studio Code.
+Support for Inkle's [*ink*](https://github.com/inkle/ink) language in [Pixi’VN](https://github.com/DRincs-Productions/pixi-vn) projects in Visual Studio Code.
 
 ## Features
 
