@@ -38,18 +38,13 @@
 		"choices": {
 			"patterns": [
 				{
-					"name": "keyword.operator.choice.ink",
-					"match": "^[ \\t]*\\*"
+					"name": "keyword.other.choice.ink",
+					"match": "^[ \\t]*[\\*\\+]"
 				},
 				{
-					"name": "keyword.operator.choice.sticky.ink",
-					"match": "^[ \\t]*\\+"
-				},
-				{
-					"name": "meta.choice.brackets.ink",
 					"begin": "(?<=^[ \\t]*[\\*\\+].*?)\\[",
 					"end": "\\]",
-					"name": "keyword.other.choice.alt.ink"
+					"name": "keyword.other.choice.ink"
 				}
 			]
 		}
