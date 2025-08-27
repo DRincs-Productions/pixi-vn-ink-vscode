@@ -8,6 +8,9 @@
 		},
 		{
 			"include": "#todo"
+		},
+		{
+			"include": "#choices"
 		}
 	],
 	"repository": {
@@ -20,13 +23,7 @@
 				{
 					"name": "comment.block.ink",
 					"begin": "/\\*",
-					"end": "\\*/",
-					"patterns": [
-						{
-							"match": "\\*\\*",
-							"name": "punctuation.definition.comment.ink"
-						}
-					]
+					"end": "\\*/"
 				}
 			]
 		},
@@ -35,6 +32,24 @@
 				{
 					"name": "keyword.other.todo.ink",
 					"match": "\\bTODO:.*$"
+				}
+			]
+		},
+		"choices": {
+			"patterns": [
+				{
+					"name": "keyword.operator.choice.ink",
+					"match": "^[ \\t]*\\*"
+				},
+				{
+					"name": "keyword.operator.choice.sticky.ink",
+					"match": "^[ \\t]*\\+"
+				},
+				{
+					"name": "meta.choice.brackets.ink",
+					"begin": "(?<=^[ \\t]*[\\*\\+].*?)\\[",
+					"end": "\\]",
+					"name": "keyword.other.choice.alt.ink"
 				}
 			]
 		}
