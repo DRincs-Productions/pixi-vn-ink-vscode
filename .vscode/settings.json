@@ -30,6 +30,10 @@
         "editor.defaultFormatter": "vscode.json-language-features",
         "editor.formatOnSave": true
     },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.formatOnSave": true
+    },
     "prettier.jsxSingleQuote": true,
     "prettier.printWidth": 120,
     "prettier.useTabs": false,
