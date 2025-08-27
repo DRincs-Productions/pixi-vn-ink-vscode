@@ -54,12 +54,24 @@
 		"knots": {
 			"patterns": [
 				{
-					"name": "entity.name.knot.ink",
-					"match": "^={2,}[ \\t]*[a-zA-Z0-9_]+[ \\t]*(={2,})?$"
+					"name": "keyword.other.knot.ink",
+					"match": "={2,}"
 				},
 				{
-					"name": "keyword.operator.divert.ink",
-					"match": "->\\s*(END|DONE|[a-zA-Z0-9_]+)"
+					"name": "entity.name.function.ink",
+					"match": "(?<=^={2,}[ \\t]*)[a-zA-Z0-9_]+(?=[ \\t]*={2,}?)"
+				},
+				{
+					"name": "keyword.other.divert.ink",
+					"match": "->"
+				},
+				{
+					"name": "keyword.control.ink",
+					"match": "(?<=->\\s*)(END|DONE)"
+				},
+				{
+					"name": "entity.name.function.ink",
+					"match": "(?<=->\\s+)[a-zA-Z0-9_]+"
 				}
 			]
 		}
