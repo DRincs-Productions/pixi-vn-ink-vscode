@@ -8,13 +8,12 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
-                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+/);
-                if (!range) {
-                    return;
-                }
+                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->/);
+                if (!range) return;
 
                 const word = document.getText(range);
 
+                // Hover per END / DONE
                 if (word === "END") {
                     return new Hover(
                         "**END**: Ends the current story flow immediately. Use this when the story should stop completely."
@@ -23,6 +22,12 @@ export function activate(context: ExtensionContext) {
                 if (word === "DONE") {
                     return new Hover(
                         "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice."
+                    );
+                }
+                // Hover per divert arrow ->
+                if (word === "->") {
+                    return new Hover(
+                        "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence."
                     );
                 }
 
