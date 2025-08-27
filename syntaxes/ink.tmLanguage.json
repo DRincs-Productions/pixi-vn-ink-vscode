@@ -62,7 +62,12 @@
 				},
 				{
 					"name": "entity.name.function.ink",
-					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
+					"match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
+				},
+				{
+					"name": "entity.name.function.ink",
+					"match": "(?<=^=\\s*)[a-zA-Z0-9_]+(?=\\s*)",
+					"comment": "sub-knots / stitches"
 				},
 				{
 					"name": "keyword.other.divert.ink",

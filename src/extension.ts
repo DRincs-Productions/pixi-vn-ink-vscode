@@ -50,7 +50,11 @@ export function activate(context: ExtensionContext) {
 }
 
 export function getKnotComment(document: TextDocument, lineText: string, word: string, position: Position) {
-    const knotDefRegex = new RegExp(`^={2,}\\s*${escapeRegExp(word)}(?:\\s*={2,})?\\b`);
+    // Split the word by dot to get the actual stitch name
+    let knotParts = word.split(".");
+    let stitchName = knotParts[knotParts.length - 1]; // prende 'in_first_class'
+
+    const knotDefRegex = new RegExp(`^={1,}\\s*${escapeRegExp(stitchName)}(?:\\s*=*)?\\b`);
     const divertRegex = new RegExp(`->\\s*${escapeRegExp(word)}\\b`);
     let targetKnotLine = -1;
     if (knotDefRegex.test(lineText)) {
