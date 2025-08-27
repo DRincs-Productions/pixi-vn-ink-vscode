@@ -8,6 +8,10 @@
         "editor.defaultFormatter": "vscode.typescript-language-features",
         "editor.formatOnSave": true
     },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.formatOnSave": true
+    },
     // reorganise imports
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit"
