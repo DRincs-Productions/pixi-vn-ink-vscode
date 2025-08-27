@@ -11,6 +11,9 @@
 		},
 		{
 			"include": "#choices"
+		},
+		{
+			"include": "#knots"
 		}
 	],
 	"repository": {
@@ -45,6 +48,18 @@
 					"begin": "(?<=^[ \\t]*[\\*\\+].*?)\\[",
 					"end": "\\]",
 					"name": "keyword.other.choice.ink"
+				}
+			]
+		},
+		"knots": {
+			"patterns": [
+				{
+					"name": "entity.name.knot.ink",
+					"match": "^={2,}[ \\t]*[a-zA-Z0-9_]+[ \\t]*(={2,})?$"
+				},
+				{
+					"name": "keyword.operator.divert.ink",
+					"match": "->\\s*(END|DONE|[a-zA-Z0-9_]+)"
 				}
 			]
 		}
