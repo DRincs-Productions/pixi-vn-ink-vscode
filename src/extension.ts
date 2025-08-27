@@ -1,4 +1,4 @@
-import { ExtensionContext, Hover, languages, MarkdownString, Position, TextDocument } from "vscode";
+import { ExtensionContext, Hover, languages, MarkdownString, TextDocument } from "vscode";
 
 function escapeRegExp(s: string) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -37,8 +37,7 @@ export function activate(context: ExtensionContext) {
                     );
                 }
 
-                const lineText = document.lineAt(position.line).text;
-                const commentLines = getKnotComment(document, lineText, word, position);
+                const commentLines = getKnotComment(document, word);
                 if (commentLines) {
                     return commentLines;
                 }
@@ -49,60 +48,82 @@ export function activate(context: ExtensionContext) {
     );
 }
 
-export function getKnotComment(document: TextDocument, lineText: string, word: string, position: Position) {
-    // Split the word by dot to get the actual stitch name
-    let knotParts = word.split(".");
-    let stitchName = knotParts[knotParts.length - 1]; // prende 'in_first_class'
+/**
+ * Returns a Hover with the comments associated with the knot or stitch
+ * under the mouse cursor.
+ */
+export function getKnotComment(document: TextDocument, word: string) {
+    // Split word in case of knot.stitch
+    const parts = word.split(".");
+    const stitchName = parts.pop()!; // if present, stitch
+    const parentKnotName = parts.pop(); // if present, parent knot
 
-    const knotDefRegex = new RegExp(`^={1,}\\s*${escapeRegExp(stitchName)}(?:\\s*=*)?\\b`);
-    const divertRegex = new RegExp(`->\\s*${escapeRegExp(word)}\\b`);
-    let targetKnotLine = -1;
-    if (knotDefRegex.test(lineText)) {
-        targetKnotLine = position.line;
-    } else if (divertRegex.test(lineText)) {
-        for (let i = 0; i < document.lineCount; i++) {
-            if (knotDefRegex.test(document.lineAt(i).text)) {
-                targetKnotLine = i;
+    let targetLine = -1;
+
+    // Loop through all lines of the document
+    for (let i = 0; i < document.lineCount; i++) {
+        const line = document.lineAt(i).text.trim();
+
+        // 1) If it's a main knot
+        if (!stitchName && /^\s*={2,}/.test(line)) {
+            const knotRegex = new RegExp(`^={2,}\\s*${escapeRegExp(word)}\\b`);
+            if (knotRegex.test(line)) {
+                targetLine = i;
                 break;
             }
         }
-    } else {
-        return;
-    }
 
-    if (targetKnotLine < 0) {
-        return;
-    }
+        // 2) If it's a divert to knot or knot.stitch
+        if (parentKnotName) {
+            const parentRegex = new RegExp(`^={2,}\\s*${escapeRegExp(parentKnotName)}\\b`);
+            if (parentRegex.test(line)) {
+                // Search for the stitch immediately after
+                for (let j = i + 1; j < document.lineCount; j++) {
+                    const subLine = document.lineAt(j).text.trim();
 
-    function collectDocAbove(startLine: number): string[] {
-        let i = startLine - 1;
+                    // If another main knot is found, stop
+                    if (/^={2,}/.test(subLine)) break;
 
-        while (i >= 0 && document.lineAt(i).text.trim() === "") i--;
-
-        if (i < 0) return [];
-
-        const firstTrim = document.lineAt(i).text.trim();
-
-        if (!firstTrim.startsWith("*/") && !firstTrim.startsWith("*") && !firstTrim.startsWith("/**")) {
-            return [];
+                    const stitchRegex = new RegExp(`^=+\\s*${escapeRegExp(stitchName)}\\b`);
+                    if (stitchRegex.test(subLine)) {
+                        targetLine = j;
+                        break;
+                    }
+                }
+                break; // parent found, stop searching
+            }
         }
 
-        let j = i;
-        while (j >= 0 && !document.lineAt(j).text.trim().startsWith("/**")) {
-            j--;
+        // 3) If the user is hovering directly over the stitch itself
+        if (stitchName && /^\s*=+/.test(line)) {
+            const stitchRegex = new RegExp(`^=+\\s*${escapeRegExp(stitchName)}\\b`);
+            if (stitchRegex.test(line)) {
+                targetLine = i;
+                break;
+            }
         }
-        if (j < 0) return [];
-
-        const collected: string[] = [];
-        for (let k = j; k < startLine && k < document.lineCount; k++) {
-            collected.push(document.lineAt(k).text);
-            if (document.lineAt(k).text.includes("*/")) break;
-        }
-        return collected;
     }
 
-    const commentLines = collectDocAbove(targetKnotLine);
-    if (!commentLines || commentLines.length === 0) return;
+    if (targetLine < 0) return;
+
+    // Function to collect comments above the target line
+    function collectCommentAbove(lineNumber: number): string[] {
+        const comments: string[] = [];
+        for (let i = lineNumber - 1; i >= 0; i--) {
+            const text = document.lineAt(i).text.trim();
+            if (text.startsWith("/**") || text.startsWith("*") || text.startsWith("*/")) {
+                comments.unshift(text);
+            } else if (text === "") {
+                continue;
+            } else {
+                break;
+            }
+        }
+        return comments;
+    }
+
+    const commentLines = collectCommentAbove(targetLine);
+    if (!commentLines.length) return;
 
     const cleaned = commentLines
         .map((l) =>
@@ -115,7 +136,7 @@ export function getKnotComment(document: TextDocument, lineText: string, word: s
         .filter(Boolean)
         .join("\n");
 
-    if (cleaned) {
-        return new Hover(new MarkdownString(cleaned));
-    }
+    if (!cleaned) return;
+
+    return new Hover(new MarkdownString(cleaned));
 }
