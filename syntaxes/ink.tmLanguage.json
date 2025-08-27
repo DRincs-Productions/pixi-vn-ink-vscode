@@ -66,8 +66,7 @@
 				},
 				{
 					"name": "entity.name.function.ink",
-					"match": "(?<=^=\\s*)[a-zA-Z0-9_]+(?=\\s*)",
-					"comment": "sub-knots / stitches"
+					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
 				},
 				{
 					"name": "keyword.other.divert.ink",
