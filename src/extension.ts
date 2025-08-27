@@ -8,7 +8,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
-                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->/);
+                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>/);
                 if (!range) return;
 
                 const word = document.getText(range);
@@ -28,6 +28,12 @@ export function activate(context: ExtensionContext) {
                 if (word === "->") {
                     return new Hover(
                         "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence."
+                    );
+                }
+                // Hover per glue <>
+                if (word === "<>") {
+                    return new Hover(
+                        "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line."
                     );
                 }
 

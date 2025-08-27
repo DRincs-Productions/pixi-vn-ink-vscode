@@ -14,6 +14,9 @@
 		},
 		{
 			"include": "#knots"
+		},
+		{
+			"include": "#glue"
 		}
 	],
 	"repository": {
@@ -72,6 +75,14 @@
 				{
 					"name": "entity.name.function.ink",
 					"match": "(?<=->\\s*)[a-zA-Z0-9_]+"
+				}
+			]
+		},
+		"glue": {
+			"patterns": [
+				{
+					"name": "keyword.other.glue.ink",
+					"match": "<>"
 				}
 			]
 		}
