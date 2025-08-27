@@ -27,26 +27,26 @@
     ],
     // symbols that are auto closed when typing
     "autoClosingPairs": [
-        {
-            "open": "{",
-            "close": "}"
-        },
-        {
-            "open": "[",
-            "close": "]"
-        },
-        {
-            "open": "(",
-            "close": ")"
-        },
-        {
-            "open": "\"",
-            "close": "\""
-        },
-        {
-            "open": "'",
-            "close": "'"
-        },
+        [
+            "{",
+            "}"
+        ],
+        [
+            "[",
+            "]"
+        ],
+        [
+            "(",
+            ")"
+        ],
+        [
+            "\"",
+            "\""
+        ],
+        [
+            "'",
+            "'"
+        ],
         {
             "open": "/**",
             "close": " */",
@@ -81,6 +81,14 @@
     "onEnterRules": [
         {
             "beforeText": "^\\s*/\\*\\*(?!/)([^*]|\\*(?!/))*$",
+            "afterText": "^\\s*\\*/\\s*$",
+            "action": {
+                "appendText": " * ",
+                "indent": "indentOutdent"
+            }
+        },
+        {
+            "beforeText": "^\\s*/\\*\\*(?!/)([^*]|\\*(?!/))*$",
             "action": {
                 "appendText": " * ",
                 "indent": "none"
@@ -90,14 +98,6 @@
             "beforeText": "^\\s*\\*(?!/).*",
             "action": {
                 "appendText": "* ",
-                "indent": "none"
-            }
-        },
-        {
-            "beforeText": "^\\s*/\\*\\*(?!/)([^*]|\\*(?!/))*$",
-            "afterText": "^\\s*\\*/\\s*$",
-            "action": {
-                "appendText": " * ",
                 "indent": "none"
             }
         }
