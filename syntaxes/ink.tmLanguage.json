@@ -71,7 +71,7 @@
 				},
 				{
 					"name": "entity.name.function.ink",
-					"match": "(?<=->\\s+)[a-zA-Z0-9_]+"
+					"match": "(?<=->\\s*)[a-zA-Z0-9_]+"
 				}
 			]
 		}

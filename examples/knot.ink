@@ -6,6 +6,6 @@ Hello world!
 -> END
 
 === knot1 ===
--> DONE
+->DONE
 
 -> top_knot
