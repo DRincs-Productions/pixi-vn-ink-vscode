@@ -1,17 +1,40 @@
-import { ExtensionContext, Hover, languages, MarkdownString, TextDocument } from "vscode";
+import { ExtensionContext, Hover, languages, MarkdownString, Position, TextDocument } from "vscode";
 
 function escapeRegExp(s: string) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isInsideVariableText(document: TextDocument, position: Position): boolean {
+    const line = document.lineAt(position.line).text;
+    const before = line.substring(0, position.character);
+
+    // Conta le graffe aperte/chiuse non escapate prima della posizione
+    let depth = 0;
+    for (let i = 0; i < before.length; i++) {
+        if (before[i] === "{" && (i === 0 || before[i - 1] !== "\\")) {
+            depth++;
+        } else if (before[i] === "}" && (i === 0 || before[i - 1] !== "\\")) {
+            depth--;
+        }
+    }
+
+    return depth > 0; // siamo dentro una coppia { ... }
+}
+
+function isEscaped(line: string, position: number): boolean {
+    // true se il carattere a `position` è preceduto da una backslash
+    return position > 0 && line[position - 1] === "\\";
 }
 
 export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
-                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>/);
+                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|[&!~|]/);
                 if (!range) return;
 
                 const word = document.getText(range);
+                const line = document.lineAt(position.line).text;
 
                 // Hover per END / DONE
                 if (word === "END") {
@@ -34,6 +57,42 @@ export function activate(context: ExtensionContext) {
                 if (word === "<>") {
                     return new Hover(
                         "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line."
+                    );
+                }
+
+                // Hover per simboli speciali dentro { }
+                if (isInsideVariableText(document, position)) {
+                    if (word === "&" && !isEscaped(line, range.start.character)) {
+                        return new Hover(
+                            new MarkdownString(
+                                "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```"
+                            )
+                        );
+                    }
+
+                    if (word === "!" && !isEscaped(line, range.start.character)) {
+                        return new Hover(
+                            new MarkdownString(
+                                "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```"
+                            )
+                        );
+                    }
+
+                    if (word === "~" && !isEscaped(line, range.start.character)) {
+                        return new Hover(
+                            new MarkdownString(
+                                "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```"
+                            )
+                        );
+                    }
+                }
+
+                // Hover per "|" (sempre, ma ignora se è escapato con \| )
+                if (word === "|" && !isEscaped(line, range.start.character)) {
+                    return new Hover(
+                        new MarkdownString(
+                            "**Alternative separator (`|`)**: Used inside `{}` to separate alternative pieces of text.\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`."
+                        )
                     );
                 }
 

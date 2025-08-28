@@ -1,5 +1,5 @@
 === whack_a_mole ===
-	I heft the hammer.|~Missed!|Nothing!|No good. Where is he?|Ah-ha! Got him!
+	I heft the hammer.|~Missed!|Nothing!|No good. Where is he?\|Ah-ha! Got him!
 	\{~Missed!Nothing\}
 	{I heft the hammer.|{~Missed!|Nothing!|No good. Where is he?|Ah-ha! Got him! -> END}}
 	The {&mole|{&nasty|blasted|foul} {&creature|rodent}} is {in here somewhere|hiding somewhere|still at large|laughing at me|still unwhacked|doomed}. <>
