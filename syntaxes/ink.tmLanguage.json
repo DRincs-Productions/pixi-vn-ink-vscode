@@ -54,7 +54,7 @@
 			"patterns": [
 				{
 					"name": "keyword.other.choice.ink",
-					"match": "^\\s*(\\*\\s*)+"
+					"match": "^\\s*([\\*\\+]\\s*)+"
 				}
 			]
 		},
