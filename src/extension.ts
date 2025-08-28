@@ -1,42 +1,26 @@
-import { ExtensionContext, Hover, languages, MarkdownString, Position, TextDocument } from "vscode";
-
-function escapeRegExp(s: string) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isInsideVariableText(document: TextDocument, position: Position): boolean {
-    const line = document.lineAt(position.line).text;
-    const before = line.substring(0, position.character);
-
-    // Conta le graffe aperte/chiuse non escapate prima della posizione
-    let depth = 0;
-    for (let i = 0; i < before.length; i++) {
-        if (before[i] === "{" && (i === 0 || before[i - 1] !== "\\")) {
-            depth++;
-        } else if (before[i] === "}" && (i === 0 || before[i - 1] !== "\\")) {
-            depth--;
-        }
-    }
-
-    return depth > 0; // siamo dentro una coppia { ... }
-}
-
-function isEscaped(line: string, position: number): boolean {
-    // true se il carattere a `position` è preceduto da una backslash
-    return position > 0 && line[position - 1] === "\\";
-}
+import { ExtensionContext, Hover, languages, MarkdownString, Position, Range, TextDocument } from "vscode";
 
 export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
-                const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|[&!~|]/);
-                if (!range) return;
-
-                const word = document.getText(range);
+                // Normal word/symbol detection (END, DONE, ->, <>, identifiers)
                 const line = document.lineAt(position.line).text;
+                let word: string | undefined;
+                let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>/);
 
-                // Hover per END / DONE
+                // Handle single special characters separately
+                const char = line[position.character];
+                if ("&!~|".includes(char) && !isEscaped(line, position.character)) {
+                    word = char;
+                    range = new Range(position, position.translate(0, 1));
+                } else if (range) {
+                    word = document.getText(range);
+                }
+
+                if (!word) return;
+
+                // Hover for END / DONE
                 if (word === "END") {
                     return new Hover(
                         "**END**: Ends the current story flow immediately. Use this when the story should stop completely."
@@ -47,22 +31,24 @@ export function activate(context: ExtensionContext) {
                         "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice."
                     );
                 }
-                // Hover per divert arrow ->
+
+                // Hover for divert arrow ->
                 if (word === "->") {
                     return new Hover(
                         "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence."
                     );
                 }
-                // Hover per glue <>
+
+                // Hover for glue <>
                 if (word === "<>") {
                     return new Hover(
                         "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line."
                     );
                 }
 
-                // Hover per simboli speciali dentro { }
+                // Hover for special symbols inside { }
                 if (isInsideVariableText(document, position)) {
-                    if (word === "&" && !isEscaped(line, range.start.character)) {
+                    if (word === "&" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
                                 "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```"
@@ -70,7 +56,7 @@ export function activate(context: ExtensionContext) {
                         );
                     }
 
-                    if (word === "!" && !isEscaped(line, range.start.character)) {
+                    if (word === "!" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
                                 "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```"
@@ -78,7 +64,7 @@ export function activate(context: ExtensionContext) {
                         );
                     }
 
-                    if (word === "~" && !isEscaped(line, range.start.character)) {
+                    if (word === "~" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
                                 "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```"
@@ -87,11 +73,11 @@ export function activate(context: ExtensionContext) {
                     }
                 }
 
-                // Hover per "|" (sempre, ma ignora se è escapato con \| )
-                if (word === "|" && !isEscaped(line, range.start.character)) {
+                // Hover for "|" (always, unless it is escaped as \| )
+                if (word === "|" && !isEscaped(line, position.character)) {
                     return new Hover(
                         new MarkdownString(
-                            "**Alternative separator (`|`)**: Used inside `{}` to separate alternative pieces of text.\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`."
+                            "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`."
                         )
                     );
                 }
@@ -105,6 +91,10 @@ export function activate(context: ExtensionContext) {
             },
         })
     );
+}
+
+function escapeRegExp(s: string) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -198,4 +188,26 @@ export function getKnotComment(document: TextDocument, word: string) {
     if (!cleaned) return;
 
     return new Hover(new MarkdownString(cleaned));
+}
+
+function isInsideVariableText(document: TextDocument, position: Position): boolean {
+    const line = document.lineAt(position.line).text;
+    const before = line.substring(0, position.character);
+
+    // Count unescaped curly braces before the position
+    let depth = 0;
+    for (let i = 0; i < before.length; i++) {
+        if (before[i] === "{" && (i === 0 || before[i - 1] !== "\\")) {
+            depth++;
+        } else if (before[i] === "}" && (i === 0 || before[i - 1] !== "\\")) {
+            depth--;
+        }
+    }
+
+    return depth > 0; // true if we are inside a { ... }
+}
+
+function isEscaped(line: string, position: number): boolean {
+    // true if the character at `position` is preceded by a backslash
+    return position > 0 && line[position - 1] === "\\";
 }
