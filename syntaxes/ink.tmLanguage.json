@@ -52,7 +52,7 @@
 		"knots": {
 			"patterns": [
 				{
-					"name": "keyword.control.ink",
+					"name": "variable.other.ink",
 					"match": "(?<=->\\s*)(END|DONE)"
 				},
 				{
