@@ -20,6 +20,9 @@
 		},
 		{
 			"include": "#variableText"
+		},
+		{
+			"include": "#alternatives"
 		}
 	],
 	"repository": {
@@ -101,9 +104,26 @@
 						},
 						{
 							"name": "keyword.other.ink",
-							"match": "\\|"
+							"match": "(?<!\\\\)\\|"
+						},
+						{
+							"include": "#knots"
+						},
+						{
+							"include": "#glue"
+						},
+						{
+							"include": "#choices"
 						}
 					]
+				}
+			]
+		},
+		"alternatives": {
+			"patterns": [
+				{
+					"name": "keyword.other.alternative.ink",
+					"match": "(?<!\\\\)\\|"
 				}
 			]
 		}
