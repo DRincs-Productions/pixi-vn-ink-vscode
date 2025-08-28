@@ -23,6 +23,9 @@
 		},
 		{
 			"include": "#alternatives"
+		},
+		{
+			"include": "#gathers"
 		}
 	],
 	"repository": {
@@ -51,7 +54,15 @@
 			"patterns": [
 				{
 					"name": "keyword.other.choice.ink",
-					"match": "^[ \\t]*[\\*\\+]"
+					"match": "^\\s*(\\*\\s*)+"
+				}
+			]
+		},
+		"gathers": {
+			"patterns": [
+				{
+					"name": "keyword.other.gather.ink",
+					"match": "^\\s*-(?!\\s*>)(\\s*-)*\\s*"
 				}
 			]
 		},

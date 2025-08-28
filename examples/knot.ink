@@ -2,10 +2,11 @@
  * Example Ink file
  */
 === top_knot ===
-Hello world!
+Hello world!END
 -> END
 
 === knot1 ===
+DONE
 ->DONE
 
 -> top_knot
