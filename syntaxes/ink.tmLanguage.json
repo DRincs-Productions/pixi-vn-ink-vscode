@@ -109,7 +109,7 @@
 			"patterns": [
 				{
 					"name": "meta.brace.curly.ink",
-					"begin": "(?<!\\\\)\\{",
+					"begin": "(?<!\\\\)\\{(?=[^}]*\\|)",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
