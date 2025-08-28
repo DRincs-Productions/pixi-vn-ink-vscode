@@ -17,6 +17,9 @@
 		},
 		{
 			"include": "#glue"
+		},
+		{
+			"include": "#variableText"
 		}
 	],
 	"repository": {
@@ -82,6 +85,25 @@
 				{
 					"name": "keyword.other.glue.ink",
 					"match": "<>"
+				}
+			]
+		},
+		"variableText": {
+			"patterns": [
+				{
+					"name": "meta.brace.curly.ink",
+					"begin": "(?<!\\\\)\\{",
+					"end": "(?<!\\\\)\\}",
+					"patterns": [
+						{
+							"name": "keyword.other.ink",
+							"match": "(?<=\\{)\\s*[&!~]"
+						},
+						{
+							"name": "keyword.other.ink",
+							"match": "\\|"
+						}
+					]
 				}
 			]
 		}
