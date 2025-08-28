@@ -7,7 +7,7 @@ export function activate(context: ExtensionContext) {
                 // Normal word/symbol detection (END, DONE, ->, <>, identifiers)
                 const line = document.lineAt(position.line).text;
                 let word: string | undefined;
-                let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>/);
+                let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|\*|\+|-/);
 
                 // Handle single special characters separately
                 const char = line[position.character];
@@ -78,6 +78,33 @@ export function activate(context: ExtensionContext) {
                     return new Hover(
                         new MarkdownString(
                             "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`."
+                        )
+                    );
+                }
+
+                // Hover per * , + e -
+                const trimmedLine = line.trimStart();
+                const firstChar = trimmedLine[0];
+                console.log("First char of trimmed line:", firstChar, "in line:", trimmedLine);
+
+                // Gestione choices (* e +)
+                if (firstChar === "*" || firstChar === "+") {
+                    return new Hover(
+                        new MarkdownString(
+                            `**Choice (${firstChar})**: Presents a text choice to the player. ` +
+                                (firstChar === "*"
+                                    ? "A normal choice is used once and then disappears."
+                                    : "A sticky choice (+) can be selected multiple times without being used up.") +
+                                `\n\nExample:\n\`\`\`ink\n${firstChar} [Choice text]\n    Output after choice\n\`\`\``
+                        )
+                    );
+                }
+
+                // Gestione gathers (-)
+                if (firstChar === "-" && !trimmedLine.startsWith("->")) {
+                    return new Hover(
+                        new MarkdownString(
+                            "**Gather (`-`)**: Brings the story flow back together after multiple choices. All paths leading here converge.\n\nExample:\n```ink\n- Some text that all choices converge to\n```"
                         )
                     );
                 }
