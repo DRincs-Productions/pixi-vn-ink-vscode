@@ -82,31 +82,29 @@ export function activate(context: ExtensionContext) {
                     );
                 }
 
-                // Hover per * , + e -
-                const trimmedLine = line.trimStart();
-                const firstChar = trimmedLine[0];
-                console.log("First char of trimmed line:", firstChar, "in line:", trimmedLine);
+                // Trova la "prefix region" = spazi + sequenza di * + -
+                const prefixMatch = line.match(/^\s*([*+-]+)/);
+                if (prefixMatch) {
+                    const prefix = prefixMatch[1]; // es. "**" oppure "-*+"
+                    const startIdx = line.indexOf(prefix);
 
-                // Gestione choices (* e +)
-                if (firstChar === "*" || firstChar === "+") {
-                    return new Hover(
-                        new MarkdownString(
-                            `**Choice (${firstChar})**: Presents a text choice to the player. ` +
-                                (firstChar === "*"
-                                    ? "A normal choice is used once and then disappears."
-                                    : "A sticky choice (+) can be selected multiple times without being used up.") +
-                                `\n\nExample:\n\`\`\`ink\n${firstChar} [Choice text]\n    Output after choice\n\`\`\``
-                        )
-                    );
-                }
+                    // Controlla se il mouse è sopra uno dei simboli in prefix
+                    const relativePos = position.character - startIdx;
+                    if (relativePos >= 0 && relativePos < prefix.length) {
+                        const symbol = prefix[relativePos];
 
-                // Gestione gathers (-)
-                if (firstChar === "-" && !trimmedLine.startsWith("->")) {
-                    return new Hover(
-                        new MarkdownString(
-                            "**Gather (`-`)**: Brings the story flow back together after multiple choices. All paths leading here converge.\n\nExample:\n```ink\n- Some text that all choices converge to\n```"
-                        )
-                    );
+                        if (symbol === "*") {
+                            return new Hover(
+                                "**Choice (`*`)**: Offers the player a choice. Flows to the next line after selection."
+                            );
+                        }
+                        if (symbol === "+") {
+                            return new Hover("**Sticky Choice (`+`)**: Same as `*`, but choice is reusable.");
+                        }
+                        if (symbol === "-") {
+                            return new Hover("**Gather (`-`)**: Combines multiple branches into a single flow point.");
+                        }
+                    }
                 }
 
                 const commentLines = getKnotComment(document, word);
