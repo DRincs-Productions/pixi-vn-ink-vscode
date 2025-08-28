@@ -82,27 +82,33 @@ export function activate(context: ExtensionContext) {
                     );
                 }
 
-                // Trova la "prefix region" = spazi + sequenza di * + -
-                const prefixMatch = line.match(/^\s*([*+-]+)/);
-                if (prefixMatch) {
-                    const prefix = prefixMatch[1]; // es. "**" oppure "-*+"
-                    const startIdx = line.indexOf(prefix);
+                const match = line.match(/^(\s*[-*+\s]+)/);
+                if (match) {
+                    const seq = match[1];
+                    const start = line.indexOf(seq);
+                    const end = start + seq.length;
 
-                    // Controlla se il mouse è sopra uno dei simboli in prefix
-                    const relativePos = position.character - startIdx;
-                    if (relativePos >= 0 && relativePos < prefix.length) {
-                        const symbol = prefix[relativePos];
-
-                        if (symbol === "*") {
+                    if (position.character >= start && position.character < end) {
+                        if (char === "*") {
                             return new Hover(
-                                "**Choice (`*`)**: Offers the player a choice. Flows to the next line after selection."
+                                new MarkdownString(
+                                    "**Choice (`*`)**: Offers the player a one-time choice. Flows to the next line after selection."
+                                )
                             );
                         }
-                        if (symbol === "+") {
-                            return new Hover("**Sticky Choice (`+`)**: Same as `*`, but choice is reusable.");
+                        if (char === "+") {
+                            return new Hover(
+                                new MarkdownString(
+                                    "**Sticky Choice (`+`)**: Same as `*`, but reusable (remains available even after being chosen)."
+                                )
+                            );
                         }
-                        if (symbol === "-") {
-                            return new Hover("**Gather (`-`)**: Combines multiple branches into a single flow point.");
+                        if (char === "-") {
+                            return new Hover(
+                                new MarkdownString(
+                                    "**Gather (`-`)**: Collects multiple branches back into a single flow point."
+                                )
+                            );
                         }
                     }
                 }
