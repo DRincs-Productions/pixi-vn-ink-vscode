@@ -46,16 +46,15 @@
 				{
 					"name": "keyword.other.choice.ink",
 					"match": "^[ \\t]*[\\*\\+]"
-				},
-				{
-					"begin": "(?<=^[ \\t]*[\\*\\+].*?)\\[",
-					"end": "\\]",
-					"name": "keyword.other.choice.ink"
 				}
 			]
 		},
 		"knots": {
 			"patterns": [
+				{
+					"name": "keyword.control.ink",
+					"match": "(?<=->\\s*)(END|DONE)"
+				},
 				{
 					"name": "keyword.other.knot.ink",
 					"match": "=+"
@@ -71,10 +70,6 @@
 				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
-				},
-				{
-					"name": "keyword.control.ink",
-					"match": "(?<=->\\s*)(END|DONE)"
 				},
 				{
 					"name": "entity.name.function.ink",
