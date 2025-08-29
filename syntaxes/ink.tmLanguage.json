@@ -37,10 +37,7 @@
 			"include": "#gathers"
 		},
 		{
-			"include": "#variableDeclarations"
-		},
-		{
-			"include": "#constantDeclarations"
+			"include": "#declarations"
 		},
 		{
 			"include": "#tildeLogic"
@@ -288,52 +285,16 @@
 				}
 			]
 		},
-		"variableDeclarations": {
+		"declarations": {
 			"patterns": [
 				{
-					"name": "meta.variable.declaration.ink",
-					"begin": "^\\s*VAR\\b",
+					"name": "meta.declaration.ink",
+					"begin": "^\\s*(VAR|CONST)\\b",
 					"beginCaptures": {
-						"0": {
+						"1": {
 							"name": "storage.type.var.ink"
-						}
-					},
-					"end": "$",
-					"patterns": [
-						{
-							"include": "#knots"
 						},
-						{
-							"name": "variable.other.global.ink",
-							"match": "[a-zA-Z_][a-zA-Z0-9_]*"
-						},
-						{
-							"name": "keyword.operator.assignment.ink",
-							"match": "="
-						},
-						{
-							"begin": "(?<=\\=)",
-							"end": "$",
-							"patterns": [
-								{
-									"include": "#knots"
-								},
-								{
-									"include": "#logic"
-								}
-							]
-						}
-					]
-				}
-			]
-		},
-		"constantDeclarations": {
-			"patterns": [
-				{
-					"name": "meta.constant.declaration.ink",
-					"begin": "^\\s*CONST\\b",
-					"beginCaptures": {
-						"0": {
+						"2": {
 							"name": "storage.type.const.ink"
 						}
 					},
@@ -343,8 +304,12 @@
 							"include": "#knots"
 						},
 						{
+							"name": "variable.other.global.ink",
+							"match": "(?<=VAR\\s+)[a-zA-Z_][a-zA-Z0-9_]*"
+						},
+						{
 							"name": "variable.other.constant.ink",
-							"match": "[a-zA-Z_][a-zA-Z0-9_]*"
+							"match": "(?<=CONST\\s+)[a-zA-Z_][a-zA-Z0-9_]*"
 						},
 						{
 							"name": "keyword.operator.assignment.ink",
@@ -354,9 +319,6 @@
 							"begin": "(?<=\\=)",
 							"end": "$",
 							"patterns": [
-								{
-									"include": "#knots"
-								},
 								{
 									"include": "#logic"
 								}
