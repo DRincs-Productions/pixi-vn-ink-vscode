@@ -1,0 +1,10 @@
+{
+    "iconDefinitions": {
+        "_ink": {
+            "iconPath": "./images/icon.png"
+        }
+    },
+    "fileExtensions": {
+        "ink": "_ink"
+    }
+}

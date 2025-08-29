@@ -31,6 +31,13 @@
         "scopeName": "source.ink",
         "path": "./syntaxes/ink.tmLanguage.json"
       }
+    ],
+    "iconThemes": [
+      {
+        "id": "ink-icons",
+        "label": "Ink File Icons",
+        "path": "./themes/icon-theme.json"
+      }
     ]
   },
   "scripts": {
