@@ -1,4 +1,6 @@
 === whack_a_mole ===
+    Test1: ~
+	Test2: {TEST~|TEST&|TEST!}
 	I heft the hammer.|~Missed!|Nothing!|No good. Where is he?\|Ah-ha! Got him!
 	\{~Missed!Nothing\}
 	{I heft the hammer.|{~Missed!|Nothing!|No good. Where is he?|Ah-ha! Got him! -> END}}
