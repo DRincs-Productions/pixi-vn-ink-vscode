@@ -285,21 +285,11 @@
 							"match": "="
 						},
 						{
-							"name": "constant.language.boolean.ink",
-							"match": "\\b(true|false)\\b"
-						},
-						{
-							"name": "constant.numeric.ink",
-							"match": "\\b\\d+(?:\\.\\d+)?\\b"
-						},
-						{
-							"name": "string.quoted.double.ink",
-							"begin": "\"",
-							"end": "\"",
+							"begin": "(?<=\\=)",
+							"end": "$",
 							"patterns": [
 								{
-									"name": "constant.character.escape.ink",
-									"match": "\\\\."
+									"include": "#logic"
 								}
 							]
 						}
