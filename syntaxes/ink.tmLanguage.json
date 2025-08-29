@@ -38,6 +38,9 @@
 		},
 		{
 			"include": "#variableDeclarations"
+		},
+		{
+			"include": "#tildeLogic"
 		}
 	],
 	"repository": {
@@ -292,6 +295,25 @@
 									"include": "#logic"
 								}
 							]
+						}
+					]
+				}
+			]
+		},
+		"tildeLogic": {
+			"patterns": [
+				{
+					"name": "keyword.other.logic.ink",
+					"begin": "~",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.operator.tilde.ink"
+						}
+					},
+					"end": "$",
+					"patterns": [
+						{
+							"include": "#logic"
 						}
 					]
 				}
