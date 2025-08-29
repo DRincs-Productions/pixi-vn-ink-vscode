@@ -40,6 +40,9 @@
 			"include": "#variableDeclarations"
 		},
 		{
+			"include": "#constantDeclarations"
+		},
+		{
 			"include": "#tildeLogic"
 		}
 	],
@@ -312,6 +315,48 @@
 							"begin": "(?<=\\=)",
 							"end": "$",
 							"patterns": [
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#logic"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"constantDeclarations": {
+			"patterns": [
+				{
+					"name": "meta.constant.declaration.ink",
+					"begin": "^\\s*CONST\\b",
+					"beginCaptures": {
+						"0": {
+							"name": "storage.type.const.ink"
+						}
+					},
+					"end": "$",
+					"patterns": [
+						{
+							"include": "#knots"
+						},
+						{
+							"name": "variable.other.constant.ink",
+							"match": "[a-zA-Z_][a-zA-Z0-9_]*"
+						},
+						{
+							"name": "keyword.operator.assignment.ink",
+							"match": "="
+						},
+						{
+							"begin": "(?<=\\=)",
+							"end": "$",
+							"patterns": [
+								{
+									"include": "#knots"
+								},
 								{
 									"include": "#logic"
 								}
