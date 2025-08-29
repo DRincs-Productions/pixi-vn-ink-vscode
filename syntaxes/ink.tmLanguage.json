@@ -212,6 +212,14 @@
 		"logic": {
 			"patterns": [
 				{
+					"name": "storage.type.temp.ink",
+					"match": "\\btemp\\b"
+				},
+				{
+					"name": "variable.other.local.ink",
+					"match": "(?<=\\btemp\\s+)[a-zA-Z_][a-zA-Z0-9_]*"
+				},
+				{
 					"name": "keyword.operator.assignment.ink",
 					"match": "="
 				},
