@@ -150,12 +150,7 @@
 					"end": "\\}",
 					"patterns": [
 						{
-							"name": "variable.other.condition.ink",
-							"match": "[a-zA-Z_][a-zA-Z0-9_\\.]*"
-						},
-						{
-							"name": "keyword.operator.logical.ink",
-							"match": "\\b(and|or|not)\\b"
+							"include": "#logic"
 						}
 					]
 				}
@@ -211,6 +206,10 @@
 				{
 					"name": "keyword.operator.comparison.ink",
 					"match": "==|!=|<=|>=|<|>|\\?"
+				},
+				{
+					"name": "constant.language.boolean.ink",
+					"match": "\\bnot\\b"
 				},
 				{
 					"name": "support.function.math.ink",

@@ -21,3 +21,7 @@ My name is Jean Passepartout, but my friends call me {friendly_name_of_player}. 
 { "No, thank you." != "Yes, please." }
 { "Yes, please" ? "ease" }
 
+{false || true}
+{true && false}
+{!false}
+{!true}
