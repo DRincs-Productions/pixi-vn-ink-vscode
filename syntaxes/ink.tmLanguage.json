@@ -106,6 +106,19 @@
 				{
 					"name": "entity.name.function.ink",
 					"match": "(?<=->\\s*)[a-zA-Z0-9_]+"
+				},
+				{
+					"name": "meta.function.parameters.ink",
+					"begin": "\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#knots"
+						},
+						{
+							"include": "#logic"
+						}
+					]
 				}
 			]
 		},
