@@ -303,11 +303,11 @@
 		"tildeLogic": {
 			"patterns": [
 				{
-					"name": "keyword.other.logic.ink",
+					"name": "meta.tilde.logic.ink",
 					"begin": "~",
 					"beginCaptures": {
 						"0": {
-							"name": "keyword.operator.tilde.ink"
+							"name": "keyword.other.tilde.ink"
 						}
 					},
 					"end": "$",
