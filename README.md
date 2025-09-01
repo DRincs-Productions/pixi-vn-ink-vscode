@@ -22,8 +22,8 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Syntax and logic errors reported directly in the editor
   - Support for warnings and errors
 
-- **File icon support**:
-  - `.ink` files have a dedicated icon in the VS Code file tree
+<!-- - **File icon support**:
+  - `.ink` files have a dedicated icon in the VS Code file tree -->
 
 ---
 
