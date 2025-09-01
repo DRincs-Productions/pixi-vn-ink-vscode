@@ -1,3 +1,4 @@
+import { ErrorType } from "inkjs/engine/Error";
 import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, Range, TextDocument } from "vscode";
 import { getErrors } from "./utils/ink-utility";
 
@@ -13,9 +14,11 @@ export function updateDiagnostics(doc: TextDocument, collection: DiagnosticColle
 
             diagnostics.push({
                 severity:
-                    issue.type === 0 // supponiamo ErrorType.Error === 0
+                    issue.type === ErrorType.Error
                         ? DiagnosticSeverity.Error
-                        : DiagnosticSeverity.Warning,
+                        : issue.type === ErrorType.Warning
+                        ? DiagnosticSeverity.Warning
+                        : DiagnosticSeverity.Information,
                 message: issue.message,
                 source: "ink",
                 range,
