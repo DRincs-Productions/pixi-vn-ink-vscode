@@ -1,7 +1,7 @@
 {
     "iconDefinitions": {
         "_ink": {
-            "iconPath": "./images/icon.png"
+            "iconPath": "../icons/ink-icon.png"
         }
     },
     "fileExtensions": {
