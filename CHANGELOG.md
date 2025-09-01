@@ -4,7 +4,15 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
-## [0.2.0] - 2024-12-10
+## [0.2.1] - 2025-09-01
+
+### Changed
+
+- Improved error messages for Ink scripts
+- Removed the separate icon theme for Ink files
+- Fixed the extension icon display
+
+## [0.2.0] - 2025-09-01
 
 ### Added
 
@@ -28,6 +36,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Improved syntax highlighting rules
 - Merged `variableDeclarations` and `constantDeclarations` into a single system
 
-## [0.1.0] - 2025-08-01
+## [0.1.0] - 2024-12-10
 
 - Initial release
