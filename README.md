@@ -65,6 +65,26 @@ Please open an **issue** or **pull request** on [GitHub](https://github.com/DRin
 
 ---
 
+## 📝 TODO
+
+The following features and improvements are planned for future versions of this extension:
+
+- Complete the syntax highlighting for all Ink constructs.
+- Add and improve hover pop-ups above knots, functions, and variables.
+- Enable CTRL+Click functionality for knots, functions, and variables.
+- Allow folding/collapsing of knots and functions.
+- Add the ability to import Ink files:
+  - Users can specify an entire folder or define a `main.ink` file.
+  - If no main file is defined, the current file will be treated as the main file.
+- Add a preview panel similar to Inky.
+- Add a counter for knots and word count within the current file.
+- Add a flag to enable syntax highlighting for Markdown:
+  - Ink does not natively support Markdown, but some projects may benefit from this feature.
+- Add a flag to enable syntax highlighting for Pixi'VN:
+  - A JavaScript game engine that uses Ink scripts.
+
+---
+
 ## 📜 License
 
 Released under the MIT License.
