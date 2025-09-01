@@ -1,6 +1,6 @@
 {
   "name": "pixi-vn-ink-vscode",
-  "displayName": "Inkle's ink language",
+  "displayName": "ink language",
   "description": "Inkle's ink scripting language support for Visual Studio Code",
   "version": "0.2.1",
   "repository": {
