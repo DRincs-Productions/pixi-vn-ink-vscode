@@ -6,8 +6,9 @@ export function getErrors(text: string) {
     try {
         const compiler = new Compiler(text, {
             errorHandler: (message: string, type: ErrorType) => {
-                const line = message.match(/line (\d+)/)!;
-                issues.push({ message, type, line: line ? parseInt(line[1]) : -1 });
+                const cleanedMsg = message.replace(/^[A-Z]+: line \d+: ?/, "");
+                const lineMatch = message.match(/line (\d+)/);
+                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1]) : -1 });
             },
             countAllVisits: true,
             fileHandler: null,
