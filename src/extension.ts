@@ -1,6 +1,26 @@
-import { ExtensionContext, Hover, languages, MarkdownString, Position, Range, TextDocument } from "vscode";
+import { ExtensionContext, Hover, languages, MarkdownString, Position, Range, TextDocument, workspace } from "vscode";
+import { updateDiagnostics } from "./diagnostics";
 
 export function activate(context: ExtensionContext) {
+    const diagnostics = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnostics);
+
+    workspace.onDidOpenTextDocument((doc) => {
+        if (doc.languageId === "ink") {
+            updateDiagnostics(doc, diagnostics);
+        }
+    });
+
+    workspace.onDidChangeTextDocument((e) => {
+        if (e.document.languageId === "ink") {
+            updateDiagnostics(e.document, diagnostics);
+        }
+    });
+
+    workspace.onDidCloseTextDocument((doc) => {
+        diagnostics.delete(doc.uri);
+    });
+
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
