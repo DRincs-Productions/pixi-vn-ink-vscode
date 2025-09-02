@@ -28,7 +28,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 
 ## ⚙️ Settings
 
-This extension provides the following configurable settings in VS Code:
+This extension provides the following configurable settings in VS Code (go to `File > Preferences > Settings` and search for `ink`):
 
 ### Engine
 
