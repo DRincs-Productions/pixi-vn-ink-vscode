@@ -26,6 +26,30 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 
 ---
 
+## ⚙️ Settings
+
+This extension provides the following configurable settings in VS Code:
+
+### Engine
+
+- **Setting name**: `ink.engine`
+- **Description**: Select the engine used for developing the Ink project.
+- **Options**:
+  - `Inky` (default)
+  - `pixi-vn`
+- **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.
+
+### Markup
+
+- **Setting name**: `ink.markup`
+- **Description**: Select the markup format for the project.
+- **Options**:
+  - `Markdown`
+  - `null` (default)
+- **Effect**: Enables syntax support and highlighting for the selected markup.
+
+---
+
 ## 📂 Supported structures
 
 - `.ink` files
