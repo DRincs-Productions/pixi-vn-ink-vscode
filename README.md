@@ -11,7 +11,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Variable (`VAR`) and constant (`CONST`) declarations
   - Temporary variables (`temp`)
   - Knots, stitches, and parameters
-  - Logical expressions with operators (`+ - * / % not == != < > <= >=`)
+  - Logical expressions with operators (`+ - * / % not == != < > <= >=` etc.)
   - Math functions (`POW`, `RANDOM`, `INT`, `FLOOR`, `FLOAT`)
   - Strings, numbers, and booleans
   - Choices and conditional choices
