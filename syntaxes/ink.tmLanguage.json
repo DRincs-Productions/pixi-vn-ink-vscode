@@ -489,6 +489,9 @@
 							"end": "$",
 							"patterns": [
 								{
+									"include": "#knots"
+								},
+								{
 									"include": "#logic"
 								}
 							]
