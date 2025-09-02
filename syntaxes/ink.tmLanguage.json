@@ -219,8 +219,8 @@
 					"end": "\\}",
 					"patterns": [
 						{
-							"name": "keyword.other.firstline.ink",
-							"begin": "(?<=\\{)\\s*(-)\\s*",
+							"name": "meta.conditional.firstline.ink",
+							"begin": "(?<=\\{)\\s*(-)?",
 							"beginCaptures": {
 								"1": {
 									"name": "keyword.other.conditional.ink"
@@ -239,11 +239,14 @@
 							]
 						},
 						{
-							"name": "keyword.other.branch.ink",
-							"begin": "^(\\s*-+)\\s*",
+							"name": "meta.conditional.branch.ink",
+							"begin": "^(\\s*-\\s*)(else)?",
 							"beginCaptures": {
 								"1": {
 									"name": "keyword.other.conditional.ink"
+								},
+								"2": {
+									"name": "keyword.control.else.ink"
 								}
 							},
 							"end": ":",
@@ -253,10 +256,6 @@
 								}
 							},
 							"patterns": [
-								{
-									"match": "\\belse\\b",
-									"name": "keyword.control.else.ink"
-								},
 								{
 									"include": "#logic"
 								}
