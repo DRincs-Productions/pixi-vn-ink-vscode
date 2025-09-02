@@ -388,6 +388,10 @@
 		"logic": {
 			"patterns": [
 				{
+					"name": "keyword.control.return.ink",
+					"match": "\\breturn\\b"
+				},
+				{
 					"name": "storage.type.temp.ink",
 					"match": "\\btemp\\b"
 				},
