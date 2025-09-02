@@ -215,46 +215,21 @@
 			"patterns": [
 				{
 					"name": "meta.conditional.block.ink",
-					"begin": "(?<!\\\\)\\{\\s*(?=\\n|.)",
+					"begin": "(?<!\\\\)\\{(?=[\\s\\S]*\\n)",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
 							"name": "meta.conditional.firstline.ink",
 							"begin": "(?<=\\{)\\s*",
 							"end": ":",
-							"patterns": [
-								{
-									"include": "#logic"
-								}
-							]
-						},
-						{
-							"name": "keyword.control.else.ink",
-							"match": "^\\s*-\\s*else\\s*:",
-							"captures": {
-								"0": {
-									"name": "keyword.control.else.ink"
-								},
-								"1": {
-									"name": "keyword.operator.dash.ink"
-								},
-								"2": {
-									"name": "punctuation.separator.colon.ink"
-								}
-							}
-						},
-						{
-							"name": "meta.conditional.line.ink",
-							"begin": "^\\s*-\\s*",
-							"end": ":",
 							"beginCaptures": {
 								"0": {
-									"name": "keyword.operator.dash.ink"
+									"name": "punctuation.definition.block.begin.ink"
 								}
 							},
 							"endCaptures": {
 								"0": {
-									"name": "punctuation.separator.colon.ink"
+									"name": "keyword.operator.conditional-colon.ink"
 								}
 							},
 							"patterns": [
@@ -264,8 +239,36 @@
 							]
 						},
 						{
-							"name": "string.unquoted.blocktext.ink",
-							"match": ".+"
+							"match": "^\\s*-\\s*else\\s*:",
+							"captures": {
+								"0": {
+									"name": "keyword.control.else.ink"
+								}
+							}
+						},
+						{
+							"name": "meta.conditional.branch.ink",
+							"begin": "^(\\s*)-\\s*",
+							"beginCaptures": {
+								"0": {
+									"name": "keyword.operator.conditional-dash.ink"
+								}
+							},
+							"end": ":",
+							"endCaptures": {
+								"0": {
+									"name": "keyword.operator.conditional-colon.ink"
+								}
+							},
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						},
+						{
+							"match": "^.*$",
+							"name": "string.unquoted.blocktext.ink"
 						}
 					]
 				}
