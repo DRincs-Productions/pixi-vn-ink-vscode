@@ -13,6 +13,9 @@
 			"include": "#choices"
 		},
 		{
+			"include": "#conditionalBlocks"
+		},
+		{
 			"include": "#conditionalChoices"
 		},
 		{
@@ -203,6 +206,66 @@
 									"match": "\\|"
 								}
 							]
+						}
+					]
+				}
+			]
+		},
+		"conditionalBlocks": {
+			"patterns": [
+				{
+					"name": "meta.conditional.block.ink",
+					"begin": "(?<!\\\\)\\{\\s*(?=\\n|.)",
+					"end": "(?<!\\\\)\\}",
+					"patterns": [
+						{
+							"name": "meta.conditional.firstline.ink",
+							"begin": "(?<=\\{)\\s*",
+							"end": ":",
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						},
+						{
+							"name": "keyword.control.else.ink",
+							"match": "^\\s*-\\s*else\\s*:",
+							"captures": {
+								"0": {
+									"name": "keyword.control.else.ink"
+								},
+								"1": {
+									"name": "keyword.operator.dash.ink"
+								},
+								"2": {
+									"name": "punctuation.separator.colon.ink"
+								}
+							}
+						},
+						{
+							"name": "meta.conditional.line.ink",
+							"begin": "^\\s*-\\s*",
+							"end": ":",
+							"beginCaptures": {
+								"0": {
+									"name": "keyword.operator.dash.ink"
+								}
+							},
+							"endCaptures": {
+								"0": {
+									"name": "punctuation.separator.colon.ink"
+								}
+							},
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						},
+						{
+							"name": "string.unquoted.blocktext.ink",
+							"match": ".+"
 						}
 					]
 				}
