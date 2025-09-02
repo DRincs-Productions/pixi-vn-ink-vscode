@@ -165,7 +165,7 @@
 			"patterns": [
 				{
 					"name": "meta.brace.curly.conditionalChoice.ink",
-					"begin": "(?<=^\\s*[\\*\\+]\\s*)\\{",
+					"begin": "(?<=^\\s*[\\*\\+]\\s*)\\{(?=[^\\n}]*\\})",
 					"end": "\\}",
 					"patterns": [
 						{
@@ -179,12 +179,12 @@
 			"patterns": [
 				{
 					"name": "meta.brace.curly.conditionalText.ink",
-					"begin": "(?<!\\\\)\\{(?=[^}]*:)",
+					"begin": "(?<!\\\\)\\{(?=[^\\n}]*:)",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
 							"name": "meta.conditional.condition.ink",
-							"begin": "(?<=\\{)",
+							"begin": "(?<=\\{)\\s*",
 							"end": ":",
 							"patterns": [
 								{
@@ -203,7 +203,7 @@
 							"patterns": [
 								{
 									"name": "keyword.other.alternative.ink",
-									"match": "\\|"
+									"match": "(?<!\\\\)\\|"
 								}
 							]
 						}
@@ -215,21 +215,16 @@
 			"patterns": [
 				{
 					"name": "meta.conditional.block.ink",
-					"begin": "(?<!\\\\)\\{(?=[\\s\\S]*\\n)",
-					"end": "(?<!\\\\)\\}",
+					"begin": "(?<!\\\\)\\{(?=[^}]*\\n)",
+					"end": "\\}",
 					"patterns": [
 						{
 							"name": "meta.conditional.firstline.ink",
 							"begin": "(?<=\\{)\\s*",
 							"end": ":",
-							"beginCaptures": {
-								"0": {
-									"name": "punctuation.definition.block.begin.ink"
-								}
-							},
 							"endCaptures": {
 								"0": {
-									"name": "keyword.operator.conditional-colon.ink"
+									"name": "keyword.operator.conditional.ink"
 								}
 							},
 							"patterns": [
@@ -239,36 +234,32 @@
 							]
 						},
 						{
-							"match": "^\\s*-\\s*else\\s*:",
-							"captures": {
-								"0": {
-									"name": "keyword.control.else.ink"
-								}
-							}
-						},
-						{
 							"name": "meta.conditional.branch.ink",
-							"begin": "^(\\s*)-\\s*",
+							"begin": "^\\s*(-+)\\s*",
 							"beginCaptures": {
-								"0": {
-									"name": "keyword.operator.conditional-dash.ink"
+								"1": {
+									"name": "keyword.operator.conditional.ink"
 								}
 							},
 							"end": ":",
 							"endCaptures": {
 								"0": {
-									"name": "keyword.operator.conditional-colon.ink"
+									"name": "keyword.operator.conditional.ink"
 								}
 							},
 							"patterns": [
+								{
+									"match": "\\belse\\b",
+									"name": "keyword.control.else.ink"
+								},
 								{
 									"include": "#logic"
 								}
 							]
 						},
 						{
-							"match": "^.*$",
-							"name": "string.unquoted.blocktext.ink"
+							"match": ".+",
+							"name": "text.plain.ink"
 						}
 					]
 				}
@@ -278,7 +269,7 @@
 			"patterns": [
 				{
 					"name": "meta.printing.variable.ink",
-					"begin": "(?<!\\\\)\\{",
+					"begin": "(?<!\\\\)\\{(?=[^\\n}]*\\})",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
