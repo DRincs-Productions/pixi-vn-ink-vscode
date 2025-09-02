@@ -31,6 +31,9 @@
 			"include": "#printingVariables"
 		},
 		{
+			"include": "#functions"
+		},
+		{
 			"include": "#knots"
 		},
 		{
@@ -123,6 +126,31 @@
 						},
 						{
 							"include": "#logic"
+						}
+					]
+				}
+			]
+		},
+		"functions": {
+			"patterns": [
+				{
+					"name": "keyword.other.function.ink",
+					"match": "(?<=^===\\s*)function(?=\\s+)"
+				},
+				{
+					"name": "entity.name.function.ink",
+					"match": "(?<=^===\\s*function\\s+)[a-zA-Z0-9_]+(?=\\s*\\(?)"
+				},
+				{
+					"name": "meta.function.parameters.ink",
+					"begin": "\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#logic"
+						},
+						{
+							"include": "#knots"
 						}
 					]
 				}
@@ -388,6 +416,10 @@
 		"logic": {
 			"patterns": [
 				{
+					"name": "keyword.control.return.ink",
+					"match": "\\breturn\\b"
+				},
+				{
 					"name": "storage.type.temp.ink",
 					"match": "\\btemp\\b"
 				},
@@ -435,6 +467,10 @@
 							"include": "#printingVariables"
 						}
 					]
+				},
+				{
+					"name": "entity.name.function.ink",
+					"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()"
 				},
 				{
 					"name": "variable.other.global.ink",

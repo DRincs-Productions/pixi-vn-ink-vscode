@@ -10,8 +10,8 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 - **Full syntax highlighting**:
   - Variable (`VAR`) and constant (`CONST`) declarations
   - Temporary variables (`temp`)
-  - Knots, stitches, and parameters
-  - Logical expressions with operators (`+ - * / % not == != < > <= >=`)
+  - Knots, functions, stitches, and parameters
+  - Logical expressions with operators (`+ - * / % not == != < > <= >=` etc.)
   - Math functions (`POW`, `RANDOM`, `INT`, `FLOOR`, `FLOAT`)
   - Strings, numbers, and booleans
   - Choices and conditional choices
@@ -31,6 +31,8 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 - `.ink` files
 - Highlighting for:
   - **Knots and stitches with parameters**
+  - **Functions** (`=== function myFunc(x) ===`)
+  - **Function calls** (`myFunc()`) are highlighted
   - **Conditional choices** (`* { condition } [text] -> knot`)
   - **Conditional text** (`{ condition: valueIfTrue | valueIfFalse }`)
   - **Multiline blocks** (`{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`)

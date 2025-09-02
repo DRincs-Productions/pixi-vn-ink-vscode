@@ -9,6 +9,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Added
 
 - Full syntax highlighting for:
+  - **Functions**:
+    - Definition with `=== function functionName(parameters) ===`
+    - Calls like `functionName()` are highlighted
   - **Conditional blocks**:
     - Multi-line blocks starting with `{` and ending with `}`
     - Highlighting for first-line conditions
