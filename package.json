@@ -22,6 +22,12 @@
   "categories": [
     "Programming Languages"
   ],
+  "keywords": [
+    "ink",
+    "inkle",
+    "narrative",
+    "game development"
+  ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
@@ -43,7 +49,38 @@
         "scopeName": "source.ink",
         "path": "./syntaxes/ink.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Ink Extension Settings",
+      "properties": {
+        "ink.engine": {
+          "type": "string",
+          "enum": [
+            "Inky",
+            "pixi-vn"
+          ],
+          "enumDescriptions": [
+            "Inky",
+            "Pixi'VN"
+          ],
+          "default": "Inky",
+          "description": "Select the engine used for developing the Ink project."
+        },
+        "ink.markup": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "Markdown"
+          ],
+          "default": null,
+          "description": "Select the markup format for the project. Default is none."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
