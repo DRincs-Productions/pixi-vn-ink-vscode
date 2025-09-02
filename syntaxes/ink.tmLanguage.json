@@ -220,7 +220,7 @@
 					"patterns": [
 						{
 							"name": "meta.conditional.firstline.no-dash.ink",
-							"begin": "(?<=\\{)\\s*(-)?\\s*",
+							"begin": "(?<=\\{)\\s*(-)?\\s*(?!(->))",
 							"beginCaptures": {
 								"1": {
 									"name": "keyword.other.conditional.ink"
@@ -239,7 +239,7 @@
 						},
 						{
 							"name": "meta.conditional.branch.ink",
-							"begin": "^\\s*(-)\\s*(else)?",
+							"begin": "^(?!\\s*->)(\\s*-\\s*)(else)?",
 							"beginCaptures": {
 								"1": {
 									"name": "keyword.other.conditional.ink"
@@ -265,6 +265,9 @@
 							"patterns": [
 								{
 									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
 								}
 							]
 						}
