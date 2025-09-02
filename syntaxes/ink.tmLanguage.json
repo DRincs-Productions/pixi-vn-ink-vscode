@@ -219,12 +219,12 @@
 					"end": "\\}",
 					"patterns": [
 						{
-							"name": "meta.conditional.firstline.ink",
+							"name": "keyword.other.firstline.ink",
 							"begin": "(?<=\\{)\\s*",
 							"end": ":",
 							"endCaptures": {
 								"0": {
-									"name": "keyword.operator.conditional.ink"
+									"name": "keyword.other.conditional.ink"
 								}
 							},
 							"patterns": [
@@ -234,17 +234,17 @@
 							]
 						},
 						{
-							"name": "meta.conditional.branch.ink",
+							"name": "keyword.other.branch.ink",
 							"begin": "^\\s*(-+)\\s*",
 							"beginCaptures": {
 								"1": {
-									"name": "keyword.operator.conditional.ink"
+									"name": "keyword.other.conditional.ink"
 								}
 							},
 							"end": ":",
 							"endCaptures": {
 								"0": {
-									"name": "keyword.operator.conditional.ink"
+									"name": "keyword.other.conditional.ink"
 								}
 							},
 							"patterns": [
