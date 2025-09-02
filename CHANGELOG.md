@@ -4,6 +4,21 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Full syntax highlighting for:
+  - **Conditional blocks**:
+    - Multi-line blocks starting with `{` and ending with `}`
+    - Highlighting for first-line conditions
+    - Branches with `-` including `else`
+    - Support for tilde logic, knots, glue, choices, and comments
+  - **Multiline blocks**:
+    - `{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`
+    - Lines starting with `-` as normal text
+    - Support for tilde logic, knots, glue, choices, and comments
+
 ## [0.2.1] - 2025-09-01
 
 ### Changed
