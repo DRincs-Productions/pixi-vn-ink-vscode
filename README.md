@@ -36,7 +36,7 @@ This extension provides the following configurable settings in VS Code (go to `F
 - **Description**: Select the engine used for developing the Ink project.
 - **Options**:
   - `Inky` (default)
-  - `pixi-vn`
+  - [`pixi-vn`](https://github.com/DRincs-Productions/pixi-vn)
 - **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.
 
 ### Markup
