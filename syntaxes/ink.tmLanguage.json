@@ -13,6 +13,9 @@
 			"include": "#choices"
 		},
 		{
+			"include": "#multilineBlocks"
+		},
+		{
 			"include": "#conditionalBlocks"
 		},
 		{
@@ -261,6 +264,70 @@
 							]
 						},
 						{
+							"name": "text.plain.ink",
+							"patterns": [
+								{
+									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#glue"
+								},
+								{
+									"include": "#choices"
+								},
+								{
+									"include": "#comments"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"multilineBlocks": {
+			"patterns": [
+				{
+					"name": "meta.multiline.block.ink",
+					"begin": "(?<!\\\\)\\{\\s*(stopping|shuffle(?:\\s+(?:once|stopping))?|cycle|once)\\s*:",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.multiline-type.ink"
+						}
+					},
+					"end": "\\s*\\}",
+					"patterns": [
+						{
+							"name": "meta.multiline.line.ink",
+							"begin": "^\\s*-\\s*",
+							"beginCaptures": {
+								"0": {
+									"name": "keyword.other.multiline-line.ink"
+								}
+							},
+							"end": "$",
+							"patterns": [
+								{
+									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#glue"
+								},
+								{
+									"include": "#choices"
+								},
+								{
+									"include": "#comments"
+								}
+							]
+						},
+						{
+							"match": ".+",
 							"name": "text.plain.ink",
 							"patterns": [
 								{
