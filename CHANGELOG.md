@@ -4,6 +4,15 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [0.2.3] - 2025-09-02
+
+### Added
+
+- New configuration settings:
+  - `ink.engine` to select the engine (`Inky` or `pixi-vn`).
+  - `ink.markup` to enable optional markup highlighting (`Markdown` or `null`).
+- Diagnostics now adapt to the selected engine.
+
 ## [0.2.2] - 2025-09-02
 
 ### Added
