@@ -1,9 +1,30 @@
-import { ExtensionContext, Hover, languages, MarkdownString, Position, Range, TextDocument, workspace } from "vscode";
+import {
+    ExtensionContext,
+    Hover,
+    languages,
+    MarkdownString,
+    Position,
+    Range,
+    TextDocument,
+    window,
+    workspace,
+} from "vscode";
 import { updateDiagnostics } from "./diagnostics";
 
 export function activate(context: ExtensionContext) {
     const diagnostics = languages.createDiagnosticCollection("ink");
     context.subscriptions.push(diagnostics);
+
+    // Listen for configuration changes
+
+    workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("ink.engine")) {
+            const newEngine = workspace.getConfiguration("ink").get<string>("engine");
+            window.showInformationMessage(`Engine changed to ${newEngine}`);
+        }
+    });
+
+    // Initial diagnostics for all open ink files
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
