@@ -409,7 +409,7 @@
 				},
 				{
 					"name": "constant.language.boolean.ink",
-					"match": "\\bnot\\b"
+					"match": "\\b(not|or)\\b"
 				},
 				{
 					"name": "support.function.math.ink",
