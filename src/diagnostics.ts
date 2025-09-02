@@ -1,14 +1,24 @@
 import { ErrorType } from "inkjs/engine/Error";
-import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, Range, TextDocument } from "vscode";
+import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, Range, TextDocument, workspace } from "vscode";
 import { getErrors } from "./utils/ink-utility";
+import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
 
 export function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) {
-    const errors = getErrors(doc.getText());
+    const config = workspace.getConfiguration("ink");
+    const engine = config.get<"Inky" | "pixi-vn">("engine");
+
+    let errors;
+    if (engine === "pixi-vn") {
+        errors = getErrorsPixiVN(doc.getText());
+    } else {
+        errors = getErrors(doc.getText());
+    }
+
     const diagnostics: Diagnostic[] = [];
 
     for (const issue of errors) {
         if (issue.line >= 0) {
-            const lineIndex = issue.line - 1; // perché inkjs parte da 1
+            const lineIndex = issue.line - 1;
             const line = doc.lineAt(lineIndex);
             const range = new Range(line.range.start, line.range.end);
 
