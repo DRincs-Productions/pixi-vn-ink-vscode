@@ -141,7 +141,17 @@
 				{
 					"name": "meta.brace.curly.variableText.ink",
 					"begin": "(?<!\\\\)\\{(?=[^}]*\\|)",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.other.ink"
+						}
+					},
 					"end": "(?<!\\\\)\\}",
+					"endCaptures": {
+						"0": {
+							"name": "keyword.other.ink"
+						}
+					},
 					"patterns": [
 						{
 							"name": "keyword.other.ink",
@@ -355,8 +365,18 @@
 			"patterns": [
 				{
 					"name": "meta.printing.variable.ink",
-					"begin": "(?<!\\\\)\\{(?=[^\\n}]*\\})",
+					"begin": "(?<!\\\\)\\{",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.other.ink"
+						}
+					},
 					"end": "(?<!\\\\)\\}",
+					"endCaptures": {
+						"0": {
+							"name": "keyword.other.ink"
+						}
+					},
 					"patterns": [
 						{
 							"include": "#logic"
@@ -411,6 +431,12 @@
 						{
 							"name": "constant.character.escape.ink",
 							"match": "\\\\."
+						},
+						{
+							"include": "#variableText"
+						},
+						{
+							"include": "#printingVariables"
 						}
 					]
 				},
