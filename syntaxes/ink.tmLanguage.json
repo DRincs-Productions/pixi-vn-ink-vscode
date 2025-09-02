@@ -216,7 +216,7 @@
 				{
 					"name": "meta.conditional.block.ink",
 					"begin": "(?<!\\\\)\\{(?=[^}]*\\n)",
-					"end": "\\}",
+					"end": "\\s*\\}",
 					"patterns": [
 						{
 							"name": "meta.conditional.firstline.no-dash.ink",
