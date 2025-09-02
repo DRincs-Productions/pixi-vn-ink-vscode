@@ -5,3 +5,9 @@ Hello [world]!
     You eat another donut. -> homers_couch
 * \[Go to whack-a-mole\]
     You go to the arcade and play whack-a-mole. -> whack_a_mole
+
+=== homers_couch ===
+You sit on Homer's couch and feel very relaxed.
+-> END
+=== whack_a_mole ===
+->DONE

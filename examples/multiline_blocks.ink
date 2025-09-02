@@ -15,14 +15,14 @@ At the table, I drew a card. <>
 }
 
 // Cycle: show each in turn, and then cycle
-{ cycle:
+{  cycle:
 	- I held my breath.
 	- I waited impatiently.
 	- I paused.
 }
 
 // Once: show each, once, in turn, until all have been shown
-{ once:
+{once:
 	- Would my luck hold?
 	- Could I win the hand?
 }

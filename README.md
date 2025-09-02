@@ -16,14 +16,12 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Strings, numbers, and booleans
   - Choices and conditional choices
   - Printing variables and conditional text inside `{ }`
+  - Conditional blocks and Multiline blocks
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
   - Syntax and logic errors reported directly in the editor
   - Support for warnings and errors
-
-<!-- - **File icon support**:
-  - `.ink` files have a dedicated icon in the VS Code file tree -->
 
 ---
 
@@ -34,9 +32,11 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - **Knots and stitches with parameters**
   - **Conditional choices** (`* { condition } [text] -> knot`)
   - **Conditional text** (`{ condition: valueIfTrue | valueIfFalse }`)
+  - **Multiline blocks** (`{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`)
   - **Printing variables** (`{ variableName }`)
   - **Logic and arithmetic operators**
   - **Variable and constant declarations**
+  - **Tilde logic (`~`) inside blocks**
 
 ---
 
@@ -44,9 +44,15 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 
 Planned for future releases:
 
-- Autocompletion for variables and knots
-- Advanced comments and code folding
-- Navigation tools (Go to definition, Find references)
+- Complete the syntax highlighting for all Ink constructs
+- Add hover pop-ups above knots, functions, and variables
+- Enable CTRL+Click functionality for knots, functions, and variables
+- Allow folding/collapsing of knots and functions
+- Add the ability to import Ink files
+- Add a preview panel similar to Inky
+- Add a counter for knots and word count
+- Add a flag to enable syntax highlighting for Markdown
+- Add a flag to enable syntax highlighting for Pixi'VN
 
 ---
 
@@ -62,26 +68,6 @@ Planned for future releases:
 
 Contributions are welcome!  
 Please open an **issue** or **pull request** on [GitHub](https://github.com/DRincs-Productions/pixi-vn-ink-vscode).
-
----
-
-## 📝 TODO
-
-The following features and improvements are planned for future versions of this extension:
-
-- Complete the syntax highlighting for all Ink constructs.
-- Add and improve hover pop-ups above knots, functions, and variables.
-- Enable CTRL+Click functionality for knots, functions, and variables.
-- Allow folding/collapsing of knots and functions.
-- Add the ability to import Ink files:
-  - Users can specify an entire folder or define a `main.ink` file.
-  - If no main file is defined, the current file will be treated as the main file.
-- Add a preview panel similar to Inky.
-- Add a counter for knots and word count within the current file.
-- Add a flag to enable syntax highlighting for Markdown:
-  - Ink does not natively support Markdown, but some projects may benefit from this feature.
-- Add a flag to enable syntax highlighting for Pixi'VN:
-  - A JavaScript game engine that uses Ink scripts.
 
 ---
 

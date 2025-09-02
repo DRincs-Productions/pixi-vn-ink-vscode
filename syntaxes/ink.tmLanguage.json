@@ -13,6 +13,12 @@
 			"include": "#choices"
 		},
 		{
+			"include": "#multilineBlocks"
+		},
+		{
+			"include": "#conditionalBlocks"
+		},
+		{
 			"include": "#conditionalChoices"
 		},
 		{
@@ -162,7 +168,7 @@
 			"patterns": [
 				{
 					"name": "meta.brace.curly.conditionalChoice.ink",
-					"begin": "(?<=^\\s*[\\*\\+]\\s*)\\{",
+					"begin": "(?<=^\\s*[\\*\\+]\\s*)\\{(?=[^\\n}]*\\})",
 					"end": "\\}",
 					"patterns": [
 						{
@@ -176,12 +182,12 @@
 			"patterns": [
 				{
 					"name": "meta.brace.curly.conditionalText.ink",
-					"begin": "(?<!\\\\)\\{(?=[^}]*:)",
+					"begin": "(?<!\\\\)\\{(?=[^\\n}]*:)",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
 							"name": "meta.conditional.condition.ink",
-							"begin": "(?<=\\{)",
+							"begin": "(?<=\\{)\\s*",
 							"end": ":",
 							"patterns": [
 								{
@@ -200,7 +206,144 @@
 							"patterns": [
 								{
 									"name": "keyword.other.alternative.ink",
-									"match": "\\|"
+									"match": "(?<!\\\\)\\|"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"conditionalBlocks": {
+			"patterns": [
+				{
+					"name": "meta.conditional.block.ink",
+					"begin": "(?<!\\\\)\\{(?=[^}]*\\n)",
+					"end": "\\s*\\}",
+					"patterns": [
+						{
+							"name": "meta.conditional.firstline.no-dash.ink",
+							"begin": "(?<=\\{)\\s*(-)?\\s*(?!(->))",
+							"beginCaptures": {
+								"1": {
+									"name": "keyword.other.conditional.ink"
+								}
+							},
+							"end": "$",
+							"patterns": [
+								{
+									"include": "#logic"
+								},
+								{
+									"name": "keyword.other.conditional.ink",
+									"match": ":"
+								}
+							]
+						},
+						{
+							"name": "meta.conditional.branch.ink",
+							"begin": "^(?!\\s*->)(\\s*-\\s*)(else)?",
+							"beginCaptures": {
+								"1": {
+									"name": "keyword.other.conditional.ink"
+								},
+								"2": {
+									"name": "keyword.control.else.ink"
+								}
+							},
+							"end": ":",
+							"endCaptures": {
+								"0": {
+									"name": "keyword.other.conditional.ink"
+								}
+							},
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						},
+						{
+							"name": "text.plain.ink",
+							"patterns": [
+								{
+									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#glue"
+								},
+								{
+									"include": "#choices"
+								},
+								{
+									"include": "#comments"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"multilineBlocks": {
+			"patterns": [
+				{
+					"name": "meta.multiline.block.ink",
+					"begin": "(?<!\\\\)\\{\\s*(stopping|shuffle(?:\\s+(?:once|stopping))?|cycle|once)\\s*:",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.multiline-type.ink"
+						}
+					},
+					"end": "\\s*\\}",
+					"patterns": [
+						{
+							"name": "meta.multiline.line.ink",
+							"begin": "^\\s*-\\s*",
+							"beginCaptures": {
+								"0": {
+									"name": "keyword.other.multiline-line.ink"
+								}
+							},
+							"end": "$",
+							"patterns": [
+								{
+									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#glue"
+								},
+								{
+									"include": "#choices"
+								},
+								{
+									"include": "#comments"
+								}
+							]
+						},
+						{
+							"match": ".+",
+							"name": "text.plain.ink",
+							"patterns": [
+								{
+									"include": "#tildeLogic"
+								},
+								{
+									"include": "#knots"
+								},
+								{
+									"include": "#glue"
+								},
+								{
+									"include": "#choices"
+								},
+								{
+									"include": "#comments"
 								}
 							]
 						}
@@ -212,7 +355,7 @@
 			"patterns": [
 				{
 					"name": "meta.printing.variable.ink",
-					"begin": "(?<!\\\\)\\{",
+					"begin": "(?<!\\\\)\\{(?=[^\\n}]*\\})",
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
