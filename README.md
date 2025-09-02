@@ -17,6 +17,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Choices and conditional choices
   - Printing variables and conditional text inside `{ }`
   - Conditional blocks and Multiline blocks
+  - Strings with interpolation
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
@@ -37,6 +38,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - **Logic and arithmetic operators**
   - **Variable and constant declarations**
   - **Tilde logic (`~`) inside blocks**
+  - **Strings with interpolation**
 
 ---
 
