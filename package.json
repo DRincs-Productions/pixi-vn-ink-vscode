@@ -66,6 +66,18 @@
           ],
           "default": "Inky",
           "description": "Select the engine used for developing the Ink project."
+        },
+        "ink.markup": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "Markdown"
+          ],
+          "default": null,
+          "description": "Select the markup format for the project. Default is none."
         }
       }
     }

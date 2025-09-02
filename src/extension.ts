@@ -22,6 +22,10 @@ export function activate(context: ExtensionContext) {
             const newEngine = workspace.getConfiguration("ink").get<string>("engine");
             window.showInformationMessage(`Engine changed to ${newEngine}`);
         }
+        if (event.affectsConfiguration("ink.markup")) {
+            const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup");
+            window.showInformationMessage(`Markup changed to ${newMarkup ?? "none"}`);
+        }
     });
 
     // Initial diagnostics for all open ink files
