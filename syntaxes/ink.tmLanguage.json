@@ -220,7 +220,12 @@
 					"patterns": [
 						{
 							"name": "keyword.other.firstline.ink",
-							"begin": "(?<=\\{)\\s*",
+							"begin": "(?<=\\{)\\s*(-)\\s*",
+							"beginCaptures": {
+								"1": {
+									"name": "keyword.other.conditional.ink"
+								}
+							},
 							"end": ":",
 							"endCaptures": {
 								"0": {
@@ -235,7 +240,7 @@
 						},
 						{
 							"name": "keyword.other.branch.ink",
-							"begin": "^\\s*(-+)\\s*",
+							"begin": "^(\\s*-+)\\s*",
 							"beginCaptures": {
 								"1": {
 									"name": "keyword.other.conditional.ink"
