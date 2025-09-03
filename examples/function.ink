@@ -1,3 +1,5 @@
+Test(test)
+
 === function say_yes_to_everything ===
 	~ return true
 

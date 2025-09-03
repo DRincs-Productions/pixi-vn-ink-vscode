@@ -31,7 +31,10 @@
 			"include": "#printingVariables"
 		},
 		{
-			"include": "#functions"
+			"include": "#functionDeclarations"
+		},
+		{
+			"include": "#knotDeclarations"
 		},
 		{
 			"include": "#knots"
@@ -105,16 +108,16 @@
 					"match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
 				},
 				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
-				},
-				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
-				},
+				}
+			]
+		},
+		"knotDeclarations": {
+			"patterns": [
 				{
 					"name": "entity.name.function.ink",
-					"match": "(?<=->\\s*)[a-zA-Z0-9_]+"
+					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
 				},
 				{
 					"name": "meta.function.parameters.ink",
@@ -122,16 +125,16 @@
 					"end": "\\)",
 					"patterns": [
 						{
-							"include": "#knots"
+							"include": "#logic"
 						},
 						{
-							"include": "#logic"
+							"include": "#knots"
 						}
 					]
 				}
 			]
 		},
-		"functions": {
+		"functionDeclarations": {
 			"patterns": [
 				{
 					"name": "keyword.other.function.ink",
