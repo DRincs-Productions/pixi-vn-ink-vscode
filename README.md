@@ -18,6 +18,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Printing variables and conditional text inside `{ }`
   - Conditional blocks and Multiline blocks
   - Strings with interpolation
+  - Gathers
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
@@ -65,6 +66,7 @@ This extension provides the following configurable settings in VS Code (go to `F
   - **Variable and constant declarations**
   - **Tilde logic (`~`) inside blocks**
   - **Strings with interpolation**
+  - **Gathers** (`- (label)`)
 
 ---
 
