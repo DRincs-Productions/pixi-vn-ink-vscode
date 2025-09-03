@@ -99,14 +99,13 @@
 		"labelledGathersChoices": {
 			"patterns": [
 				{
-					"name": "keyword.other.gather.ink",
-					"begin": "^\\s*([-*+])(\\s*[-*+])*\\s*(?=\\()",
+					"begin": "^\\s*([-*+])(\\s*[-*+])*\\s*",
 					"beginCaptures": {
 						"1": {
 							"name": "keyword.other.gather.ink"
 						}
 					},
-					"end": "$",
+					"end": "(?=\\s|$)",
 					"patterns": [
 						{
 							"name": "entity.name.function.ink",
