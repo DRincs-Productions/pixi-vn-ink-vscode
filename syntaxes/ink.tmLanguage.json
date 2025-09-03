@@ -31,7 +31,10 @@
 			"include": "#printingVariables"
 		},
 		{
-			"include": "#functions"
+			"include": "#functionDeclarations"
+		},
+		{
+			"include": "#knotDeclarations"
 		},
 		{
 			"include": "#knots"
@@ -93,7 +96,7 @@
 		"knots": {
 			"patterns": [
 				{
-					"name": "variable.other.ink",
+					"name": "keyword.control.return.ink",
 					"match": "(?<=->\\s*)(END|DONE)"
 				},
 				{
@@ -105,20 +108,12 @@
 					"match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
 				},
 				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
-				},
-				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
 				},
 				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=->\\s*)[a-zA-Z0-9_]+"
-				},
-				{
-					"name": "meta.function.parameters.ink",
-					"begin": "\\(",
+					"name": "meta.function.call.ink",
+					"begin": "(?<=->\\s*[a-zA-Z0-9_]+)\\s*\\(",
 					"end": "\\)",
 					"patterns": [
 						{
@@ -131,26 +126,73 @@
 				}
 			]
 		},
-		"functions": {
+		"knotDeclarations": {
 			"patterns": [
 				{
-					"name": "keyword.other.function.ink",
-					"match": "(?<=^===\\s*)function(?=\\s+)"
-				},
-				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=^===\\s*function\\s+)[a-zA-Z0-9_]+(?=\\s*\\(?)"
-				},
-				{
-					"name": "meta.function.parameters.ink",
-					"begin": "\\(",
-					"end": "\\)",
+					"name": "meta.knot.declaration.ink",
+					"begin": "^(=+)\\s*",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.knot.ink"
+						}
+					},
+					"end": "\\s*(=*)$",
+					"endCaptures": {
+						"1": {
+							"name": "keyword.other.knot.ink"
+						}
+					},
 					"patterns": [
 						{
-							"include": "#logic"
+							"name": "entity.name.function.ink",
+							"match": "[a-zA-Z0-9_]+"
 						},
 						{
-							"include": "#knots"
+							"name": "meta.function.parameters.ink",
+							"begin": "\\(",
+							"end": "\\)",
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		"functionDeclarations": {
+			"patterns": [
+				{
+					"name": "meta.function.declaration.ink",
+					"begin": "^(=+)(\\s*)(function)(\\s+)",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.knot.ink"
+						},
+						"3": {
+							"name": "keyword.other.function.ink"
+						}
+					},
+					"end": "$",
+					"patterns": [
+						{
+							"name": "entity.name.function.ink",
+							"match": "[a-zA-Z0-9_]+"
+						},
+						{
+							"name": "meta.function.parameters.ink",
+							"begin": "\\(",
+							"end": "\\)",
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
+						},
+						{
+							"name": "keyword.other.knot.ink",
+							"match": "=+(?=\\s*$)"
 						}
 					]
 				}
