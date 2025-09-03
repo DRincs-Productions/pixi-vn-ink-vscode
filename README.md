@@ -19,6 +19,7 @@ This extension provides **syntax highlighting**, support for **variables, logic,
   - Conditional blocks and Multiline blocks
   - Strings with interpolation
   - Gathers
+  - Tunnels
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
