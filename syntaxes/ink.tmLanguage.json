@@ -125,10 +125,10 @@
 					"end": "\\)",
 					"patterns": [
 						{
-							"include": "#logic"
+							"include": "#knots"
 						},
 						{
-							"include": "#knots"
+							"include": "#logic"
 						}
 					]
 				}
@@ -150,10 +150,10 @@
 					"end": "\\)",
 					"patterns": [
 						{
-							"include": "#logic"
+							"include": "#knots"
 						},
 						{
-							"include": "#knots"
+							"include": "#logic"
 						}
 					]
 				}
