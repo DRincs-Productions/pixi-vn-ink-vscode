@@ -99,7 +99,7 @@
 		"labelledGathersChoices": {
 			"patterns": [
 				{
-					"begin": "^\\s*([-*+])(\\s*[-*+])*\\s*",
+					"begin": "^\\s*([-*+])(\\s*[-*+])*\\s*(?=\\()",
 					"beginCaptures": {
 						"1": {
 							"name": "keyword.other.gather.ink"

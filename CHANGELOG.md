@@ -4,6 +4,15 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Syntax highlighting for **labelled gathers and choices**:
+  - `- (label)` for gathers
+  - `* (label)` / `+ (label)` for choices
+  - Labels inside parentheses are highlighted as `entity.name.function`
+
 ## [0.2.3] - 2025-09-02
 
 ### Added
