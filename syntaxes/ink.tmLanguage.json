@@ -10,12 +10,6 @@
 			"include": "#todo"
 		},
 		{
-			"include": "#labelledGathersChoices"
-		},
-		{
-			"include": "#choices"
-		},
-		{
 			"include": "#multilineBlocks"
 		},
 		{
@@ -47,6 +41,12 @@
 		},
 		{
 			"include": "#alternatives"
+		},
+		{
+			"include": "#labelledGathersChoices"
+		},
+		{
+			"include": "#choices"
 		},
 		{
 			"include": "#gathers"
