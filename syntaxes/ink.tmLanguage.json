@@ -130,13 +130,18 @@
 			"patterns": [
 				{
 					"name": "meta.knot.declaration.ink",
-					"begin": "^=+\\s*",
+					"begin": "^(=+)\\s*",
 					"beginCaptures": {
-						"0": {
+						"1": {
 							"name": "keyword.other.knot.ink"
 						}
 					},
-					"end": "$",
+					"end": "\\s*(=*)$",
+					"endCaptures": {
+						"1": {
+							"name": "keyword.other.knot.ink"
+						}
+					},
 					"patterns": [
 						{
 							"name": "entity.name.function.ink",
@@ -147,9 +152,6 @@
 							"begin": "\\(",
 							"end": "\\)",
 							"patterns": [
-								{
-									"include": "#knots"
-								},
 								{
 									"include": "#logic"
 								}
@@ -163,9 +165,12 @@
 			"patterns": [
 				{
 					"name": "meta.function.declaration.ink",
-					"begin": "^===\\s*function\\s+",
+					"begin": "^(=+)(\\s*)(function)(\\s+)",
 					"beginCaptures": {
-						"0": {
+						"1": {
+							"name": "keyword.other.knot.ink"
+						},
+						"3": {
 							"name": "keyword.other.function.ink"
 						}
 					},
@@ -181,12 +186,13 @@
 							"end": "\\)",
 							"patterns": [
 								{
-									"include": "#knots"
-								},
-								{
 									"include": "#logic"
 								}
 							]
+						},
+						{
+							"name": "keyword.other.knot.ink",
+							"match": "=+(?=\\s*$)"
 						}
 					]
 				}
