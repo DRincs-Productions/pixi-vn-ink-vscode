@@ -10,6 +10,9 @@
 			"include": "#todo"
 		},
 		{
+			"include": "#labelledGathersChoices"
+		},
+		{
 			"include": "#choices"
 		},
 		{
@@ -44,9 +47,6 @@
 		},
 		{
 			"include": "#alternatives"
-		},
-		{
-			"include": "#gathersLabelled"
 		},
 		{
 			"include": "#gathers"
@@ -96,20 +96,25 @@
 				}
 			]
 		},
-		"gathersLabelled": {
+		"labelledGathersChoices": {
 			"patterns": [
 				{
 					"name": "keyword.other.gather.ink",
-					"begin": "^\\s*-(\\s*-)*\\s*(?=\\()",
+					"begin": "^\\s*([-*+])(\\s*[-*+])*\\s*(?=\\()",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.other.gather.ink"
+						}
+					},
 					"end": "$",
 					"patterns": [
 						{
-							"name": "entity.name.function.label.ink",
+							"name": "entity.name.function.ink",
 							"begin": "\\(",
 							"end": "\\)",
 							"patterns": [
 								{
-									"name": "entity.name.function.label.ink",
+									"name": "entity.name.function.ink",
 									"match": "[^()]+"
 								}
 							]
