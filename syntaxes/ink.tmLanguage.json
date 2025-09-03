@@ -110,6 +110,19 @@
 				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
+				},
+				{
+					"name": "meta.function.call.ink",
+					"begin": "(?<=->\\s*[a-zA-Z0-9_]+)\\s*\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#knots"
+						},
+						{
+							"include": "#logic"
+						}
+					]
 				}
 			]
 		},
@@ -134,6 +147,9 @@
 							"begin": "\\(",
 							"end": "\\)",
 							"patterns": [
+								{
+									"include": "#knots"
+								},
 								{
 									"include": "#logic"
 								}
@@ -164,6 +180,9 @@
 							"begin": "\\(",
 							"end": "\\)",
 							"patterns": [
+								{
+									"include": "#knots"
+								},
 								{
 									"include": "#logic"
 								}
