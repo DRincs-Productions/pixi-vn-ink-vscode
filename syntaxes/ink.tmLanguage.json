@@ -46,6 +46,9 @@
 			"include": "#alternatives"
 		},
 		{
+			"include": "#gathersLabelled"
+		},
+		{
 			"include": "#gathers"
 		},
 		{
@@ -90,6 +93,28 @@
 				{
 					"name": "keyword.other.gather.ink",
 					"match": "^\\s*-(?!\\s*>)(\\s*-)*"
+				}
+			]
+		},
+		"gathersLabelled": {
+			"patterns": [
+				{
+					"name": "keyword.other.gather.ink",
+					"begin": "^\\s*-(\\s*-)*\\s*(?=\\()",
+					"end": "$",
+					"patterns": [
+						{
+							"name": "entity.name.function.label.ink",
+							"begin": "\\(",
+							"end": "\\)",
+							"patterns": [
+								{
+									"name": "entity.name.function.label.ink",
+									"match": "[^()]+"
+								}
+							]
+						}
+					]
 				}
 			]
 		},
