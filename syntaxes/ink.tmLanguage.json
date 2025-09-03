@@ -116,19 +116,28 @@
 		"knotDeclarations": {
 			"patterns": [
 				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=^=+\\s*)[a-zA-Z0-9_]+(?=\\s*=*)"
-				},
-				{
-					"name": "meta.function.parameters.ink",
-					"begin": "\\(",
-					"end": "\\)",
+					"name": "meta.knot.declaration.ink",
+					"begin": "^=+\\s*",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.other.knot.ink"
+						}
+					},
+					"end": "$",
 					"patterns": [
 						{
-							"include": "#knots"
+							"name": "entity.name.function.ink",
+							"match": "[a-zA-Z0-9_]+"
 						},
 						{
-							"include": "#logic"
+							"name": "meta.function.parameters.ink",
+							"begin": "\\(",
+							"end": "\\)",
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
 						}
 					]
 				}
@@ -137,23 +146,28 @@
 		"functionDeclarations": {
 			"patterns": [
 				{
-					"name": "keyword.other.function.ink",
-					"match": "(?<=^===\\s*)function(?=\\s+)"
-				},
-				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=^===\\s*function\\s+)[a-zA-Z0-9_]+(?=\\s*\\(?)"
-				},
-				{
-					"name": "meta.function.parameters.ink",
-					"begin": "\\(",
-					"end": "\\)",
+					"name": "meta.function.declaration.ink",
+					"begin": "^===\\s*function\\s+",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.other.function.ink"
+						}
+					},
+					"end": "$",
 					"patterns": [
 						{
-							"include": "#knots"
+							"name": "entity.name.function.ink",
+							"match": "[a-zA-Z0-9_]+"
 						},
 						{
-							"include": "#logic"
+							"name": "meta.function.parameters.ink",
+							"begin": "\\(",
+							"end": "\\)",
+							"patterns": [
+								{
+									"include": "#logic"
+								}
+							]
 						}
 					]
 				}
