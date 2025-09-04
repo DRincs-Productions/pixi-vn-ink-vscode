@@ -10,6 +10,9 @@
 			"include": "#todo"
 		},
 		{
+			"include": "#includeStatements"
+		},
+		{
 			"include": "#multilineBlocks"
 		},
 		{
@@ -643,6 +646,18 @@
 							"include": "#logic"
 						}
 					]
+				}
+			]
+		},
+		"includeStatements": {
+			"patterns": [
+				{
+					"name": "keyword.control.include.ink",
+					"match": "^\\s*INCLUDE\\b"
+				},
+				{
+					"name": "string.unquoted.filename.ink",
+					"match": "(?<=\\bINCLUDE\\s+)[a-zA-Z0-9_./\\\\-]+\\.ink"
 				}
 			]
 		}
