@@ -12,6 +12,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
   - `- (label)` for gathers
   - `* (label)` / `+ (label)` for choices
   - Labels inside parentheses are highlighted as `entity.name.function`
+- Support for **thread operator `<-`** with dedicated syntax highlighting.
+- New scope for thread function calls: `entity.name.function.thread.ink`.
+
+### Fixed
+
+- **Knot declarations** (`=== knotName ===`) and  
+  **Function declarations** (`=== function myFunc() ===`)  
+  are now correctly highlighted even if preceded by spaces or tabs.
 
 ## [0.2.3] - 2025-09-02
 
