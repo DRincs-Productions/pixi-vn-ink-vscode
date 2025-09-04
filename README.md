@@ -63,6 +63,7 @@ Planned for future releases:
 - Add a counter for knots and word count
 - Add a flag to enable syntax highlighting for Markdown
 - Add a flag to enable syntax highlighting for Pixi'VN
+- `INCLUDE` path checking and suggestions
 
 ---
 
