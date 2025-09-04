@@ -652,12 +652,20 @@
 		"includeStatements": {
 			"patterns": [
 				{
-					"name": "keyword.control.include.ink",
-					"match": "^\\s*INCLUDE\\b"
-				},
-				{
-					"name": "string.unquoted.filename.ink",
-					"match": "(?<=\\bINCLUDE\\s+)[a-zA-Z0-9_./\\\\-]+\\.ink"
+					"name": "meta.include.line.ink",
+					"begin": "^\\s*(INCLUDE)\\b",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.control.include.ink"
+						}
+					},
+					"end": "$",
+					"patterns": [
+						{
+							"name": "string.unquoted.filename.ink",
+							"match": "[a-zA-Z0-9_./\\\\-]+(?:\\.ink)?"
+						}
+					]
 				}
 			]
 		}
