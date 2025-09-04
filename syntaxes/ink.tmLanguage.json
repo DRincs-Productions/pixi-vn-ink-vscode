@@ -7,7 +7,13 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#tags"
+		},
+		{
 			"include": "#todo"
+		},
+		{
+			"include": "#includeStatements"
 		},
 		{
 			"include": "#multilineBlocks"
@@ -643,6 +649,34 @@
 							"include": "#logic"
 						}
 					]
+				}
+			]
+		},
+		"includeStatements": {
+			"patterns": [
+				{
+					"name": "meta.include.line.ink",
+					"begin": "^\\s*(INCLUDE)\\b",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.control.include.ink"
+						}
+					},
+					"end": "$",
+					"patterns": [
+						{
+							"name": "string.unquoted.filename.ink",
+							"match": "[a-zA-Z0-9_./\\\\-]+(?:\\.ink)?"
+						}
+					]
+				}
+			]
+		},
+		"tags": {
+			"patterns": [
+				{
+					"name": "punctuation.definition.tag.ink",
+					"match": "#.*$"
 				}
 			]
 		}

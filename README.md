@@ -1,7 +1,7 @@
 # *ink* Language - Visual Studio Code Extension
 
 A Visual Studio Code extension for the ***ink*** scripting language, used in interactive narrative games (e.g. *80 Days*, *Heaven's Vault*).  
-This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
+This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, **INCLUDE statements**, **tags**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
 
 ---
 
@@ -20,6 +20,8 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Strings with interpolation
   - Gathers
   - Tunnels
+  - INCLUDE statements
+  - Tags
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
@@ -44,6 +46,8 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - **Tilde logic (`~`) inside blocks**
   - **Strings with interpolation**
   - **Gathers** (`- (label)`)
+  - **INCLUDE statements**
+  - **Tags** starting with `#`
 
 ---
 
@@ -51,7 +55,6 @@ This extension provides **syntax highlighting**, support for **variables, consta
 
 Planned for future releases:
 
-- Complete the syntax highlighting for all Ink constructs
 - Add hover pop-ups above knots, functions, and variables
 - Enable CTRL+Click functionality for knots, functions, and variables
 - Allow folding/collapsing of knots and functions

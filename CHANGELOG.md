@@ -18,6 +18,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
   - Labels inside parentheses are highlighted as `entity.name.function`
 - Support for **thread operator `<-`** with dedicated syntax highlighting.
 - New scope for thread function calls: `entity.name.function.thread.ink`.
+- Syntax highlighting for **INCLUDE statements**:
+  - `INCLUDE` keyword highlighted as `keyword.control.include.ink`
+  - Imported file paths highlighted as `string.unquoted.filename.ink`
+- Syntax highlighting for **tags**:
+  - Lines starting with `#` or inline after text
+  - Entire tag (`#` + content) highlighted with same color `keyword.other.tag.ink`
 
 ### Fixed
 
