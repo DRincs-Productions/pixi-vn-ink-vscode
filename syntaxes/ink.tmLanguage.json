@@ -133,16 +133,37 @@
 					"match": "=+"
 				},
 				{
-					"name": "entity.name.function.ink",
-					"match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
-				},
-				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
 				},
 				{
-					"name": "meta.function.call.ink",
+					"name": "entity.name.function.divert.ink",
+					"match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
+				},
+				{
+					"name": "keyword.other.thread.ink",
+					"match": "<-"
+				},
+				{
+					"name": "entity.name.function.thread.ink",
+					"match": "(?<=<-\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
+				},
+				{
+					"name": "meta.function.divert.call.ink",
 					"begin": "(?<=->\\s*[a-zA-Z0-9_]+)\\s*\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#knots"
+						},
+						{
+							"include": "#logic"
+						}
+					]
+				},
+				{
+					"name": "meta.function.thread.call.ink",
+					"begin": "(?<=<-\\s*[a-zA-Z0-9_]+)\\s*\\(",
 					"end": "\\)",
 					"patterns": [
 						{
@@ -182,6 +203,9 @@
 							"end": "\\)",
 							"patterns": [
 								{
+									"include": "#knots"
+								},
+								{
 									"include": "#logic"
 								}
 							]
@@ -214,6 +238,9 @@
 							"begin": "\\(",
 							"end": "\\)",
 							"patterns": [
+								{
+									"include": "#knots"
+								},
 								{
 									"include": "#logic"
 								}
