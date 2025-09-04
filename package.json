@@ -79,6 +79,16 @@
           ],
           "default": null,
           "description": "Select the markup format for the project. Default is none."
+        },
+        "ink.mainFile": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the main .ink file (e.g. main.ink). If empty, no main file is defined."
+        },
+        "ink.rootFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Root folder containing .ink files to be loaded. If empty, no root folder is defined."
         }
       }
     }
