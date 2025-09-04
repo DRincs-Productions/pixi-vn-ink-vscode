@@ -129,10 +129,6 @@
 					"match": "(?<=->\\s*)(END|DONE)"
 				},
 				{
-					"name": "keyword.other.knot.ink",
-					"match": "=+"
-				},
-				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
 				},
@@ -514,6 +510,9 @@
 		"logic": {
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"name": "keyword.control.return.ink",
 					"match": "\\breturn\\b"
 				},
@@ -588,13 +587,10 @@
 			"patterns": [
 				{
 					"name": "meta.declaration.ink",
-					"begin": "^\\s*(VAR|CONST)\\b",
+					"begin": "^\\s*(VAR|CONST|LIST)\\b",
 					"beginCaptures": {
 						"1": {
-							"name": "storage.type.var.ink"
-						},
-						"2": {
-							"name": "storage.type.const.ink"
+							"name": "storage.type.ink"
 						}
 					},
 					"end": "$",
@@ -606,6 +602,10 @@
 						{
 							"name": "variable.other.constant.ink",
 							"match": "(?<=CONST\\s+)[a-zA-Z_][a-zA-Z0-9_]*"
+						},
+						{
+							"name": "variable.other.list.ink",
+							"match": "(?<=LIST\\s+)[a-zA-Z_][a-zA-Z0-9_]*"
 						},
 						{
 							"name": "keyword.operator.assignment.ink",

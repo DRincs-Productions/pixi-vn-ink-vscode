@@ -1,14 +1,14 @@
 # *ink* Language - Visual Studio Code Extension
 
 A Visual Studio Code extension for the ***ink*** scripting language, used in interactive narrative games (e.g. *80 Days*, *Heaven's Vault*).  
-This extension provides **syntax highlighting**, support for **variables, logic, conditional choices**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
+This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
 
 ---
 
 ## ✨ Features
 
 - **Full syntax highlighting**:
-  - Variable (`VAR`) and constant (`CONST`) declarations
+  - Variable (`VAR`), constant (`CONST`) and list (`LIST`) declarations
   - Temporary variables (`temp`)
   - Knots, functions, stitches, and parameters
   - Logical expressions with operators (`+ - * / % not == != < > <= >=` etc.)
@@ -28,30 +28,6 @@ This extension provides **syntax highlighting**, support for **variables, logic,
 
 ---
 
-## ⚙️ Settings
-
-This extension provides the following configurable settings in VS Code (go to `File > Preferences > Settings` and search for `ink`):
-
-### Engine
-
-- **Setting name**: `ink.engine`
-- **Description**: Select the engine used for developing the Ink project.
-- **Options**:
-  - `Inky` (default)
-  - [`pixi-vn`](https://github.com/DRincs-Productions/pixi-vn)
-- **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.
-
-### Markup
-
-- **Setting name**: `ink.markup`
-- **Description**: Select the markup format for the project.
-- **Options**:
-  - `Markdown`
-  - `null` (default)
-- **Effect**: Enables syntax support and highlighting for the selected markup.
-
----
-
 ## 📂 Supported structures
 
 - `.ink` files
@@ -64,7 +40,7 @@ This extension provides the following configurable settings in VS Code (go to `F
   - **Multiline blocks** (`{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`)
   - **Printing variables** (`{ variableName }`)
   - **Logic and arithmetic operators**
-  - **Variable and constant declarations**
+  - **Variable, constant and list declarations**
   - **Tilde logic (`~`) inside blocks**
   - **Strings with interpolation**
   - **Gathers** (`- (label)`)
