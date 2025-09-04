@@ -8,6 +8,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ### Added
 
+- Syntax highlighting for **LIST declarations**:
+  - `LIST MyList = A, B, C`
+  - `LIST` keyword highlighted as `storage.type.ink`
+  - List variable names highlighted as `variable.other.list.ink`
 - Syntax highlighting for **labelled gathers and choices**:
   - `- (label)` for gathers
   - `* (label)` / `+ (label)` for choices
