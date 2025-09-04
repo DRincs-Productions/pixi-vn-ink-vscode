@@ -129,10 +129,6 @@
 					"match": "(?<=->\\s*)(END|DONE)"
 				},
 				{
-					"name": "keyword.other.knot.ink",
-					"match": "=+"
-				},
-				{
 					"name": "keyword.other.divert.ink",
 					"match": "->"
 				},
