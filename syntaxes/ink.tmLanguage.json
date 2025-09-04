@@ -7,6 +7,9 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#tags"
+		},
+		{
 			"include": "#todo"
 		},
 		{
@@ -666,6 +669,14 @@
 							"match": "[a-zA-Z0-9_./\\\\-]+(?:\\.ink)?"
 						}
 					]
+				}
+			]
+		},
+		"tags": {
+			"patterns": [
+				{
+					"name": "punctuation.definition.tag.ink",
+					"match": "#.*$"
 				}
 			]
 		}
