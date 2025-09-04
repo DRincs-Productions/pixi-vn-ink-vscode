@@ -55,7 +55,6 @@ This extension provides **syntax highlighting**, support for **variables, consta
 
 Planned for future releases:
 
-- Complete the syntax highlighting for all Ink constructs
 - Add hover pop-ups above knots, functions, and variables
 - Enable CTRL+Click functionality for knots, functions, and variables
 - Allow folding/collapsing of knots and functions
