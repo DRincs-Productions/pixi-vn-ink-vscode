@@ -510,6 +510,9 @@
 		"logic": {
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"name": "keyword.control.return.ink",
 					"match": "\\breturn\\b"
 				},
