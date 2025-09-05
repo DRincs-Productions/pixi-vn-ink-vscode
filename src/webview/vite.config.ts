@@ -8,5 +8,12 @@ export default defineConfig({
     build: {
         outDir: path.resolve(__dirname, "../../dist/webview"),
         emptyOutDir: true,
+        rollupOptions: {
+            output: {
+                entryFileNames: "index.js",
+                chunkFileNames: "[name].js",
+                assetFileNames: "[name].[ext]",
+            },
+        },
     },
 });
