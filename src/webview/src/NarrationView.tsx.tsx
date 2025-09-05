@@ -80,24 +80,32 @@ export default function NarrationView() {
                     onClick={goBack}
                     disabled={history.length === 0}
                     variant='secondary'
+                    size='sm'
                     style={{
                         backgroundColor: "var(--vscode-button-background)",
                         color: "var(--vscode-button-foreground)",
                         borderColor: "var(--vscode-button-border)",
+                        padding: "2px 6px",
+                        height: "28px",
+                        fontSize: "0.75rem",
                     }}
                 >
-                    <ArrowLeft size={16} className='mr-1' /> Back
+                    <ArrowLeft size={14} className='mr-1' /> Back
                 </Button>
                 <Button
                     onClick={restart}
                     variant='destructive'
+                    size='sm'
                     style={{
                         backgroundColor: "var(--vscode-button-background)",
                         color: "var(--vscode-button-foreground)",
                         borderColor: "var(--vscode-button-border)",
+                        padding: "2px 6px",
+                        height: "28px",
+                        fontSize: "0.75rem",
                     }}
                 >
-                    <RotateCcw size={16} className='mr-1' /> Restart
+                    <RotateCcw size={14} className='mr-1' /> Restart
                 </Button>
             </div>
 
