@@ -81,6 +81,22 @@
           "description": "Select the markup format for the project. Default is none."
         }
       }
+    },
+    "commands": [
+      {
+        "command": "ink.preview",
+        "title": "Ink: Apri Preview",
+        "category": "Ink"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "ink.preview",
+          "group": "navigation",
+          "when": "resourceLangId == ink"
+        }
+      ]
     }
   },
   "scripts": {

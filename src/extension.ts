@@ -1,4 +1,6 @@
+import path from "path";
 import {
+    commands,
     ExtensionContext,
     Hover,
     languages,
@@ -6,14 +8,30 @@ import {
     Position,
     Range,
     TextDocument,
+    Uri,
+    ViewColumn,
     window,
     workspace,
 } from "vscode";
 import { updateDiagnostics } from "./diagnostics";
+import { getWebviewHtml } from "./webview";
 
 export function activate(context: ExtensionContext) {
-    const diagnostics = languages.createDiagnosticCollection("ink");
-    context.subscriptions.push(diagnostics);
+    // Register the command to open the Ink Preview webview
+
+    const disposable = commands.registerCommand("ink.preview", () => {
+        const panel = window.createWebviewPanel("inkPreview", "Ink Preview", ViewColumn.Beside, {
+            enableScripts: true,
+        });
+
+        const scriptUri = panel.webview.asWebviewUri(
+            Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
+        );
+
+        panel.webview.html = getWebviewHtml(scriptUri);
+    });
+
+    context.subscriptions.push(disposable);
 
     // Listen for configuration changes
 
@@ -29,6 +47,9 @@ export function activate(context: ExtensionContext) {
     });
 
     // Initial diagnostics for all open ink files
+
+    const diagnostics = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnostics);
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
