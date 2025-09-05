@@ -117,23 +117,31 @@ export default function NarrationView() {
                     borderColor: "var(--vscode-editorWidget-border)",
                 }}
             >
-                {dialogues.map((d) => (
-                    <div
-                        key={d.id}
-                        style={{
-                            color: "var(--vscode-editor-foreground)",
-                            fontWeight: d.type === "choice" || d.type === "input" ? 600 : 400,
-                            backgroundColor:
-                                d.type === "choice" || d.type === "input"
-                                    ? "var(--vscode-editor-hoverHighlightBackground)"
-                                    : "transparent",
-                            padding: d.type === "choice" || d.type === "input" ? "2px 4px" : "0",
-                            borderRadius: d.type === "choice" || d.type === "input" ? "4px" : "0",
-                        }}
-                    >
-                        {d.text}
-                    </div>
-                ))}
+                {dialogues.map((d) => {
+                    const isTag = d.text.startsWith("#");
+
+                    return (
+                        <div
+                            key={d.id}
+                            style={{
+                                color: isTag
+                                    ? "var(--vscode-editorHint-foreground)" // colore per tag/command
+                                    : "var(--vscode-editor-foreground)",
+                                fontWeight: d.type === "choice" || d.type === "input" ? 600 : 400,
+                                backgroundColor:
+                                    d.type === "choice" || d.type === "input"
+                                        ? "var(--vscode-editor-hoverHighlightBackground)"
+                                        : "transparent",
+                                padding: d.type === "choice" || d.type === "input" ? "2px 4px" : "0",
+                                borderRadius: d.type === "choice" || d.type === "input" ? "4px" : "0",
+                                textAlign: isTag ? "right" : "left",
+                                fontStyle: isTag ? "italic" : "normal",
+                            }}
+                        >
+                            {d.text}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Choices */}
