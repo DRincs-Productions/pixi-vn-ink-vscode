@@ -5,7 +5,7 @@ import { Separator } from "./components/ui/separator";
 
 type Dialogue = {
     id: number;
-    type: "line" | "choice";
+    type: "line" | "choice" | "input";
     text: string;
 };
 
@@ -14,7 +14,7 @@ type Choice = {
     text: string;
 };
 
-const mockStory: { lines: string[]; choices: Choice[] } = {
+const mockStory = {
     lines: ["Once upon a time...", "The hero stood at the crossroads."],
     choices: [
         { id: 1, text: "Take the left path" },
@@ -28,16 +28,28 @@ export default function NarrationView() {
     const [dialogues, setDialogues] = useState<Dialogue[]>([]);
     const [choices, setChoices] = useState<Choice[]>(mockStory.choices);
     const [history, setHistory] = useState<{ dialogues: Dialogue[]; choices: Choice[] }[]>([]);
+    const [inputValue, setInputValue] = useState("");
+    const [awaitingInput, setAwaitingInput] = useState(false);
 
-    const addLine = (text: string) => {
-        setDialogues((prev) => [...prev, { id: ++dialogueCounter, type: "line", text }]);
+    const addLine = (text: string, type: "line" | "choice" | "input" = "line") => {
+        setDialogues((prev) => [...prev, { id: ++dialogueCounter, type, text }]);
     };
 
     const makeChoice = (choice: Choice) => {
         setHistory((prev) => [...prev, { dialogues: [...dialogues], choices: [...choices] }]);
-        setDialogues((prev) => [...prev, { id: ++dialogueCounter, type: "choice", text: choice.text }]);
+        addLine(choice.text, "choice");
         setChoices([]);
+        // Esempio: richiediamo input dopo la scelta
+        setAwaitingInput(true);
+    };
+
+    const submitInput = () => {
+        if (inputValue.trim() === "") return;
+        addLine(inputValue, "input");
+        setInputValue("");
+        setAwaitingInput(false);
         addLine("And so the story continued...");
+        setChoices(mockStory.choices);
     };
 
     const goBack = () => {
@@ -59,13 +71,10 @@ export default function NarrationView() {
 
     return (
         <div
-            className='flex flex-col h-screen p-4 font-sans'
-            style={{
-                backgroundColor: "var(--vscode-editor-background)",
-                color: "var(--vscode-editor-foreground)",
-            }}
+            className='flex flex-col h-full p-4 font-sans'
+            style={{ backgroundColor: "var(--vscode-editor-background)", color: "var(--vscode-editor-foreground)" }}
         >
-            {/* Top bar: pulsanti Back / Restart */}
+            {/* Top bar */}
             <div className='flex justify-end gap-2 mb-4'>
                 <Button
                     onClick={goBack}
@@ -104,17 +113,14 @@ export default function NarrationView() {
                     <div
                         key={d.id}
                         style={{
-                            color:
-                                d.type === "choice"
-                                    ? "var(--vscode-editor-foreground)" // usa il foreground normale
-                                    : "var(--vscode-editor-foreground)",
-                            fontWeight: d.type === "choice" ? 600 : 400,
+                            color: "var(--vscode-editor-foreground)",
+                            fontWeight: d.type === "choice" || d.type === "input" ? 600 : 400,
                             backgroundColor:
-                                d.type === "choice"
-                                    ? "var(--vscode-editor-hoverHighlightBackground)" // evidenziato
+                                d.type === "choice" || d.type === "input"
+                                    ? "var(--vscode-editor-hoverHighlightBackground)"
                                     : "transparent",
-                            padding: d.type === "choice" ? "2px 4px" : "0",
-                            borderRadius: d.type === "choice" ? "4px" : "0",
+                            padding: d.type === "choice" || d.type === "input" ? "2px 4px" : "0",
+                            borderRadius: d.type === "choice" || d.type === "input" ? "4px" : "0",
                         }}
                     >
                         {d.text}
@@ -123,7 +129,7 @@ export default function NarrationView() {
             </div>
 
             {/* Choices */}
-            {choices.length > 0 && (
+            {!awaitingInput && choices.length > 0 && (
                 <div className='mt-3'>
                     <Separator className='mb-2' />
                     <div className='font-semibold mb-2' style={{ color: "var(--vscode-editor-foreground)" }}>
@@ -146,6 +152,35 @@ export default function NarrationView() {
                             </Button>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Input text */}
+            {awaitingInput && (
+                <div className='mt-3 flex gap-2'>
+                    <input
+                        type='text'
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        className='flex-1 px-3 py-2 rounded-md border'
+                        placeholder='Type your response...'
+                        style={{
+                            backgroundColor: "var(--vscode-input-background)",
+                            color: "var(--vscode-input-foreground)",
+                            borderColor: "var(--vscode-input-border)",
+                        }}
+                    />
+                    <Button
+                        onClick={submitInput}
+                        variant='default'
+                        style={{
+                            backgroundColor: "var(--vscode-button-background)",
+                            color: "var(--vscode-button-foreground)",
+                            borderColor: "var(--vscode-button-border)",
+                        }}
+                    >
+                        Submit
+                    </Button>
                 </div>
             )}
         </div>
