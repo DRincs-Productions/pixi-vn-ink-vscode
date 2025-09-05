@@ -28,7 +28,11 @@ export function activate(context: ExtensionContext) {
             Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
         );
 
-        panel.webview.html = getWebviewHtml(scriptUri);
+        const styleUri = panel.webview.asWebviewUri(
+            Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
+        );
+
+        panel.webview.html = getWebviewHtml(scriptUri, styleUri);
     });
 
     context.subscriptions.push(disposable);
