@@ -58,11 +58,59 @@ export default function NarrationView() {
     };
 
     return (
-        <div className='flex flex-col h-screen p-4 bg-white text-sm font-sans'>
+        <div
+            className='flex flex-col h-screen p-4 font-sans'
+            style={{
+                backgroundColor: "var(--vscode-editor-background)",
+                color: "var(--vscode-editor-foreground)",
+            }}
+        >
+            {/* Top bar: pulsanti Back / Restart */}
+            <div className='flex justify-end gap-2 mb-4'>
+                <Button
+                    onClick={goBack}
+                    disabled={history.length === 0}
+                    variant='secondary'
+                    style={{
+                        backgroundColor: "var(--vscode-button-background)",
+                        color: "var(--vscode-button-foreground)",
+                        borderColor: "var(--vscode-button-border)",
+                    }}
+                >
+                    <ArrowLeft size={16} className='mr-1' /> Back
+                </Button>
+                <Button
+                    onClick={restart}
+                    variant='destructive'
+                    style={{
+                        backgroundColor: "var(--vscode-button-background)",
+                        color: "var(--vscode-button-foreground)",
+                        borderColor: "var(--vscode-button-border)",
+                    }}
+                >
+                    <RotateCcw size={16} className='mr-1' /> Restart
+                </Button>
+            </div>
+
             {/* Dialogues */}
-            <div className='flex-1 overflow-y-auto space-y-3 mb-4 border p-3 rounded-md bg-gray-50'>
+            <div
+                className='flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border'
+                style={{
+                    backgroundColor: "var(--vscode-editor-background)",
+                    borderColor: "var(--vscode-editorWidget-border)",
+                }}
+            >
                 {dialogues.map((d) => (
-                    <div key={d.id} className={d.type === "choice" ? "text-indigo-600 font-semibold" : "text-gray-800"}>
+                    <div
+                        key={d.id}
+                        style={{
+                            color:
+                                d.type === "choice"
+                                    ? "var(--vscode-editor-selectionBackground)"
+                                    : "var(--vscode-editor-foreground)",
+                            fontWeight: d.type === "choice" ? 600 : 400,
+                        }}
+                    >
                         {d.text}
                     </div>
                 ))}
@@ -72,14 +120,21 @@ export default function NarrationView() {
             {choices.length > 0 && (
                 <div className='mt-3'>
                     <Separator className='mb-2' />
-                    <div className='font-semibold text-gray-700 mb-2'>What do you choose?</div>
+                    <div className='font-semibold mb-2' style={{ color: "var(--vscode-editor-foreground)" }}>
+                        What do you choose?
+                    </div>
                     <div className='flex flex-col gap-2'>
                         {choices.map((c, index) => (
                             <Button
                                 key={c.id}
                                 variant='outline'
                                 onClick={() => makeChoice(c)}
-                                className='justify-start text-indigo-700'
+                                style={{
+                                    color: "var(--vscode-button-foreground)",
+                                    borderColor: "var(--vscode-button-border)",
+                                    backgroundColor: "var(--vscode-button-background)",
+                                    justifyContent: "flex-start",
+                                }}
                             >
                                 {index + 1}. {c.text}
                             </Button>
@@ -87,16 +142,6 @@ export default function NarrationView() {
                     </div>
                 </div>
             )}
-
-            {/* Controls */}
-            <div className='flex gap-2 mt-4'>
-                <Button onClick={goBack} disabled={history.length === 0} variant='secondary'>
-                    <ArrowLeft size={16} className='mr-1' /> Back
-                </Button>
-                <Button onClick={restart} variant='destructive'>
-                    <RotateCcw size={16} className='mr-1' /> Restart
-                </Button>
-            </div>
         </div>
     );
 }
