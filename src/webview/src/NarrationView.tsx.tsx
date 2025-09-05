@@ -106,9 +106,15 @@ export default function NarrationView() {
                         style={{
                             color:
                                 d.type === "choice"
-                                    ? "var(--vscode-editor-selectionBackground)"
+                                    ? "var(--vscode-editor-foreground)" // usa il foreground normale
                                     : "var(--vscode-editor-foreground)",
                             fontWeight: d.type === "choice" ? 600 : 400,
+                            backgroundColor:
+                                d.type === "choice"
+                                    ? "var(--vscode-editor-hoverHighlightBackground)" // evidenziato
+                                    : "transparent",
+                            padding: d.type === "choice" ? "2px 4px" : "0",
+                            borderRadius: d.type === "choice" ? "4px" : "0",
                         }}
                     >
                         {d.text}
