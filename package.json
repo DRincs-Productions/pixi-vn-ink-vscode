@@ -85,7 +85,8 @@
     "commands": [
       {
         "command": "ink.preview",
-        "title": "Ink: Apri Preview",
+        "title": "Open Ink Preview",
+        "icon": "$(eye)",
         "category": "Ink"
       }
     ],
@@ -94,7 +95,9 @@
         {
           "command": "ink.preview",
           "group": "navigation",
-          "when": "resourceLangId == ink"
+          "when": "resourceLangId == ink",
+          "icon": "$(eye)",
+          "tooltip": "Open Ink Preview"
         }
       ]
     }
