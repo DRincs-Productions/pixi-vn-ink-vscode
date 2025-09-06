@@ -1,10 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-
-interface InkFile {
-    path: string;
-    content: string;
-}
+import InkFile from "../types/InkFile";
 
 export function loadInkFiles(entryPath: string, visited: Set<string> = new Set()): InkFile[] {
     const result: InkFile[] = [];
