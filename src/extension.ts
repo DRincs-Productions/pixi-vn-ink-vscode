@@ -9,7 +9,7 @@ import {
     window,
     workspace,
 } from "vscode";
-import { updateDiagnostics } from "./diagnostics";
+import { checkIncludes, updateDiagnostics } from "./diagnostics";
 
 export function activate(context: ExtensionContext) {
     const diagnostics = languages.createDiagnosticCollection("ink");
@@ -33,6 +33,7 @@ export function activate(context: ExtensionContext) {
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
             updateDiagnostics(doc, diagnostics);
+            checkIncludes(doc, diagnostics);
         }
     });
 
@@ -45,6 +46,15 @@ export function activate(context: ExtensionContext) {
     workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
     });
+
+    workspace.onDidSaveTextDocument((doc) => {
+        if (doc.languageId === "ink") {
+            checkIncludes(doc, diagnostics);
+        }
+    });
+
+    const diagnosticCollection = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnosticCollection);
 
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {

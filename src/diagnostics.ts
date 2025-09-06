@@ -1,4 +1,6 @@
+import { existsSync } from "fs";
 import { ErrorType } from "inkjs/engine/Error";
+import path from "path";
 import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, Range, TextDocument, workspace } from "vscode";
 import { getErrors } from "./utils/ink-utility";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
@@ -37,4 +39,40 @@ export function updateDiagnostics(doc: TextDocument, collection: DiagnosticColle
     }
 
     collection.set(doc.uri, diagnostics);
+}
+
+export function checkIncludes(document: TextDocument, collection: DiagnosticCollection) {
+    const diagnostics: Diagnostic[] = [];
+    const text = document.getText();
+    const lines = text.split(/\r?\n/);
+
+    const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
+
+    lines.forEach((line, lineIndex) => {
+        const match = line.match(/^\s*INCLUDE\s+(.+)$/);
+        if (match) {
+            const relativePath = match[1].trim();
+            const fullPath = path.isAbsolute(relativePath) ? relativePath : path.join(workspaceRoot, relativePath);
+
+            if (!existsSync(fullPath)) {
+                diagnostics.push(
+                    new Diagnostic(
+                        new Range(lineIndex, 0, lineIndex, line.length),
+                        `Included file "${relativePath}" does not exist.`,
+                        DiagnosticSeverity.Error
+                    )
+                );
+            } else if (path.extname(fullPath) !== ".ink") {
+                diagnostics.push(
+                    new Diagnostic(
+                        new Range(lineIndex, 0, lineIndex, line.length),
+                        `Included file "${relativePath}" is not a .ink file.`,
+                        DiagnosticSeverity.Warning
+                    )
+                );
+            }
+        }
+    });
+
+    collection.set(document.uri, diagnostics);
 }
