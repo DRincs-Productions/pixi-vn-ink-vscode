@@ -1,4 +1,5 @@
 import {
+    Diagnostic,
     ExtensionContext,
     Hover,
     languages,
@@ -32,25 +33,24 @@ export function activate(context: ExtensionContext) {
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
-            updateDiagnostics(doc, diagnostics);
-            checkIncludes(doc, diagnostics);
+            const list: Diagnostic[] = [];
+            updateDiagnostics(doc, list);
+            checkIncludes(doc, list);
+            diagnostics.set(doc.uri, list);
         }
     });
 
     workspace.onDidChangeTextDocument((e) => {
         if (e.document.languageId === "ink") {
-            updateDiagnostics(e.document, diagnostics);
+            const list: Diagnostic[] = [];
+            updateDiagnostics(e.document, list);
+            checkIncludes(e.document, list);
+            diagnostics.set(e.document.uri, list);
         }
     });
 
     workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
-    });
-
-    workspace.onDidSaveTextDocument((doc) => {
-        if (doc.languageId === "ink") {
-            checkIncludes(doc, diagnostics);
-        }
     });
 
     const diagnosticCollection = languages.createDiagnosticCollection("ink");
