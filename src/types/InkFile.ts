@@ -1,4 +1,5 @@
-export default interface InkFile {
+interface InkFile {
     path: string;
     content: string;
 }
+export default InkFile;
