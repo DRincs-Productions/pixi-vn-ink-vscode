@@ -170,36 +170,31 @@ export function includeCtrlClick(): DefinitionProvider {
 
 export function suggestionsInclude(): CompletionItemProvider {
     return {
-        async provideCompletionItems(document: TextDocument, position: Position) {
+        async provideCompletionItems(document, position) {
             const line = document.lineAt(position).text;
             const beforeCursor = line.substring(0, position.character);
 
-            // Suggerimenti solo se la riga inizia con INCLUDE
-            if (!beforeCursor.match(/^\s*INCLUDE\s/)) return undefined;
+            const includeMatch = beforeCursor.match(/^\s*INCLUDE\s+(.*)$/);
+            if (!includeMatch) return undefined;
 
-            const typedPath = beforeCursor.replace(/^\s*INCLUDE\s*/, "");
+            let typedPath = includeMatch[1].replace(/\\/g, "/");
 
-            // Recupero rootFolder
             const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
             const config = workspace.getConfiguration("ink");
             const rootFolderSetting: string = config.get("rootFolder") || "";
             const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 
-            // Determino la cartella corrente
-            let currentDir: string;
+            // Split path in segmenti
+            const segments = typedPath.split("/").filter((s) => s.length > 0);
+            let currentDir = baseFolder;
             let prefix = "";
 
-            if (!typedPath) {
-                currentDir = baseFolder;
-            } else if (typedPath.endsWith("/")) {
-                // Cartella selezionata → suggerisci tutto il contenuto
-                currentDir = path.isAbsolute(typedPath) ? typedPath : path.resolve(baseFolder, typedPath);
-            } else {
-                // Testo parziale → suggerisci in base alla cartella padre
-                currentDir = path.isAbsolute(typedPath)
-                    ? path.dirname(typedPath)
-                    : path.resolve(baseFolder, path.dirname(typedPath));
-                prefix = path.basename(typedPath);
+            if (typedPath.endsWith("/")) {
+                currentDir = path.resolve(baseFolder, ...segments);
+                prefix = "";
+            } else if (segments.length > 0) {
+                prefix = segments.pop()!;
+                currentDir = path.resolve(baseFolder, ...segments);
             }
 
             let entries: [string, FileType][];
@@ -210,15 +205,22 @@ export function suggestionsInclude(): CompletionItemProvider {
             }
 
             const completions: CompletionItem[] = [];
-            for (const [name, type] of entries) {
-                // Filtro solo se c'è un prefisso e non stiamo dentro una cartella selezionata
-                if (prefix && !typedPath.endsWith("/") && !name.startsWith(prefix)) continue;
 
-                if (type === FileType.Directory) {
-                    completions.push(new CompletionItem(name + "/", CompletionItemKind.Folder));
-                } else if (type === FileType.File && path.extname(name) === ".ink") {
-                    completions.push(new CompletionItem(name, CompletionItemKind.File));
-                }
+            // Calcolo range da sostituire: ultima parola dopo l'ultimo /
+            const lastSlashIndex = beforeCursor.lastIndexOf("/");
+            const replaceStart = lastSlashIndex >= 0 ? lastSlashIndex + 1 : includeMatch[0].indexOf(prefix);
+            const range = new Range(position.line, replaceStart, position.line, position.character);
+
+            for (const [name, type] of entries) {
+                if (prefix && !name.startsWith(prefix)) continue;
+
+                const item = new CompletionItem(
+                    type === FileType.Directory ? name + "/" : name,
+                    type === FileType.Directory ? CompletionItemKind.Folder : CompletionItemKind.File
+                );
+                item.insertText = type === FileType.Directory ? name + "/" : name;
+                item.range = range; // impostiamo il range corretto
+                completions.push(item);
             }
 
             return completions;
