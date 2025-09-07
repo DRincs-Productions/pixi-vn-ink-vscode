@@ -168,54 +168,60 @@ export function includeCtrlClick(): DefinitionProvider {
     return provider;
 }
 
-export function suggestionsInclude() {
-    const provider: CompletionItemProvider = {
-        async provideCompletionItems(document, position, token, context) {
+export function suggestionsInclude(): CompletionItemProvider {
+    return {
+        async provideCompletionItems(document: TextDocument, position: Position) {
             const line = document.lineAt(position).text;
             const beforeCursor = line.substring(0, position.character);
 
-            // Check if we are inside an INCLUDE line
-            const match = beforeCursor.match(/^\s*INCLUDE\s+(.+)$/);
-            if (!match) {
-                return undefined;
-            }
+            // Suggerimenti solo se la riga inizia con INCLUDE
+            if (!beforeCursor.match(/^\s*INCLUDE\s/)) return undefined;
 
-            const typedPath = match[1].trim();
+            const typedPath = beforeCursor.replace(/^\s*INCLUDE\s*/, "");
 
-            // Get base folder (rootFolder setting or workspace root)
+            // Recupero rootFolder
             const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
             const config = workspace.getConfiguration("ink");
             const rootFolderSetting: string = config.get("rootFolder") || "";
             const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 
-            // Resolve current directory based on typed path
-            const currentDir = path.isAbsolute(typedPath)
-                ? path.dirname(typedPath)
-                : path.resolve(baseFolder, path.dirname(typedPath) === "." ? "" : path.dirname(typedPath));
+            // Determino la cartella corrente
+            let currentDir: string;
+            let prefix = "";
+
+            if (!typedPath) {
+                currentDir = baseFolder;
+            } else if (typedPath.endsWith("/")) {
+                // Cartella selezionata → suggerisci tutto il contenuto
+                currentDir = path.isAbsolute(typedPath) ? typedPath : path.resolve(baseFolder, typedPath);
+            } else {
+                // Testo parziale → suggerisci in base alla cartella padre
+                currentDir = path.isAbsolute(typedPath)
+                    ? path.dirname(typedPath)
+                    : path.resolve(baseFolder, path.dirname(typedPath));
+                prefix = path.basename(typedPath);
+            }
 
             let entries: [string, FileType][];
             try {
                 entries = await workspace.fs.readDirectory(Uri.file(currentDir));
             } catch {
-                return undefined; // directory does not exist yet
+                return undefined;
             }
 
             const completions: CompletionItem[] = [];
-
             for (const [name, type] of entries) {
+                // Filtro solo se c'è un prefisso e non stiamo dentro una cartella selezionata
+                if (prefix && !typedPath.endsWith("/") && !name.startsWith(prefix)) continue;
+
                 if (type === FileType.Directory) {
-                    const item = new CompletionItem(name + "/", CompletionItemKind.Folder);
-                    item.insertText = name + "/";
-                    completions.push(item);
+                    completions.push(new CompletionItem(name + "/", CompletionItemKind.Folder));
                 } else if (type === FileType.File && path.extname(name) === ".ink") {
-                    const item = new CompletionItem(name, CompletionItemKind.File);
-                    item.insertText = name;
-                    completions.push(item);
+                    completions.push(new CompletionItem(name, CompletionItemKind.File));
                 }
             }
 
             return completions;
         },
     };
-    return provider;
 }

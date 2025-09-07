@@ -64,7 +64,7 @@ export function activate(context: ExtensionContext) {
     // Suggestions include
     const includeSuggestionsProvider = suggestionsInclude();
     context.subscriptions.push(
-        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, "/", "\\")
+        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, " ")
     );
 
     context.subscriptions.push(
