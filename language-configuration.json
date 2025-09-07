@@ -102,5 +102,5 @@
             }
         }
     ],
-    "wordPattern": "[^\\s]+"
+    "wordPattern": "[^\\s]+(?: [^\\s]+)*"
 }
