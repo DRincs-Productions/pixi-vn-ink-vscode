@@ -2,18 +2,23 @@ import { existsSync } from "fs";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "path";
 import { Diagnostic, DiagnosticSeverity, Range, TextDocument, workspace } from "vscode";
+import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors } from "./utils/ink-utility";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
 
 export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) {
     const config = workspace.getConfiguration("ink");
     const engine = config.get<"Inky" | "pixi-vn">("engine");
+    const rootFolderSetting = getInkRootFolder(doc);
 
     let errors;
+
     if (engine === "pixi-vn") {
         errors = getErrorsPixiVN(doc.getText());
     } else {
-        errors = getErrors(doc.getText());
+        errors = getErrors(doc.getText(), {
+            LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+        });
     }
 
     for (const issue of errors) {
