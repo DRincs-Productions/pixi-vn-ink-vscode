@@ -11,7 +11,7 @@ import {
     workspace,
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
-import { includeCtrlClick } from "./utils/include-utility";
+import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 
 export function activate(context: ExtensionContext) {
     const diagnostics = languages.createDiagnosticCollection("ink");
@@ -60,6 +60,12 @@ export function activate(context: ExtensionContext) {
     // CTRL+CLICK support for INCLUDE statements
     const includeProvider = includeCtrlClick();
     context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, includeProvider));
+
+    // Suggestions include
+    const includeSuggestionsProvider = suggestionsInclude();
+    context.subscriptions.push(
+        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, "/", "\\")
+    );
 
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {

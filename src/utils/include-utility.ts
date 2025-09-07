@@ -1,6 +1,17 @@
 import { existsSync, readFileSync } from "fs";
 import * as path from "path";
-import { DefinitionProvider, FileType, Location, Position, TextDocument, Uri, workspace } from "vscode";
+import {
+    CompletionItem,
+    CompletionItemKind,
+    CompletionItemProvider,
+    DefinitionProvider,
+    FileType,
+    Location,
+    Position,
+    TextDocument,
+    Uri,
+    workspace,
+} from "vscode";
 import InkFile from "../types/InkFile";
 
 /**
@@ -156,5 +167,57 @@ export function includeCtrlClick() {
         },
     };
 
+    return provider;
+}
+
+export function suggestionsInclude() {
+    const provider: CompletionItemProvider = {
+        async provideCompletionItems(document, position, token, context) {
+            const line = document.lineAt(position).text;
+            const beforeCursor = line.substring(0, position.character);
+
+            // Check if we are inside an INCLUDE line
+            const match = beforeCursor.match(/^\s*INCLUDE\s+(.+)$/);
+            if (!match) {
+                return undefined;
+            }
+
+            const typedPath = match[1].trim();
+
+            // Get base folder (rootFolder setting or workspace root)
+            const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
+            const config = workspace.getConfiguration("ink");
+            const rootFolderSetting: string = config.get("rootFolder") || "";
+            const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
+
+            // Resolve current directory based on typed path
+            const currentDir = path.isAbsolute(typedPath)
+                ? path.dirname(typedPath)
+                : path.resolve(baseFolder, path.dirname(typedPath) === "." ? "" : path.dirname(typedPath));
+
+            let entries: [string, FileType][];
+            try {
+                entries = await workspace.fs.readDirectory(Uri.file(currentDir));
+            } catch {
+                return undefined; // directory does not exist yet
+            }
+
+            const completions: CompletionItem[] = [];
+
+            for (const [name, type] of entries) {
+                if (type === FileType.Directory) {
+                    const item = new CompletionItem(name + "/", CompletionItemKind.Folder);
+                    item.insertText = name + "/";
+                    completions.push(item);
+                } else if (type === FileType.File && path.extname(name) === ".ink") {
+                    const item = new CompletionItem(name, CompletionItemKind.File);
+                    item.insertText = name;
+                    completions.push(item);
+                }
+            }
+
+            return completions;
+        },
+    };
     return provider;
 }
