@@ -27,6 +27,13 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
   - Syntax and logic errors reported directly in the editor
   - Support for warnings and errors
+  - INCLUDE statement validation with file existence checks
+
+- **Autocompletion**:
+  - Suggestions for INCLUDE statements with folder navigation
+
+- **Ctrl+Click support**:
+  - Navigate to included files by Ctrl+Clicking on INCLUDE statements
 
 ---
 
@@ -46,7 +53,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - **Tilde logic (`~`) inside blocks**
   - **Strings with interpolation**
   - **Gathers** (`- (label)`)
-  - **INCLUDE statements**
+  - **INCLUDE statements** with real-time validation, Ctrl+Click, and suggestions
   - **Tags** starting with `#`
 
 ---
@@ -58,12 +65,10 @@ Planned for future releases:
 - Add hover pop-ups above knots, functions, and variables
 - Enable CTRL+Click functionality for knots, functions, and variables
 - Allow folding/collapsing of knots and functions
-- Add the ability to import Ink files
 - Add a preview panel similar to Inky
 - Add a counter for knots and word count
 - Add a flag to enable syntax highlighting for Markdown
 - Add a flag to enable syntax highlighting for Pixi'VN
-- `INCLUDE` path checking and suggestions
 
 ---
 

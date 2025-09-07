@@ -4,6 +4,27 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [0.3.1] - 2025-09-07
+
+### Added
+
+- **INCLUDE statements improvements**:
+  - Real-time checking if included files exist and are `.ink`.
+  - Support for `rootFolder` setting: all `INCLUDE` paths are resolved relative to the root folder if defined.
+  - Ctrl+Click support: clicking an `INCLUDE` path opens the target file.
+  - Autocomplete suggestions while typing `INCLUDE` paths:
+    - Triggered automatically after typing `INCLUDE ` or with Ctrl+Space.
+    - Navigates into folders recursively.
+    - Supports files and folders with spaces in names.
+    - Suggestions respect `rootFolder` and subfolders.
+- Added `loadInkFileContent`, `loadInkFiles` and `loadInkFolder` functions supporting `rootFolder`.
+
+### Fixed
+
+- INCLUDE paths with spaces are now treated as a single clickable element for Ctrl+Click.
+- Correct suggestion range and filtering for folders and files inside INCLUDE paths.
+- Fixed issues where selecting a folder did not display the contents for further navigation.
+
 ## [0.3.0] - 2025-09-03
 
 ### Added

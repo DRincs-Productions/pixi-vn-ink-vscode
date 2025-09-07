@@ -1,0 +1,1 @@
+INCLUDE include/folder2/test.ink
