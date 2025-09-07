@@ -2,7 +2,7 @@ import { Compiler } from "inkjs/compiler/Compiler";
 import { IFileHandler } from "inkjs/compiler/IFileHandler";
 import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
 
-export function getErrors(text: string, fileHandler: IFileHandler | null = null) {
+export function getErrors(text: string, fileHandler: Partial<IFileHandler> = {}) {
     const issues: { message: string; type: ErrorType; line: number }[] = [];
     try {
         const compiler = new Compiler(text, {
@@ -12,7 +12,11 @@ export function getErrors(text: string, fileHandler: IFileHandler | null = null)
                 issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1]) : -1 });
             },
             countAllVisits: true,
-            fileHandler: fileHandler,
+            fileHandler: {
+                LoadInkFileContents: (filename: string) => filename,
+                ResolveInkFilename: (filename: string) => filename,
+                ...fileHandler,
+            },
             pluginNames: [],
             sourceFilename: null,
         });
