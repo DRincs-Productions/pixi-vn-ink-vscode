@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
 import * as path from "path";
-import { FileType, TextDocument, Uri, workspace } from "vscode";
+import { DefinitionProvider, FileType, Location, Position, TextDocument, Uri, workspace } from "vscode";
 import InkFile from "../types/InkFile";
 
 /**
@@ -112,4 +112,49 @@ export function getInkRootFolder(document: TextDocument): string {
 
     // Se rootFolder è impostato → risolvo rispetto alla workspaceRoot
     return rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
+}
+
+export function includeCtrlClick() {
+    const provider: DefinitionProvider = {
+        async provideDefinition(document, position, token) {
+            const range = document.getWordRangeAtPosition(position, /[^\s]+/);
+            if (!range) return;
+
+            const line = document.lineAt(position.line).text;
+            const match = line.match(/^\s*INCLUDE\s+(.+)$/);
+            if (!match) return;
+
+            const relativePath = match[1].trim();
+
+            // Check if cursor is actually inside the include path
+            if (
+                !range ||
+                !line.substring(range.start.character, range.end.character).includes(document.getText(range))
+            ) {
+                return;
+            }
+
+            // Get rootFolder from config
+            const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
+            const config = workspace.getConfiguration("ink");
+            const rootFolderSetting: string = config.get("rootFolder") || "";
+            const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
+
+            // Resolve path
+            const fullPath = path.isAbsolute(relativePath)
+                ? path.resolve(relativePath)
+                : path.resolve(baseFolder, relativePath);
+
+            try {
+                const fileUri = Uri.file(fullPath);
+                // check if file exists
+                await workspace.fs.stat(fileUri);
+                return new Location(fileUri, new Position(0, 0));
+            } catch {
+                return;
+            }
+        },
+    };
+
+    return provider;
 }
