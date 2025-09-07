@@ -8,6 +8,7 @@ import {
     FileType,
     Location,
     Position,
+    Range,
     TextDocument,
     Uri,
     workspace,
@@ -125,12 +126,9 @@ export function getInkRootFolder(document: TextDocument): string {
     return rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 }
 
-export function includeCtrlClick() {
+export function includeCtrlClick(): DefinitionProvider {
     const provider: DefinitionProvider = {
         async provideDefinition(document, position, token) {
-            const range = document.getWordRangeAtPosition(position, /[^\s]+/);
-            if (!range) return;
-
             const line = document.lineAt(position.line).text;
             const match = line.match(/^\s*INCLUDE\s+(.+)$/);
             if (!match) return;
@@ -138,10 +136,11 @@ export function includeCtrlClick() {
             const relativePath = match[1].trim();
 
             // Check if cursor is actually inside the include path
-            if (
-                !range ||
-                !line.substring(range.start.character, range.end.character).includes(document.getText(range))
-            ) {
+            const startCol = line.indexOf(relativePath);
+            const endCol = startCol + relativePath.length;
+            const fullRange = new Range(position.line, startCol, position.line, endCol);
+
+            if (!fullRange.contains(position)) {
                 return;
             }
 
@@ -158,8 +157,7 @@ export function includeCtrlClick() {
 
             try {
                 const fileUri = Uri.file(fullPath);
-                // check if file exists
-                await workspace.fs.stat(fileUri);
+                await workspace.fs.stat(fileUri); // controllo che esista
                 return new Location(fileUri, new Position(0, 0));
             } catch {
                 return;

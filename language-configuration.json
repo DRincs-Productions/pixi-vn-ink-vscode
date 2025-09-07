@@ -101,5 +101,6 @@
                 "indent": "none"
             }
         }
-    ]
+    ],
+    "wordPattern": "[^\\s]+"
 }
