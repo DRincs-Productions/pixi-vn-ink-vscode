@@ -1,3 +1,5 @@
+import { Story } from "inkjs/compiler/Compiler";
+import type { Choice } from "inkjs/engine/Choice";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -11,11 +13,6 @@ type Dialogue = {
     isTag?: boolean;
 };
 
-type Choice = {
-    id: number;
-    text: string;
-};
-
 const mockStory = {
     lines: ["Once upon a time...", "The hero stood at the crossroads."],
     choices: [
@@ -27,18 +24,19 @@ const mockStory = {
 let dialogueCounter = 0;
 
 export default function NarrationView() {
-    const [markup, setMarkup] = useState<"Markdown" | null>(null);
-    const [dialogues, setDialogues] = useState<Dialogue[]>([
-        { id: ++dialogueCounter, type: "line", text: "Once upon a time..." },
-        { id: ++dialogueCounter, type: "line", text: "# show image", isTag: true },
-    ]);
-    const [choices, setChoices] = useState<Choice[]>(mockStory.choices);
-    const [history, setHistory] = useState<{ dialogues: Dialogue[]; choices: Choice[] }[]>([]);
-    const [inputValue, setInputValue] = useState("");
+    const [storyJson, setStoryJson] = useState<Story>();
+    const [markup, setMarkup] = useState<"Markdown">();
+    const [dialogues, setDialogues] = useState<Dialogue[]>([]);
+    const [choices, setChoices] = useState<Choice[]>();
+    const [history, setHistory] = useState<{ dialogue: Dialogue; choices?: Choice }[]>([]);
+    const [inputValue, setInputValue] = useState<string>();
     const [awaitingInput, setAwaitingInput] = useState(false);
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
+            if (event.data.type === "compiled-story") {
+                setStoryJson(event.data.data);
+            }
             if (event.data.type === "set-markup") {
                 setMarkup(event.data.markup);
             }
