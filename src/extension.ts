@@ -1,6 +1,4 @@
-import path from "path";
 import {
-    commands,
     Diagnostic,
     ExtensionContext,
     Hover,
@@ -9,33 +7,17 @@ import {
     Position,
     Range,
     TextDocument,
-    Uri,
-    ViewColumn,
     window,
     workspace,
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
-import { getWebviewHtml } from "./webview";
+import { openWebview } from "./webview";
 
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
 
-    const disposable = commands.registerCommand("ink.preview", () => {
-        const panel = window.createWebviewPanel("inkPreview", "Ink Preview", ViewColumn.Beside, {
-            enableScripts: true,
-        });
-
-        const scriptUri = panel.webview.asWebviewUri(
-            Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
-        );
-
-        const styleUri = panel.webview.asWebviewUri(
-            Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
-        );
-
-        panel.webview.html = getWebviewHtml(scriptUri, styleUri);
-    });
+    const disposable = openWebview(context);
 
     context.subscriptions.push(disposable);
 

@@ -1,6 +1,55 @@
-import { Uri } from "vscode";
+import * as path from "path";
+import { commands, ExtensionContext, Uri, ViewColumn, window } from "vscode";
+import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
+import { compile } from "./utils/ink-utility";
 
-export function getWebviewHtml(scriptUri: Uri, styleUri: Uri): string {
+export function openWebview(context: ExtensionContext) {
+    return commands.registerCommand("ink.preview", async () => {
+        const editor = window.activeTextEditor;
+
+        if (!editor) {
+            window.showErrorMessage("No active editor found.");
+            return;
+        }
+        const rootFolderSetting = getInkRootFolder(editor.document);
+
+        const document = editor.document;
+        const text = document.getText();
+
+        let compiled: any;
+        try {
+            compiled = compile(text, {
+                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+            });
+        } catch (err: any) {
+            window.showErrorMessage(`Ink compilation failed: ${err.message}`);
+            return; // 🔴 non apriamo la preview
+        }
+
+        // Apri webview SOLO se non ci sono errori
+        const panel = window.createWebviewPanel("inkPreview", "Ink Preview", ViewColumn.Beside, {
+            enableScripts: true,
+        });
+
+        const scriptUri = panel.webview.asWebviewUri(
+            Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
+        );
+
+        const styleUri = panel.webview.asWebviewUri(
+            Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
+        );
+
+        panel.webview.html = getWebviewHtml(scriptUri, styleUri);
+
+        // ✅ Passiamo il JSON compilato alla webview
+        panel.webview.postMessage({
+            type: "compiled-story",
+            data: compiled,
+        });
+    });
+}
+
+function getWebviewHtml(scriptUri: Uri, styleUri: Uri): string {
     return /* html */ `
     <!DOCTYPE html>
     <html lang="en">
