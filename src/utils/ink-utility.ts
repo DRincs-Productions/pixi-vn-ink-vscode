@@ -31,3 +31,34 @@ export function getErrors(text: string, fileHandler: Partial<IFileHandler> = {})
         return issues;
     }
 }
+
+export function compile(text: string, fileHandler: Partial<IFileHandler> = {}) {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    try {
+        const compiler = new Compiler(text, {
+            errorHandler: (message: string, type: ErrorType) => {
+                if (type === ErrorType.Error) {
+                    errors.push(message);
+                } else {
+                    warnings.push(message);
+                }
+            },
+            countAllVisits: true,
+            fileHandler: {
+                LoadInkFileContents: (filename: string) => filename,
+                ResolveInkFilename: (filename: string) => filename,
+                ...fileHandler,
+            },
+            pluginNames: [],
+            sourceFilename: null,
+        });
+        const json = compiler.Compile();
+        return json;
+    } catch (e) {
+        if (errors.length > 0) {
+            throw new Error(errors[0]);
+        }
+        throw e;
+    }
+}
