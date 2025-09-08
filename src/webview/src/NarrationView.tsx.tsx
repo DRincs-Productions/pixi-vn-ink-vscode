@@ -1,5 +1,6 @@
 import { ArrowLeft, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "./components/ui/button";
 import { Separator } from "./components/ui/separator";
 
@@ -26,6 +27,7 @@ const mockStory = {
 let dialogueCounter = 0;
 
 export default function NarrationView() {
+    const [markup, setMarkup] = useState<"Markdown" | null>(null);
     const [dialogues, setDialogues] = useState<Dialogue[]>([
         { id: ++dialogueCounter, type: "line", text: "Once upon a time..." },
         { id: ++dialogueCounter, type: "line", text: "# show image", isTag: true },
@@ -34,6 +36,16 @@ export default function NarrationView() {
     const [history, setHistory] = useState<{ dialogues: Dialogue[]; choices: Choice[] }[]>([]);
     const [inputValue, setInputValue] = useState("");
     const [awaitingInput, setAwaitingInput] = useState(false);
+
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.data.type === "set-markup") {
+                setMarkup(event.data.markup);
+            }
+        };
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
+    }, []);
 
     const addLine = (text: string, type: "line" | "choice" | "input" = "line", isTag: boolean = false) => {
         setDialogues((prev) => [...prev, { id: ++dialogueCounter, type, text, isTag }]);
@@ -126,18 +138,11 @@ export default function NarrationView() {
                         key={d.id}
                         style={{
                             color: d.isTag ? "var(--vscode-editorHint-foreground)" : "var(--vscode-editor-foreground)",
-                            fontWeight: d.type === "choice" || d.type === "input" ? 600 : 400,
-                            backgroundColor:
-                                d.type === "choice" || d.type === "input"
-                                    ? "var(--vscode-editor-hoverHighlightBackground)"
-                                    : "transparent",
-                            padding: d.type === "choice" || d.type === "input" ? "2px 4px" : "0",
-                            borderRadius: d.type === "choice" || d.type === "input" ? "4px" : "0",
                             textAlign: d.isTag ? "right" : "left",
                             fontStyle: d.isTag ? "italic" : "normal",
                         }}
                     >
-                        {d.text}
+                        {markup === "Markdown" ? <ReactMarkdown>{d.text}</ReactMarkdown> : d.text}
                     </div>
                 ))}
             </div>
@@ -162,7 +167,7 @@ export default function NarrationView() {
                                     justifyContent: "flex-start",
                                 }}
                             >
-                                {index + 1}. {c.text}
+                                {index + 1}. {markup === "Markdown" ? <ReactMarkdown>{c.text}</ReactMarkdown> : c.text}
                             </Button>
                         ))}
                     </div>
