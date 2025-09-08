@@ -1,6 +1,7 @@
 import path from "path";
 import {
     commands,
+    Diagnostic,
     ExtensionContext,
     Hover,
     languages,
@@ -13,7 +14,8 @@ import {
     window,
     workspace,
 } from "vscode";
-import { updateDiagnostics } from "./diagnostics";
+import { checkIncludes, updateDiagnostics } from "./diagnostics";
+import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { getWebviewHtml } from "./webview";
 
 export function activate(context: ExtensionContext) {
@@ -57,19 +59,38 @@ export function activate(context: ExtensionContext) {
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
-            updateDiagnostics(doc, diagnostics);
+            const list: Diagnostic[] = [];
+            updateDiagnostics(doc, list);
+            checkIncludes(doc, list);
+            diagnostics.set(doc.uri, list);
         }
     });
 
     workspace.onDidChangeTextDocument((e) => {
         if (e.document.languageId === "ink") {
-            updateDiagnostics(e.document, diagnostics);
+            const list: Diagnostic[] = [];
+            updateDiagnostics(e.document, list);
+            checkIncludes(e.document, list);
+            diagnostics.set(e.document.uri, list);
         }
     });
 
     workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
     });
+
+    const diagnosticCollection = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnosticCollection);
+
+    // CTRL+CLICK support for INCLUDE statements
+    const includeProvider = includeCtrlClick();
+    context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, includeProvider));
+
+    // Suggestions include
+    const includeSuggestionsProvider = suggestionsInclude();
+    context.subscriptions.push(
+        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, " ")
+    );
 
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
