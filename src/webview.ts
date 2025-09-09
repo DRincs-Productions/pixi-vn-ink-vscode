@@ -2,6 +2,7 @@ import * as path from "path";
 import { commands, ExtensionContext, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile } from "./utils/ink-utility";
+import { compilePixiVN } from "./utils/pixi-vn-utility";
 
 export function openWebview(context: ExtensionContext) {
     return commands.registerCommand("ink.preview", async () => {
@@ -13,13 +14,21 @@ export function openWebview(context: ExtensionContext) {
         }
 
         const document = editor.document;
+        const config = workspace.getConfiguration("ink");
+        const engine = config.get<"Inky" | "pixi-vn">("engine");
         const rootFolderSetting = getInkRootFolder(document);
 
         let compiled: string | void;
         try {
-            compiled = compile(document.getText(), {
-                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            }).ToJson();
+            if (engine === "pixi-vn") {
+                compiled = compilePixiVN(document.getText(), {
+                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+                }).ToJson();
+            } else {
+                compiled = compile(document.getText(), {
+                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+                }).ToJson();
+            }
         } catch (err: any) {
             window.showErrorMessage(`Ink compilation failed: ${err.message}`);
             return;
