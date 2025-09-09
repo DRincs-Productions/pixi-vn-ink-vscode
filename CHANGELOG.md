@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ## [Unreleased]
 
+### Changed
+
+- Webview title now shows the current filename followed by `(Preview)` instead of the generic "Ink Preview"
+
 ### Fixed
 
 - Various fixes to the preview
