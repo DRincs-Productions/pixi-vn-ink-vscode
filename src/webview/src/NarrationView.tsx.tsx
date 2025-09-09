@@ -37,8 +37,6 @@ export default function NarrationView() {
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
-            vscode.postMessage({ type: "ready" });
-
             if (event.data.type === "compiled-story") {
                 const storyJson: string = event.data.data;
                 const story = new Story(storyJson);
@@ -52,6 +50,7 @@ export default function NarrationView() {
             }
         };
         window.addEventListener("message", handler);
+        vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
     }, []);
 
