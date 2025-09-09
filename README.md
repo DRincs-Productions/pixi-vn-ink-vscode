@@ -53,6 +53,20 @@ This extension provides **syntax highlighting**, support for **variables, consta
 
 This extension provides the following configurable settings in VS Code (go to `File > Preferences > Settings` and search for `ink`):
 
+### Main file
+
+- **Setting name**: `ink.mainFile`
+- **Description**: Specify the main **ink** file of the project. This is used as the entry point for diagnostics and execution.
+- **Options**: Path to the main `.ink` file, relative to the workspace root. Leave empty to use the currently opened file.
+- **Effect**: Sets the main file for diagnostics and execution.
+
+### Root folder
+
+- **Setting name**: `ink.rootFolder`
+- **Description**: Specify the root folder for resolving `INCLUDE` paths. If set, all `INCLUDE` paths will be resolved relative to this folder.
+- **Options**: Path to the root folder, relative to the workspace root. Leave empty to use the workspace root.
+- **Effect**: Changes how `INCLUDE` paths are resolved and affects autocompletion and Ctrl+Click functionality.
+
 ### Engine
 
 - **Setting name**: `ink.engine`
@@ -70,20 +84,6 @@ This extension provides the following configurable settings in VS Code (go to `F
   - `Markdown`
   - `null` (default)
 - **Effect**: Enables syntax support and highlighting for the selected markup.
-
-### Main file
-
-- **Setting name**: `ink.mainFile`
-- **Description**: Specify the main **ink** file of the project. This is used as the entry point for diagnostics and execution.
-- **Options**: Path to the main `.ink` file, relative to the workspace root. Leave empty to use the currently opened file.
-- **Effect**: Sets the main file for diagnostics and execution.
-
-### Root folder
-
-- **Setting name**: `ink.rootFolder`
-- **Description**: Specify the root folder for resolving `INCLUDE` paths. If set, all `INCLUDE` paths will be resolved relative to this folder.
-- **Options**: Path to the root folder, relative to the workspace root. Leave empty to use the workspace root.
-- **Effect**: Changes how `INCLUDE` paths are resolved and affects autocompletion and Ctrl+Click functionality.
 
 ---
 
