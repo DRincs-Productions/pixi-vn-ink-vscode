@@ -43,6 +43,9 @@ export function openWebview(context: ExtensionContext) {
             enableScripts: true,
         });
 
+        // Icona della scheda
+        panel.iconPath = Uri.file(path.join(context.extensionPath, "resources/icon.png"));
+
         const scriptUri = panel.webview.asWebviewUri(
             Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
         );

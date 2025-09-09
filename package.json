@@ -9,7 +9,7 @@
   },
   "author": "drincs-productions",
   "publisher": "drincs-productions",
-  "icon": "images/icon.png",
+  "icon": "resources/icon.png",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/DRincs-Productions/pixi-vn-ink-vscode/issues"
