@@ -85,6 +85,7 @@ export default function NarrationView() {
         const newHistory = nextChoices(story!);
         setHistory(newHistory);
         setAwaitingInput(false);
+        setOldChoices([]);
     };
 
     return (
