@@ -125,11 +125,11 @@ export default function NarrationView() {
                     borderColor: "var(--vscode-editorWidget-border)",
                 }}
             >
-                {history.map((item, key) => (
-                    <>
+                {history.map((item, idx) => (
+                    <div key={`block-${idx}`}>
                         {item.choice && (
                             <div
-                                key={key}
+                                key={`choice-${idx}`}
                                 style={{
                                     color: "var(--vscode-editor-foreground)",
                                     textAlign: "left",
@@ -139,9 +139,10 @@ export default function NarrationView() {
                                 {markup === "Markdown" ? <ReactMarkdown>{item.choice}</ReactMarkdown> : item.choice}
                             </div>
                         )}
-                        {item.tags?.map((tag, key) => (
+
+                        {item.tags?.map((tag, tIdx) => (
                             <div
-                                key={key}
+                                key={`tag-${idx}-${tIdx}`}
                                 style={{
                                     color: "var(--vscode-editorHint-foreground)",
                                     textAlign: "right",
@@ -151,17 +152,33 @@ export default function NarrationView() {
                                 {markup === "Markdown" ? <ReactMarkdown>{tag}</ReactMarkdown> : tag}
                             </div>
                         ))}
-                        <div
-                            key={key}
-                            style={{
-                                color: "var(--vscode-editor-foreground)",
-                                textAlign: "left",
-                                fontStyle: "normal",
-                            }}
-                        >
-                            {markup === "Markdown" ? <ReactMarkdown>{item.dialogue}</ReactMarkdown> : item.dialogue}
-                        </div>
-                    </>
+
+                        {item.dialogue?.trim() && (
+                            <div
+                                key={`dialogue-${idx}`}
+                                style={{
+                                    color: "var(--vscode-editor-foreground)",
+                                    textAlign: "left",
+                                    fontStyle: "normal",
+                                }}
+                            >
+                                {markup === "Markdown" ? <ReactMarkdown>{item.dialogue}</ReactMarkdown> : item.dialogue}
+                            </div>
+                        )}
+
+                        {item.input && (
+                            <div
+                                key={`input-${idx}`}
+                                style={{
+                                    color: "var(--vscode-editor-foreground)",
+                                    textAlign: "left",
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                You: {item.input}
+                            </div>
+                        )}
+                    </div>
                 ))}
             </div>
 
