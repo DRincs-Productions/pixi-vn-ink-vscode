@@ -6,36 +6,45 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "./components/ui/button";
 import { Separator } from "./components/ui/separator";
 
-type Dialogue = {
-    id: number;
-    type: "line" | "choice" | "input";
-    text: string;
-    isTag?: boolean;
+type HistoryItem = {
+    dialogue: string | null;
+    choices?: Choice[];
+    tags: string[] | null;
+    choice?: string;
+    input?: string;
 };
 
-const mockStory = {
-    lines: ["Once upon a time...", "The hero stood at the crossroads."],
-    choices: [
-        { id: 1, text: "Take the left path" },
-        { id: 2, text: "Take the right path" },
-    ],
-};
-
-let dialogueCounter = 0;
+function initializeHistory(story: Story): HistoryItem[] {
+    const history: HistoryItem[] = [];
+    while (story.canContinue) {
+        const text = story.Continue();
+        const choices = story.currentChoices;
+        const tags = story.currentTags;
+        history.push({ dialogue: text, choices, tags });
+    }
+    return history;
+}
 
 export default function NarrationView() {
-    const [storyJson, setStoryJson] = useState<Story>();
+    const [story, setStory] = useState<Story>();
     const [markup, setMarkup] = useState<"Markdown">();
-    const [dialogues, setDialogues] = useState<Dialogue[]>([]);
-    const [choices, setChoices] = useState<Choice[]>();
-    const [history, setHistory] = useState<{ dialogue: Dialogue; choices?: Choice }[]>([]);
+    const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
     const [awaitingInput, setAwaitingInput] = useState(false);
+    const currentState = history.length > 0 ? history[history.length - 1] : undefined;
+    const { choices } = currentState || {};
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
+            console.log("Received message:", event.data);
             if (event.data.type === "compiled-story") {
-                setStoryJson(event.data.data);
+                const storyJson: string = event.data.data;
+                const story = new Story(storyJson);
+                setStory(story);
+                const history: HistoryItem[] = initializeHistory(story);
+                console.log("Initial history:", history);
+                setHistory(history);
+                setAwaitingInput(false);
             }
             if (event.data.type === "set-markup") {
                 setMarkup(event.data.markup);
@@ -45,42 +54,29 @@ export default function NarrationView() {
         return () => window.removeEventListener("message", handler);
     }, []);
 
-    const addLine = (text: string, type: "line" | "choice" | "input" = "line", isTag: boolean = false) => {
-        setDialogues((prev) => [...prev, { id: ++dialogueCounter, type, text, isTag }]);
-    };
-
     const makeChoice = (choice: Choice) => {
-        setHistory((prev) => [...prev, { dialogues: [...dialogues], choices: [...choices] }]);
-        addLine(choice.text, "choice");
-        setChoices([]);
-        // Esempio: richiediamo input dopo la scelta
-        setAwaitingInput(true);
+        if (!story) return;
+        const newHistory = [...history];
+        story.ChooseChoiceIndex(choice.index);
+        const text = story.Continue();
+        const choices = story.currentChoices;
+        const tags = story.currentTags;
+        newHistory.push({ dialogue: text, choices, tags, choice: choice.text });
+        setHistory(newHistory);
     };
 
-    const submitInput = () => {
-        if (inputValue.trim() === "") return;
-        addLine(inputValue, "input");
-        setInputValue("");
-        setAwaitingInput(false);
-        addLine("And so the story continued...");
-        setChoices(mockStory.choices);
-    };
+    const submitInput = () => {};
 
     const goBack = () => {
-        const lastState = history.pop();
-        if (lastState) {
-            setDialogues(lastState.dialogues);
-            setChoices(lastState.choices);
-            setHistory([...history]);
-        }
+        history.pop();
+        story?.ResetState();
     };
 
     const restart = () => {
-        setDialogues([]);
-        setChoices(mockStory.choices);
-        setHistory([]);
-        dialogueCounter = 0;
-        addLine("Once upon a time...");
+        story?.ResetState();
+        const newHistory = initializeHistory(story!);
+        setHistory(newHistory);
+        setAwaitingInput(false);
     };
 
     return (
@@ -131,22 +127,48 @@ export default function NarrationView() {
                     borderColor: "var(--vscode-editorWidget-border)",
                 }}
             >
-                {dialogues.map((d) => (
-                    <div
-                        key={d.id}
-                        style={{
-                            color: d.isTag ? "var(--vscode-editorHint-foreground)" : "var(--vscode-editor-foreground)",
-                            textAlign: d.isTag ? "right" : "left",
-                            fontStyle: d.isTag ? "italic" : "normal",
-                        }}
-                    >
-                        {markup === "Markdown" ? <ReactMarkdown>{d.text}</ReactMarkdown> : d.text}
-                    </div>
+                {history.map((item, key) => (
+                    <>
+                        {item.choice && (
+                            <div
+                                key={key}
+                                style={{
+                                    color: "var(--vscode-editor-foreground)",
+                                    textAlign: "left",
+                                    fontStyle: "normal",
+                                }}
+                            >
+                                {markup === "Markdown" ? <ReactMarkdown>{item.choice}</ReactMarkdown> : item.choice}
+                            </div>
+                        )}
+                        {item.tags?.map((tag, key) => (
+                            <div
+                                key={key}
+                                style={{
+                                    color: "var(--vscode-editorHint-foreground)",
+                                    textAlign: "right",
+                                    fontStyle: "italic",
+                                }}
+                            >
+                                {markup === "Markdown" ? <ReactMarkdown>{tag}</ReactMarkdown> : tag}
+                            </div>
+                        ))}
+                        <div
+                            key={key}
+                            style={{
+                                color: "var(--vscode-editor-foreground)",
+                                textAlign: "left",
+                                fontStyle: "normal",
+                            }}
+                        >
+                            {markup === "Markdown" ? <ReactMarkdown>{item.dialogue}</ReactMarkdown> : item.dialogue}
+                        </div>
+                    </>
                 ))}
             </div>
 
             {/* Choices */}
-            {!awaitingInput && choices.length > 0 && (
+            {!awaitingInput && choices && choices?.length > 0 && (
                 <div className='mt-3'>
                     <Separator className='mb-2' />
                     <div className='font-semibold mb-2' style={{ color: "var(--vscode-editor-foreground)" }}>
@@ -155,7 +177,7 @@ export default function NarrationView() {
                     <div className='flex flex-col gap-2'>
                         {choices.map((c, index) => (
                             <Button
-                                key={c.id}
+                                key={c.index}
                                 variant='outline'
                                 onClick={() => makeChoice(c)}
                                 style={{

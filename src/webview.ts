@@ -16,13 +16,17 @@ export function openWebview(context: ExtensionContext) {
         const document = editor.document;
         const text = document.getText();
 
-        let compiled: any;
+        let compiled: string | void;
         try {
             compiled = compile(text, {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            });
+            }).ToJson();
         } catch (err: any) {
             window.showErrorMessage(`Ink compilation failed: ${err.message}`);
+            return; // 🔴 non apriamo la preview
+        }
+        if (!compiled) {
+            window.showErrorMessage("Ink compilation failed for an unknown reason.");
             return; // 🔴 non apriamo la preview
         }
 
