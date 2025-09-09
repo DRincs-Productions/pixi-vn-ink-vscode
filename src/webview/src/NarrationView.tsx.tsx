@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "./components/ui/button";
 import { Separator } from "./components/ui/separator";
+import { vscode } from "./vscode";
 
 type HistoryItem = {
     dialogue: string | null;
@@ -36,6 +37,8 @@ export default function NarrationView() {
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
+            vscode.postMessage({ type: "ready" });
+
             if (event.data.type === "compiled-story") {
                 const storyJson: string = event.data.data;
                 const story = new Story(storyJson);

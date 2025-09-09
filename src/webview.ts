@@ -46,9 +46,15 @@ export function openWebview(context: ExtensionContext) {
         panel.webview.html = getWebviewHtml(scriptUri, styleUri);
 
         // ✅ Passiamo il JSON compilato alla webview
-        panel.webview.postMessage({
-            type: "compiled-story",
-            data: compiled,
+        // 🔹 ascolta messaggi dalla webview
+        panel.webview.onDidReceiveMessage((message) => {
+            if (message.type === "ready") {
+                console.log("Webview is ready, sending compiled story.");
+                panel.webview.postMessage({
+                    type: "compiled-story",
+                    data: compiled,
+                });
+            }
         });
     });
 }
