@@ -12,10 +12,14 @@ import {
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
+import { openWebview } from "./webview";
 
 export function activate(context: ExtensionContext) {
-    const diagnostics = languages.createDiagnosticCollection("ink");
-    context.subscriptions.push(diagnostics);
+    // Register the command to open the Ink Preview webview
+
+    const disposable = openWebview(context);
+
+    context.subscriptions.push(disposable);
 
     // Listen for configuration changes
 
@@ -31,6 +35,9 @@ export function activate(context: ExtensionContext) {
     });
 
     // Initial diagnostics for all open ink files
+
+    const diagnostics = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnostics);
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {

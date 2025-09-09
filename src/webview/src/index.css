@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.my-vscode-button {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.my-vscode-button:hover {
+  background-color: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}

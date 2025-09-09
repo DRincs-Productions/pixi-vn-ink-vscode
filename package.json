@@ -92,11 +92,31 @@
           "description": "Root folder containing .ink files to be loaded. If empty, no root folder is defined."
         }
       }
+    },
+    "commands": [
+      {
+        "command": "ink.preview",
+        "title": "Open Ink Preview",
+        "icon": "$(eye)",
+        "category": "Ink"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "ink.preview",
+          "group": "navigation",
+          "when": "resourceLangId == ink",
+          "icon": "$(eye)",
+          "tooltip": "Open Ink Preview"
+        }
+      ]
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "build-webview": "cd src/webview && npm install && npm run build",
+    "compile": "npm run build-webview && npm run check-types && npm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",

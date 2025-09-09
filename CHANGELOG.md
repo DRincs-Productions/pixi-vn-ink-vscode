@@ -4,6 +4,31 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- **Interactive Ink Preview**:
+  - Opened from editor title button or command palette
+  - Displays dialogues, choices, tags, and text input
+  - Markdown rendering optional for dialogues and choices
+  - Tags (`#`) aligned to right with different color
+  - **Back** button to return to previous choice point
+  - **Restart** button to reset the story
+  - Fully respects VSCode dark/light themes
+  - Live update on file save
+- Webview uses VSCode colors for buttons, inputs, backgrounds, and borders
+- `NarrationView.tsx` implemented as dedicated component for story rendering
+- Input text support for interactive user responses
+- Highlighting of tags and choices in Markdown when markup enabled
+
+### Fixed
+
+- Correct handling of choices and tags in the webview
+- Webview updates properly after story recompilation
+- Back button now returns to last choice, not just last dialogue
+- Button hover and pointer style fixed for webview buttons
+
 ## [0.3.1] - 2025-09-07
 
 ### Added
