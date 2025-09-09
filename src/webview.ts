@@ -35,15 +35,19 @@ export function openWebview(context: ExtensionContext) {
         }
         if (!compiled) {
             window.showErrorMessage("Ink compilation failed for an unknown reason.");
-            return; // 🔴 non apriamo la preview
+            return; // 🔴 do not open the preview
         }
 
-        // Apri webview SOLO se non ci sono errori
-        const panel = window.createWebviewPanel("inkPreview", "Ink Preview", ViewColumn.Beside, {
+        // 🔹 Get the file name
+        const fileName = path.basename(document.fileName);
+        const panelTitle = `${fileName} (Preview)`;
+
+        // Open webview ONLY if there are no errors
+        const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
             enableScripts: true,
         });
 
-        // Icona della scheda
+        // Tab icon
         panel.iconPath = Uri.file(path.join(context.extensionPath, "resources/icon.png"));
 
         const scriptUri = panel.webview.asWebviewUri(
@@ -53,10 +57,11 @@ export function openWebview(context: ExtensionContext) {
             Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
         );
 
-        panel.webview.html = getWebviewHtml(scriptUri, styleUri);
+        // ✅ Pass the title to getWebviewHtml
+        panel.webview.html = getWebviewHtml(scriptUri, styleUri, panelTitle);
 
-        // ✅ Passiamo il JSON compilato alla webview
-        // 🔹 ascolta messaggi dalla webview
+        // ✅ Send the compiled JSON to the webview
+        // 🔹 listen for messages from the webview
         panel.webview.onDidReceiveMessage((message) => {
             if (message.type === "ready") {
                 console.log("Webview is ready, sending compiled story.");
@@ -67,7 +72,7 @@ export function openWebview(context: ExtensionContext) {
             }
         });
 
-        // 🔹 Riascolta i salvataggi
+        // 🔹 Listen again to save events
         const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
             if (doc.uri.toString() === document.uri.toString()) {
                 try {
@@ -86,14 +91,15 @@ export function openWebview(context: ExtensionContext) {
             }
         });
 
-        // 🔹 Rimuovi listener quando chiudi la webview
+        // 🔹 Remove listener when the webview is closed
         panel.onDidDispose(() => {
             saveListener.dispose();
         });
     });
 }
 
-function getWebviewHtml(scriptUri: Uri, styleUri: Uri): string {
+// 🔹 Added parameter `title`
+function getWebviewHtml(scriptUri: Uri, styleUri: Uri, title: string): string {
     return /* html */ `
     <!DOCTYPE html>
     <html lang="en">
@@ -101,7 +107,7 @@ function getWebviewHtml(scriptUri: Uri, styleUri: Uri): string {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="stylesheet" href="${styleUri}">
-        <title>Ink Preview</title>
+        <title>${title}</title>
       </head>
       <body>
         <div id="root"></div>
