@@ -77,6 +77,13 @@ This extension provides the following configurable settings in VS Code (go to `F
 - **Options**: Path to the main `.ink` file, relative to the workspace root. Leave empty to use the currently opened file.
 - **Effect**: Sets the main file for diagnostics and execution.
 
+### Root folder
+
+- **Setting name**: `ink.rootFolder`
+- **Description**: Specify the root folder for resolving `INCLUDE` paths. If set, all `INCLUDE` paths will be resolved relative to this folder.
+- **Options**: Path to the root folder, relative to the workspace root. Leave empty to use the workspace root.
+- **Effect**: Changes how `INCLUDE` paths are resolved and affects autocompletion and Ctrl+Click functionality.
+
 ---
 
 ## 🚀 Roadmap
