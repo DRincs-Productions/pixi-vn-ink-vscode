@@ -3,6 +3,8 @@
 A Visual Studio Code extension for the ***ink*** scripting language, used in interactive narrative games (e.g. *80 Days*, *Heaven's Vault*).  
 This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, **INCLUDE statements**, **tags**, **interactive narrative preview**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
 
+<img width="1843" height="735" alt="image" src="https://github.com/user-attachments/assets/cc17384a-7f2f-4e86-b99a-efbf823269d9" />
+
 ---
 
 ## ✨ Features
