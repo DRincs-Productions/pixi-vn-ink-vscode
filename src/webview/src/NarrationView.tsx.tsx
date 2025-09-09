@@ -66,8 +66,40 @@ export default function NarrationView() {
     const submitInput = () => {};
 
     const goBack = () => {
-        history.pop();
-        story?.ResetState();
+        if (!story || history.length === 0) return;
+
+        // Trova l’ultimo punto in cui c’era una scelta
+        const lastChoiceIndex = [...history].reverse().findIndex((h) => h.choices && h.choices.length > 0);
+
+        if (lastChoiceIndex === -1) {
+            // Nessuna scelta precedente → ricomincia dall’inizio
+            restart();
+            return;
+        }
+
+        // Calcola la posizione nel history (reverse() cambia l’indice)
+        const targetIndex = history.length - 1 - lastChoiceIndex;
+
+        // Reset story e rigioca fino a quel punto
+        story.ResetState();
+        const replayed: HistoryItem[] = [];
+        while (story.canContinue && replayed.length < targetIndex) {
+            const text = story.Continue();
+            const choices = story.currentChoices;
+            const tags = story.currentTags;
+            replayed.push({ dialogue: text, choices, tags });
+        }
+
+        // Aggiungi il punto con le scelte
+        if (story.currentChoices.length > 0 || story.canContinue) {
+            replayed.push({
+                dialogue: story.canContinue ? story.Continue() : null,
+                choices: story.currentChoices,
+                tags: story.currentTags,
+            });
+        }
+
+        setHistory(replayed);
     };
 
     const restart = () => {
