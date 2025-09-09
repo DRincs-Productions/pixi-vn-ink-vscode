@@ -1,5 +1,5 @@
 import * as path from "path";
-import { commands, ExtensionContext, Uri, ViewColumn, window } from "vscode";
+import { commands, ExtensionContext, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile } from "./utils/ink-utility";
 
@@ -11,19 +11,18 @@ export function openWebview(context: ExtensionContext) {
             window.showErrorMessage("No active editor found.");
             return;
         }
-        const rootFolderSetting = getInkRootFolder(editor.document);
 
         const document = editor.document;
-        const text = document.getText();
+        const rootFolderSetting = getInkRootFolder(document);
 
         let compiled: string | void;
         try {
-            compiled = compile(text, {
+            compiled = compile(document.getText(), {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
             }).ToJson();
         } catch (err: any) {
             window.showErrorMessage(`Ink compilation failed: ${err.message}`);
-            return; // 🔴 non apriamo la preview
+            return;
         }
         if (!compiled) {
             window.showErrorMessage("Ink compilation failed for an unknown reason.");
@@ -38,7 +37,6 @@ export function openWebview(context: ExtensionContext) {
         const scriptUri = panel.webview.asWebviewUri(
             Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
         );
-
         const styleUri = panel.webview.asWebviewUri(
             Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
         );
@@ -55,6 +53,30 @@ export function openWebview(context: ExtensionContext) {
                     data: compiled,
                 });
             }
+        });
+
+        // 🔹 Riascolta i salvataggi
+        const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
+            if (doc.uri.toString() === document.uri.toString()) {
+                try {
+                    const updatedCompiled = compile(doc.getText(), {
+                        LoadInkFileContents: (filename: string) =>
+                            loadInkFileContent(filename, rootFolderSetting) || "",
+                    }).ToJson();
+
+                    panel.webview.postMessage({
+                        type: "compiled-story",
+                        data: updatedCompiled,
+                    });
+                } catch (err: any) {
+                    window.showErrorMessage(`Ink recompilation failed: ${err.message}`);
+                }
+            }
+        });
+
+        // 🔹 Rimuovi listener quando chiudi la webview
+        panel.onDidDispose(() => {
+            saveListener.dispose();
         });
     });
 }
