@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import { commands, ExtensionContext, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
@@ -17,6 +18,32 @@ export function previewCommand(context: ExtensionContext) {
             name: path.basename(editor.document.fileName),
             text: editor.document.getText(),
             uri: editor.document.uri,
+        });
+    });
+}
+
+export function runProjectCommand(context: ExtensionContext) {
+    return commands.registerCommand("ink.runProject", async () => {
+        const config = workspace.getConfiguration("ink");
+        const mainFile = config.get<string>("mainFile");
+
+        if (!mainFile) {
+            window.showErrorMessage("ink.mainFile is not set in settings.");
+            return;
+        }
+
+        if (!fs.existsSync(mainFile)) {
+            window.showErrorMessage(`Main file not found: ${mainFile}`);
+            return;
+        }
+
+        const rootFolderSetting = path.dirname(mainFile);
+        const text = fs.readFileSync(mainFile, "utf8");
+
+        return await openWebview(context, rootFolderSetting, {
+            name: path.basename(mainFile),
+            text,
+            uri: Uri.file(mainFile),
         });
     });
 }
