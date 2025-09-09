@@ -12,14 +12,13 @@ import {
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
-import { openWebview } from "./webview";
+import { previewCommand, runProjectCommand } from "./webview";
 
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
 
-    const disposable = openWebview(context);
-
-    context.subscriptions.push(disposable);
+    context.subscriptions.push(previewCommand(context));
+    context.subscriptions.push(runProjectCommand(context));
 
     // Listen for configuration changes
 

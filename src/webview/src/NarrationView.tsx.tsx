@@ -11,13 +11,17 @@ type HistoryItem = {
     dialogue: string | null;
     choices?: Choice[];
     tags: string[] | null;
-    choice?: string;
+    choice?: number;
     input?: string;
 };
 
-function initializeHistory(story: Story): HistoryItem[] {
-    const history: HistoryItem[] = [];
-    while (story.canContinue) {
+function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
+    const list = [...oldChoices];
+    while (story.canContinue || (!story.canContinue && list.length > 0)) {
+        if (!story.canContinue && list.length > 0) {
+            const choice = list.shift();
+            story.ChooseChoiceIndex(choice!);
+        }
         const text = story.Continue();
         const choices = story.currentChoices;
         const tags = story.currentTags;
@@ -32,6 +36,7 @@ export default function NarrationView() {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
     const [awaitingInput, setAwaitingInput] = useState(false);
+    const [oldChoices, setOldChoices] = useState<number[]>([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices } = currentState || {};
 
@@ -41,7 +46,7 @@ export default function NarrationView() {
                 const storyJson: string = event.data.data;
                 const story = new Story(storyJson);
                 setStory(story);
-                const history: HistoryItem[] = initializeHistory(story);
+                const history: HistoryItem[] = nextChoices(story, [], oldChoices);
                 setHistory(history);
                 setAwaitingInput(false);
             }
@@ -52,16 +57,14 @@ export default function NarrationView() {
         window.addEventListener("message", handler);
         vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
-    }, []);
+    }, [oldChoices]);
 
     const makeChoice = (choice: Choice) => {
         if (!story) return;
-        const newHistory = [...history];
+        let newHistory = [...history];
         story.ChooseChoiceIndex(choice.index);
-        const text = story.Continue();
-        const choices = story.currentChoices;
-        const tags = story.currentTags;
-        newHistory.push({ dialogue: text, choices, tags, choice: choice.text });
+        setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+        newHistory = nextChoices(story, newHistory);
         setHistory(newHistory);
     };
 
@@ -70,45 +73,19 @@ export default function NarrationView() {
     const goBack = () => {
         if (!story || history.length === 0) return;
 
-        // Trova l’ultimo punto in cui c’era una scelta
-        const lastChoiceIndex = [...history].reverse().findIndex((h) => h.choices && h.choices.length > 0);
-
-        if (lastChoiceIndex === -1) {
-            // Nessuna scelta precedente → ricomincia dall’inizio
-            restart();
-            return;
-        }
-
-        // Calcola la posizione nel history (reverse() cambia l’indice)
-        const targetIndex = history.length - 1 - lastChoiceIndex;
-
-        // Reset story e rigioca fino a quel punto
         story.ResetState();
-        const replayed: HistoryItem[] = [];
-        while (story.canContinue && replayed.length < targetIndex) {
-            const text = story.Continue();
-            const choices = story.currentChoices;
-            const tags = story.currentTags;
-            replayed.push({ dialogue: text, choices, tags });
-        }
+        oldChoices.pop();
+        const newHistory = nextChoices(story, [], oldChoices);
 
-        // Aggiungi il punto con le scelte
-        if (story.currentChoices.length > 0 || story.canContinue) {
-            replayed.push({
-                dialogue: story.canContinue ? story.Continue() : null,
-                choices: story.currentChoices,
-                tags: story.currentTags,
-            });
-        }
-
-        setHistory(replayed);
+        setHistory(newHistory);
     };
 
     const restart = () => {
         story?.ResetState();
-        const newHistory = initializeHistory(story!);
+        const newHistory = nextChoices(story!);
         setHistory(newHistory);
         setAwaitingInput(false);
+        setOldChoices([]);
     };
 
     return (
@@ -157,19 +134,6 @@ export default function NarrationView() {
             >
                 {history.map((item, idx) => (
                     <div key={`block-${idx}`}>
-                        {item.choice && (
-                            <div
-                                key={`choice-${idx}`}
-                                style={{
-                                    color: "var(--vscode-editor-foreground)",
-                                    textAlign: "left",
-                                    fontStyle: "normal",
-                                }}
-                            >
-                                {markup === "Markdown" ? <ReactMarkdown>{item.choice}</ReactMarkdown> : item.choice}
-                            </div>
-                        )}
-
                         {item.tags?.map((tag, tIdx) => (
                             <div
                                 key={`tag-${idx}-${tIdx}`}

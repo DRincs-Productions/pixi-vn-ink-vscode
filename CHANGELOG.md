@@ -4,6 +4,22 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- New command **Run Ink Project** (`ink.runProject`) with a button in the editor title bar  
+  - Only visible when the `ink.mainFile` setting is configured  
+  - Uses the ▶ icon and runs the project starting from the main file
+
+### Changed
+
+- Webview title now shows the current filename followed by `(Preview)` instead of the generic "Ink Preview"
+
+### Fixed
+
+- Various fixes to the preview
+
 ## [0.4.1] - 2025-09-09
 
 ### Changed
