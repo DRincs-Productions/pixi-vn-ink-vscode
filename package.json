@@ -108,7 +108,7 @@
           "group": "navigation",
           "when": "resourceLangId == ink",
           "icon": "$(eye)",
-          "tooltip": "Open Ink Preview"
+          "tooltip": "Open preview for the current file"
         }
       ]
     }

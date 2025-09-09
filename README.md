@@ -70,6 +70,13 @@ This extension provides the following configurable settings in VS Code (go to `F
   - `null` (default)
 - **Effect**: Enables syntax support and highlighting for the selected markup.
 
+### Main file
+
+- **Setting name**: `ink.mainFile`
+- **Description**: Specify the main Ink file of the project. This is used as the entry point for diagnostics and execution.
+- **Options**: Path to the main `.ink` file, relative to the workspace root. Leave empty to use the currently opened file.
+- **Effect**: Sets the main file for diagnostics and execution.
+
 ---
 
 ## 🚀 Roadmap
