@@ -46,7 +46,7 @@ export default function NarrationView() {
                 const storyJson: string = event.data.data;
                 const story = new Story(storyJson);
                 setStory(story);
-                const history: HistoryItem[] = nextChoices(story);
+                const history: HistoryItem[] = nextChoices(story, [], oldChoices);
                 setHistory(history);
                 setAwaitingInput(false);
             }
@@ -57,7 +57,7 @@ export default function NarrationView() {
         window.addEventListener("message", handler);
         vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
-    }, []);
+    }, [oldChoices]);
 
     const makeChoice = (choice: Choice) => {
         if (!story) return;
