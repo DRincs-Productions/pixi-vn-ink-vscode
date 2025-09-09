@@ -119,14 +119,12 @@ export default function NarrationView() {
             {/* Top bar */}
             <div className='flex justify-end gap-2 mb-4'>
                 <Button
+                    className='my-vscode-button'
                     onClick={goBack}
                     disabled={history.length === 0}
                     variant='secondary'
                     size='sm'
                     style={{
-                        backgroundColor: "var(--vscode-button-background)",
-                        color: "var(--vscode-button-foreground)",
-                        borderColor: "var(--vscode-button-border)",
                         padding: "2px 6px",
                         height: "28px",
                         fontSize: "0.75rem",
@@ -135,13 +133,11 @@ export default function NarrationView() {
                     <ArrowLeft size={14} className='mr-1' /> Back
                 </Button>
                 <Button
+                    className='my-vscode-button'
                     onClick={restart}
                     variant='destructive'
                     size='sm'
                     style={{
-                        backgroundColor: "var(--vscode-button-background)",
-                        color: "var(--vscode-button-foreground)",
-                        borderColor: "var(--vscode-button-border)",
                         padding: "2px 6px",
                         height: "28px",
                         fontSize: "0.75rem",
@@ -226,13 +222,11 @@ export default function NarrationView() {
                     <div className='flex flex-col gap-2'>
                         {choices.map((c, index) => (
                             <Button
+                                className='my-vscode-button'
                                 key={c.index}
                                 variant='outline'
                                 onClick={() => makeChoice(c)}
                                 style={{
-                                    color: "var(--vscode-button-foreground)",
-                                    borderColor: "var(--vscode-button-border)",
-                                    backgroundColor: "var(--vscode-button-background)",
                                     justifyContent: "flex-start",
                                 }}
                             >
@@ -258,15 +252,7 @@ export default function NarrationView() {
                             borderColor: "var(--vscode-input-border)",
                         }}
                     />
-                    <Button
-                        onClick={submitInput}
-                        variant='default'
-                        style={{
-                            backgroundColor: "var(--vscode-button-background)",
-                            color: "var(--vscode-button-foreground)",
-                            borderColor: "var(--vscode-button-border)",
-                        }}
-                    >
+                    <Button className='my-vscode-button' onClick={submitInput} variant='default'>
                         Submit
                     </Button>
                 </div>
