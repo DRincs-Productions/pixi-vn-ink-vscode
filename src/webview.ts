@@ -4,7 +4,7 @@ import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile } from "./utils/ink-utility";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
 
-export function openWebview(context: ExtensionContext) {
+export function previewCommand(context: ExtensionContext) {
     return commands.registerCommand("ink.preview", async () => {
         const editor = window.activeTextEditor;
 
@@ -12,89 +12,99 @@ export function openWebview(context: ExtensionContext) {
             window.showErrorMessage("No active editor found.");
             return;
         }
-
-        const document = editor.document;
-        const config = workspace.getConfiguration("ink");
-        const engine = config.get<"Inky" | "pixi-vn">("engine");
-        const rootFolderSetting = getInkRootFolder(document);
-
-        let compiled: string | void;
-        try {
-            if (engine === "pixi-vn") {
-                compiled = compilePixiVN(document.getText(), {
-                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                }).ToJson();
-            } else {
-                compiled = compile(document.getText(), {
-                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                }).ToJson();
-            }
-        } catch (err: any) {
-            window.showErrorMessage(`Ink compilation failed: ${err.message}`);
-            return;
-        }
-        if (!compiled) {
-            window.showErrorMessage("Ink compilation failed for an unknown reason.");
-            return; // 🔴 do not open the preview
-        }
-
-        // 🔹 Get the file name
-        const fileName = path.basename(document.fileName);
-        const panelTitle = `${fileName} (Preview)`;
-
-        // Open webview ONLY if there are no errors
-        const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
-            enableScripts: true,
+        const rootFolderSetting = getInkRootFolder(editor.document);
+        return await openWebview(context, rootFolderSetting, {
+            name: path.basename(editor.document.fileName),
+            text: editor.document.getText(),
+            uri: editor.document.uri,
         });
+    });
+}
 
-        // Tab icon
-        panel.iconPath = Uri.file(path.join(context.extensionPath, "resources/icon.png"));
+export async function openWebview(
+    context: ExtensionContext,
+    rootFolderSetting: string,
+    file: {
+        name: string;
+        text: string;
+        uri: Uri;
+    }
+) {
+    const { name, text, uri } = file;
 
-        const scriptUri = panel.webview.asWebviewUri(
-            Uri.file(path.join(context.extensionPath, "dist/webview/index.js"))
-        );
-        const styleUri = panel.webview.asWebviewUri(
-            Uri.file(path.join(context.extensionPath, "dist/webview/index.css"))
-        );
+    const config = workspace.getConfiguration("ink");
+    const engine = config.get<"Inky" | "pixi-vn">("engine");
 
-        // ✅ Pass the title to getWebviewHtml
-        panel.webview.html = getWebviewHtml(scriptUri, styleUri, panelTitle);
+    let compiled: string | void;
+    try {
+        if (engine === "pixi-vn") {
+            compiled = compilePixiVN(text, {
+                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+            }).ToJson();
+        } else {
+            compiled = compile(text, {
+                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+            }).ToJson();
+        }
+    } catch (err: any) {
+        window.showErrorMessage(`Ink compilation failed: ${err.message}`);
+        return;
+    }
+    if (!compiled) {
+        window.showErrorMessage("Ink compilation failed for an unknown reason.");
+        return; // 🔴 do not open the preview
+    }
 
-        // ✅ Send the compiled JSON to the webview
-        // 🔹 listen for messages from the webview
-        panel.webview.onDidReceiveMessage((message) => {
-            if (message.type === "ready") {
-                console.log("Webview is ready, sending compiled story.");
+    // 🔹 Get the file name
+    const panelTitle = `${name} (Preview)`;
+
+    // Open webview ONLY if there are no errors
+    const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
+        enableScripts: true,
+    });
+
+    // Tab icon
+    panel.iconPath = Uri.file(path.join(context.extensionPath, "resources/icon.png"));
+
+    const scriptUri = panel.webview.asWebviewUri(Uri.file(path.join(context.extensionPath, "dist/webview/index.js")));
+    const styleUri = panel.webview.asWebviewUri(Uri.file(path.join(context.extensionPath, "dist/webview/index.css")));
+
+    // ✅ Pass the title to getWebviewHtml
+    panel.webview.html = getWebviewHtml(scriptUri, styleUri, panelTitle);
+
+    // ✅ Send the compiled JSON to the webview
+    // 🔹 listen for messages from the webview
+    panel.webview.onDidReceiveMessage((message) => {
+        if (message.type === "ready") {
+            console.log("Webview is ready, sending compiled story.");
+            panel.webview.postMessage({
+                type: "compiled-story",
+                data: compiled,
+            });
+        }
+    });
+
+    // 🔹 Listen again to save events
+    const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
+        if (doc.uri.toString() === uri.toString()) {
+            try {
+                const updatedCompiled = compile(doc.getText(), {
+                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+                }).ToJson();
+
                 panel.webview.postMessage({
                     type: "compiled-story",
-                    data: compiled,
+                    data: updatedCompiled,
                 });
+            } catch (err: any) {
+                window.showErrorMessage(`Ink recompilation failed: ${err.message}`);
             }
-        });
+        }
+    });
 
-        // 🔹 Listen again to save events
-        const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
-            if (doc.uri.toString() === document.uri.toString()) {
-                try {
-                    const updatedCompiled = compile(doc.getText(), {
-                        LoadInkFileContents: (filename: string) =>
-                            loadInkFileContent(filename, rootFolderSetting) || "",
-                    }).ToJson();
-
-                    panel.webview.postMessage({
-                        type: "compiled-story",
-                        data: updatedCompiled,
-                    });
-                } catch (err: any) {
-                    window.showErrorMessage(`Ink recompilation failed: ${err.message}`);
-                }
-            }
-        });
-
-        // 🔹 Remove listener when the webview is closed
-        panel.onDidDispose(() => {
-            saveListener.dispose();
-        });
+    // 🔹 Remove listener when the webview is closed
+    panel.onDidDispose(() => {
+        saveListener.dispose();
     });
 }
 

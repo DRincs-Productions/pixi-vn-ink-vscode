@@ -96,8 +96,14 @@
     "commands": [
       {
         "command": "ink.preview",
-        "title": "Open Ink Preview",
+        "title": "Preview of the current file",
         "icon": "$(eye)",
+        "category": "Ink"
+      },
+      {
+        "command": "ink.runProject",
+        "title": "Run the ink project",
+        "icon": "$(play)",
         "category": "Ink"
       }
     ],
@@ -109,6 +115,13 @@
           "when": "resourceLangId == ink",
           "icon": "$(eye)",
           "tooltip": "Preview of the current file"
+        },
+        {
+          "command": "ink.runProject",
+          "group": "navigation",
+          "when": "config.ink.mainFile",
+          "icon": "$(play)",
+          "tooltip": "Run the ink project"
         }
       ]
     }
