@@ -27,7 +27,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
 
 - **Interactive Story Preview**:
   - Opened via **editor title button** <img width="17" height="16" alt="image" src="https://github.com/user-attachments/assets/68bfb6c5-aa5c-4d9a-b30d-e68593db275c" />
-  - Run Ink Project (starting from the main file) with **editor title button** (Is visible only if `ink.mainFile` is set)
+  - Run Ink Project (starting from the main file) with **editor title button** <img width="21" height="20" alt="image" src="https://github.com/user-attachments/assets/1e4c6f9c-2a82-4723-85e0-0b1008f4e710" /> (Is visible only if `ink.mainFile` is set)
   - Displays story dialogues in a **VSCode-themed webview**
   - Supports **choices**, **text input** (for pixi-vn engine), **Back** and **Restart**
   - Dialogues and choices optionally rendered with **Markdown**
