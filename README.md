@@ -23,7 +23,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - INCLUDE statements
   - Tags starting with `#`
 
-- **Interactive Ink Preview** ():
+- **Interactive Ink Preview** (To open the preview press <img width="17" height="16" alt="image" src="https://github.com/user-attachments/assets/68bfb6c5-aa5c-4d9a-b30d-e68593db275c" />):
   - Opened via **editor title button** or command palette
   - Displays story dialogues in a **VSCode-themed webview**
   - Supports **choices**, **text input**, **Back** and **Restart**
