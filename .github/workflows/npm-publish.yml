@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 20
       - run: npm i
+      - run: npm run build-webview
       - run: npm ci
       # - name: Publish to Open VSX Registry
       #   uses: HaaLeo/publish-vscode-extension@v1
