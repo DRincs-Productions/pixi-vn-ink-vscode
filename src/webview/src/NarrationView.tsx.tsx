@@ -36,13 +36,11 @@ export default function NarrationView() {
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
-            console.log("Received message:", event.data);
             if (event.data.type === "compiled-story") {
                 const storyJson: string = event.data.data;
                 const story = new Story(storyJson);
                 setStory(story);
                 const history: HistoryItem[] = initializeHistory(story);
-                console.log("Initial history:", history);
                 setHistory(history);
                 setAwaitingInput(false);
             }
