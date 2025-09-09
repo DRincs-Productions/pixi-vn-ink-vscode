@@ -48,29 +48,27 @@ This extension provides **syntax highlighting**, support for **variables, consta
 
 ---
 
-## 📂 Supported structures
+## ⚙️ Settings
 
-- `.ink` files
-- Highlighting for:
-  - **Knots and stitches with parameters**
-  - **Functions** (`=== function myFunc(x) ===`)
-  - **Function calls** (`myFunc()`)
-  - **Conditional choices** (`* { condition } [text] -> knot`)
-  - **Conditional text** (`{ condition: valueIfTrue | valueIfFalse }`)
-  - **Multiline blocks** (`{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`)
-  - **Printing variables** (`{ variableName }`)
-  - **Logic and arithmetic operators**
-  - **Variable, constant and list declarations**
-  - **Tilde logic (`~`) inside blocks**
-  - **Strings with interpolation**
-  - **Gathers** (`- (label)`)
-  - **INCLUDE statements** with real-time validation, Ctrl+Click, and suggestions
-  - **Tags** starting with `#`
-- **Preview support**:
-  - Interactive dialogues with choices and input
-  - Tags aligned to the right
-  - Markdown rendering if enabled
-  - Back and Restart functionality
+This extension provides the following configurable settings in VS Code (go to `File > Preferences > Settings` and search for `ink`):
+
+### Engine
+
+- **Setting name**: `ink.engine`
+- **Description**: Select the engine used for developing the Ink project.
+- **Options**:
+  - `Inky` (default)
+  - [`pixi-vn`](https://github.com/DRincs-Productions/pixi-vn)
+- **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.
+
+### Markup
+
+- **Setting name**: `ink.markup`
+- **Description**: Select the markup format for the project.
+- **Options**:
+  - `Markdown`
+  - `null` (default)
+- **Effect**: Enables syntax support and highlighting for the selected markup.
 
 ---
 
