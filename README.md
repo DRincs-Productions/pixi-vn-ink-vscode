@@ -56,7 +56,7 @@ This extension provides the following configurable settings in VS Code (go to `F
 ### Engine
 
 - **Setting name**: `ink.engine`
-- **Description**: Select the engine used for developing the Ink project.
+- **Description**: Select the engine used for developing the **ink** project.
 - **Options**:
   - `Inky` (default)
   - [`pixi-vn`](https://github.com/DRincs-Productions/pixi-vn)
@@ -74,7 +74,7 @@ This extension provides the following configurable settings in VS Code (go to `F
 ### Main file
 
 - **Setting name**: `ink.mainFile`
-- **Description**: Specify the main Ink file of the project. This is used as the entry point for diagnostics and execution.
+- **Description**: Specify the main **ink** file of the project. This is used as the entry point for diagnostics and execution.
 - **Options**: Path to the main `.ink` file, relative to the workspace root. Leave empty to use the currently opened file.
 - **Effect**: Sets the main file for diagnostics and execution.
 
