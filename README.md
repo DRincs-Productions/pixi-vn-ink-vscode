@@ -1,7 +1,7 @@
 # *ink* Language - Visual Studio Code Extension
 
 A Visual Studio Code extension for the ***ink*** scripting language, used in interactive narrative games (e.g. *80 Days*, *Heaven's Vault*).  
-This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, **INCLUDE statements**, **tags**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
+This extension provides **syntax highlighting**, support for **variables, constants, lists, logic, conditional choices**, **INCLUDE statements**, **tags**, **interactive narrative preview**, and built-in **error checking**, making it easier to write and maintain *ink* scripts.
 
 ---
 
@@ -21,7 +21,16 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Gathers
   - Tunnels
   - INCLUDE statements
-  - Tags
+  - Tags starting with `#`
+
+- **Interactive Ink Preview** ():
+  - Opened via **editor title button** or command palette
+  - Displays story dialogues in a **VSCode-themed webview**
+  - Supports **choices**, **text input**, **Back** and **Restart**
+  - Dialogues and choices optionally rendered with **Markdown**
+  - Tags (`#`) are aligned to the right and styled differently
+  - Preview **updates live** when the file is saved
+  - Fully respects **dark/light theme** of VSCode
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)
@@ -43,7 +52,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
 - Highlighting for:
   - **Knots and stitches with parameters**
   - **Functions** (`=== function myFunc(x) ===`)
-  - **Function calls** (`myFunc()`) are highlighted
+  - **Function calls** (`myFunc()`)
   - **Conditional choices** (`* { condition } [text] -> knot`)
   - **Conditional text** (`{ condition: valueIfTrue | valueIfFalse }`)
   - **Multiline blocks** (`{ stopping: ... }`, `{ shuffle: ... }`, `{ cycle: ... }`, `{ once: ... }`, `{ shuffle once: ... }`, `{ shuffle stopping: ... }`)
@@ -55,6 +64,11 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - **Gathers** (`- (label)`)
   - **INCLUDE statements** with real-time validation, Ctrl+Click, and suggestions
   - **Tags** starting with `#`
+- **Preview support**:
+  - Interactive dialogues with choices and input
+  - Tags aligned to the right
+  - Markdown rendering if enabled
+  - Back and Restart functionality
 
 ---
 
@@ -65,7 +79,6 @@ Planned for future releases:
 - Add hover pop-ups above knots, functions, and variables
 - Enable CTRL+Click functionality for knots, functions, and variables
 - Allow folding/collapsing of knots and functions
-- Add a preview panel similar to Inky
 - Add a counter for knots and word count
 - Add a flag to enable syntax highlighting for Markdown
 - Add a flag to enable syntax highlighting for Pixi'VN
