@@ -30,9 +30,25 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
     return history;
 }
 
+function Text({ children }: { children: string }) {
+    const [markup, setMarkup] = useState<"Markdown">();
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.data.type === "set-markup") {
+                setMarkup(event.data.markup);
+            }
+        };
+        window.addEventListener("message", handler);
+        vscode.postMessage({ type: "ready" });
+        return () => window.removeEventListener("message", handler);
+    }, []);
+
+    if (markup === "Markdown") return <ReactMarkdown>{children}</ReactMarkdown>;
+    else return children;
+}
+
 export default function NarrationView() {
     const [story, setStory] = useState<Story>();
-    const [markup, setMarkup] = useState<"Markdown">();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
     const [awaitingInput, setAwaitingInput] = useState(false);
@@ -49,9 +65,6 @@ export default function NarrationView() {
                 const history: HistoryItem[] = nextChoices(story, [], oldChoices);
                 setHistory(history);
                 setAwaitingInput(false);
-            }
-            if (event.data.type === "set-markup") {
-                setMarkup(event.data.markup);
             }
         };
         window.addEventListener("message", handler);
@@ -143,7 +156,7 @@ export default function NarrationView() {
                                     fontStyle: "italic",
                                 }}
                             >
-                                {markup === "Markdown" ? <ReactMarkdown>{tag}</ReactMarkdown> : tag}
+                                {tag}
                             </div>
                         ))}
 
@@ -156,7 +169,7 @@ export default function NarrationView() {
                                     fontStyle: "normal",
                                 }}
                             >
-                                {markup === "Markdown" ? <ReactMarkdown>{item.dialogue}</ReactMarkdown> : item.dialogue}
+                                <Text>{item.dialogue}</Text>
                             </div>
                         )}
 
@@ -194,7 +207,7 @@ export default function NarrationView() {
                                     justifyContent: "flex-start",
                                 }}
                             >
-                                {index + 1}. {markup === "Markdown" ? <ReactMarkdown>{c.text}</ReactMarkdown> : c.text}
+                                {index + 1}. <Text>{c.text}</Text>
                             </Button>
                         ))}
                     </div>
