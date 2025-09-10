@@ -21,6 +21,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Changed
 
 - Webview title now shows the current filename followed by `(Preview)` instead of the generic "Ink Preview"
+- Add markup fetching in the openWebview function and send the markup to the webview
 
 ### Fixed
 

@@ -74,6 +74,7 @@ export async function openWebview(
 
     const config = workspace.getConfiguration("ink");
     const engine = config.get<"Inky" | "pixi-vn">("engine");
+    const markup = config.get<string | null>("markup");
 
     let compiled: string | void;
     try {
@@ -135,6 +136,10 @@ export async function openWebview(
                 panel.webview.postMessage({
                     type: "compiled-story",
                     data: updatedCompiled,
+                });
+                panel.webview.postMessage({
+                    type: "set-markup",
+                    data: markup,
                 });
             } catch (err: any) {
                 window.showErrorMessage(`Ink recompilation failed: ${err.message}`);
