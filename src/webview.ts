@@ -25,25 +25,38 @@ export function previewCommand(context: ExtensionContext) {
 export function runProjectCommand(context: ExtensionContext) {
     return commands.registerCommand("ink.runProject", async () => {
         const config = workspace.getConfiguration("ink");
-        const mainFile = config.get<string>("mainFile");
+        const mainFileSetting = config.get<string>("mainFile");
 
-        if (!mainFile) {
+        if (!mainFileSetting) {
             window.showErrorMessage("ink.mainFile is not set in settings.");
             return;
         }
 
-        if (!fs.existsSync(mainFile)) {
-            window.showErrorMessage(`Main file not found: ${mainFile}`);
+        const editor = window.activeTextEditor;
+
+        if (!editor) {
+            window.showErrorMessage("No active editor found.");
             return;
         }
 
-        const rootFolderSetting = path.dirname(mainFile);
-        const text = fs.readFileSync(mainFile, "utf8");
+        const rootFolderSetting = getInkRootFolder(editor.document);
+
+        // Risolvi percorso assoluto a partire da rootFolderSetting
+        const mainFilePath = path.isAbsolute(mainFileSetting)
+            ? mainFileSetting
+            : path.join(rootFolderSetting, mainFileSetting);
+
+        if (!fs.existsSync(mainFilePath)) {
+            window.showErrorMessage(`Main file not found: ${mainFilePath}`);
+            return;
+        }
+
+        const text = fs.readFileSync(mainFilePath, "utf8");
 
         return await openWebview(context, rootFolderSetting, {
-            name: path.basename(mainFile),
+            name: path.basename(mainFilePath),
             text,
-            uri: Uri.file(mainFile),
+            uri: Uri.file(mainFilePath),
         });
     });
 }
