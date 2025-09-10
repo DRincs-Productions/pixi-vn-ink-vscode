@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Fixed
+
+- Fix main file path resolution in runProject command and improve error handling
+
 ## [0.4.2] - 2025-09-09
 
 ### Added
