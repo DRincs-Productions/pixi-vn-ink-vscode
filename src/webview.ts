@@ -122,6 +122,11 @@ export async function openWebview(
                 type: "compiled-story",
                 data: compiled,
             });
+            console.log("Sending markup setting:", markup);
+            panel.webview.postMessage({
+                type: "set-markup",
+                data: markup,
+            });
         }
     });
 
@@ -136,10 +141,6 @@ export async function openWebview(
                 panel.webview.postMessage({
                     type: "compiled-story",
                     data: updatedCompiled,
-                });
-                panel.webview.postMessage({
-                    type: "set-markup",
-                    data: markup,
                 });
             } catch (err: any) {
                 window.showErrorMessage(`Ink recompilation failed: ${err.message}`);

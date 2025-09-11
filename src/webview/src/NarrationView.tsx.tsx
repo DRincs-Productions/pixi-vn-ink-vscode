@@ -3,6 +3,8 @@ import type { Choice } from "inkjs/engine/Choice";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
 import { Button } from "./components/ui/button";
 import { Separator } from "./components/ui/separator";
 import { vscode } from "./vscode";
@@ -31,11 +33,11 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
 }
 
 function Text({ children }: { children: string }) {
-    const [markup, setMarkup] = useState<"Markdown">();
+    const [markup, setMarkup] = useState<"Markdown" | null>();
     useEffect(() => {
         const handler = (event: MessageEvent) => {
             if (event.data.type === "set-markup") {
-                setMarkup(event.data.markup);
+                setMarkup(event.data.data);
             }
         };
         window.addEventListener("message", handler);
@@ -43,7 +45,12 @@ function Text({ children }: { children: string }) {
         return () => window.removeEventListener("message", handler);
     }, []);
 
-    if (markup === "Markdown") return <ReactMarkdown>{children}</ReactMarkdown>;
+    if (markup === "Markdown")
+        return (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                {children}
+            </ReactMarkdown>
+        );
     else return children;
 }
 
