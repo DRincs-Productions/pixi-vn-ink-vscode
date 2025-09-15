@@ -4,7 +4,7 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
-## [0.4.3] - 2025-09-15
+## [0.4.4] - 2025-09-15
 
 ### Added
 
