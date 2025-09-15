@@ -1,7 +1,7 @@
 import { Story } from "inkjs/compiler/Compiler";
 import type { Choice } from "inkjs/engine/Choice";
 import { ArrowLeft, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -62,6 +62,17 @@ export default function NarrationView() {
     const [oldChoices, setOldChoices] = useState<number[]>([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices } = currentState || {};
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (el) {
+            el.scrollTo({
+                top: el.scrollHeight,
+                behavior: "smooth",
+            });
+        }
+    }, [history]);
 
     useEffect(() => {
         const handler = (event: MessageEvent) => {
@@ -146,6 +157,7 @@ export default function NarrationView() {
 
             {/* Dialogues */}
             <div
+                ref={scrollRef}
                 className='flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border'
                 style={{
                     backgroundColor: "var(--vscode-editor-background)",
