@@ -91,6 +91,10 @@
 				{
 					"name": "keyword.other.choice.ink",
 					"match": "^\\s*([\\*\\+]\\s*)+"
+				},
+				{
+					"name": "keyword.other.brackets.choice.ink",
+					"match": "(?<!\\\\)[\\[\\]]"
 				}
 			]
 		},
