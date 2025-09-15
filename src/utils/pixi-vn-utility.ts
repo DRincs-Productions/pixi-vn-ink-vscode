@@ -25,7 +25,7 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
                 const match = error.message.match(/Divert target not found: '-> (\w+)'/);
                 if (match && match[1]) {
                     const label = match[1];
-                    const textToAdd = `\n\n=== ${label} ===\n\n-> DONE`;
+                    const textToAdd = `\n\n=== ${label} ===\n\n# run ${label}\n\n-> DONE`;
                     text = text.concat(textToAdd);
                     return getErrorsPixiVN(text, [...labelToRemove, label], initialVarsToRemove);
                 }
@@ -34,7 +34,7 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
                 const match = error.message.match(/Unresolved variable: (\w+)/);
                 if (match && match[1]) {
                     const varName = match[1];
-                    const textToAdd = `VAR ${varName} = ""\n\n`;
+                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
                     text = textToAdd.concat(text);
                     return getErrorsPixiVN(text, labelToRemove, [...initialVarsToRemove, varName]);
                 }
