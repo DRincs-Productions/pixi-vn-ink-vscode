@@ -324,7 +324,7 @@
 					"end": "(?<!\\\\)\\}",
 					"patterns": [
 						{
-							"name": "meta.conditional.condition.ink",
+							"name": "keyword.other.conditional.ink",
 							"begin": "(?<=\\{)\\s*",
 							"end": ":",
 							"patterns": [
@@ -334,7 +334,7 @@
 							]
 						},
 						{
-							"name": "keyword.operator.ternary.ink",
+							"name": "keyword.other.conditional.ink",
 							"match": ":"
 						},
 						{
@@ -345,6 +345,24 @@
 								{
 									"name": "keyword.other.alternative.ink",
 									"match": "(?<!\\\\)\\|"
+								},
+								{
+									"include": "#multilineBlocks"
+								},
+								{
+									"include": "#conditionalBlocks"
+								},
+								{
+									"include": "#conditionalChoices"
+								},
+								{
+									"include": "#conditionalText"
+								},
+								{
+									"include": "#variableText"
+								},
+								{
+									"include": "#printingVariables"
 								}
 							]
 						}
