@@ -4,6 +4,13 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [0.4.3] - 2025-09-15
+
+### Added
+
+- Auto-scroll down the webview dialog list
+- Animations in the webview
+
 ## [0.4.3] - 2025-09-11
 
 ### Fixed
