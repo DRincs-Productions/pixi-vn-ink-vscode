@@ -519,9 +519,6 @@
 					"include": "#comments"
 				},
 				{
-					"include": "#knots"
-				},
-				{
 					"name": "keyword.control.return.ink",
 					"match": "\\breturn\\b"
 				},
