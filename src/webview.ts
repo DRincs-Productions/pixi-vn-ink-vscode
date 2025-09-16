@@ -134,9 +134,19 @@ export async function openWebview(
     const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
         if (doc.uri.toString() === uri.toString()) {
             try {
-                const updatedCompiled = compile(doc.getText(), {
-                    LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                }).ToJson();
+                const engine = config.get<"Inky" | "pixi-vn">("engine");
+                let updatedCompiled: string | void;
+                if (engine === "pixi-vn") {
+                    updatedCompiled = compilePixiVN(text, {
+                        LoadInkFileContents: (filename: string) =>
+                            loadInkFileContent(filename, rootFolderSetting) || "",
+                    }).ToJson();
+                } else {
+                    updatedCompiled = compile(text, {
+                        LoadInkFileContents: (filename: string) =>
+                            loadInkFileContent(filename, rootFolderSetting) || "",
+                    }).ToJson();
+                }
 
                 panel.webview.postMessage({
                     type: "compiled-story",
