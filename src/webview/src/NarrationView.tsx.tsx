@@ -1,5 +1,5 @@
 import { Game, narration } from "@drincs/pixi-vn";
-import { onInkHashtagScript } from "@drincs/pixi-vn-ink";
+import { importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -111,14 +111,19 @@ export default function NarrationView() {
     }, [history]);
 
     useEffect(() => {
-        const handler = (event: MessageEvent) => {
+        const handler = async (event: MessageEvent) => {
             if (event.data.type === "compiled-story") {
-                const storyJson: string = event.data.data;
+                const storyJson = event.data.data;
                 const engine: "Inky" | "pixi-vn" = event.data.engine;
                 setEngine(engine);
                 switch (engine) {
                     case "pixi-vn": {
-                        console.log("Using pixi-vn engine");
+                        Game.clear();
+                        importJson(storyJson);
+                        await narration.call("__pixi_vn_start__", {});
+                        const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
+                        setHistory(history);
+                        setAwaitingInput(false);
                         break;
                     }
                     case "Inky":
