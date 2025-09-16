@@ -118,12 +118,18 @@ export default function NarrationView() {
                 setEngine(engine);
                 switch (engine) {
                     case "pixi-vn": {
-                        Game.clear();
-                        await importJson(convertInkStoryToJson(storyJson)!);
-                        await narration.call("__pixi_vn_start__", {});
-                        const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
-                        setHistory(history);
-                        setAwaitingInput(false);
+                        try {
+                            Game.clear();
+                            const json = convertInkStoryToJson(storyJson);
+                            await importJson(json!);
+                            await narration.call("__pixi_vn_start__", {});
+                            const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
+                            setHistory(history);
+                            setAwaitingInput(false);
+                            vscode.postMessage({ type: "log", message: "Pixi-VN story loaded.", data: json });
+                        } catch (e) {
+                            vscode.postMessage({ type: "log", message: "Error loading Pixi-VN story.", data: e });
+                        }
                         break;
                     }
                     case "Inky":
@@ -139,7 +145,7 @@ export default function NarrationView() {
             }
         };
         window.addEventListener("message", handler);
-        vscode.postMessage({ type: "ready" });
+        vscode.postMessage({ type: "log", message: "NarrationView mounted, waiting for story." });
         return () => window.removeEventListener("message", handler);
     }, [oldChoices]);
 

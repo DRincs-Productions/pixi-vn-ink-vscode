@@ -116,18 +116,8 @@ export async function openWebview(
     // ✅ Send the compiled JSON to the webview
     // 🔹 listen for messages from the webview
     panel.webview.onDidReceiveMessage((message) => {
-        if (message.type === "ready") {
-            console.log("Webview is ready, sending compiled story.");
-            panel.webview.postMessage({
-                type: "compiled-story",
-                engine: engine,
-                data: compiled,
-            });
-            console.log("Sending markup setting:", markup);
-            panel.webview.postMessage({
-                type: "set-markup",
-                data: markup,
-            });
+        if (message.type === "log") {
+            console.log("Log from webview:", message.message, message.data);
         }
     });
 
