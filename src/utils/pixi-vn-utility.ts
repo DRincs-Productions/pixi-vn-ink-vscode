@@ -1,4 +1,4 @@
-import { Compiler } from "inkjs/compiler/Compiler";
+import { Compiler, Story } from "inkjs/compiler/Compiler";
 import { IFileHandler } from "inkjs/compiler/IFileHandler";
 import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
 
@@ -75,7 +75,14 @@ export function compilePixiVN(
             sourceFilename: null,
         });
         const json = compiler.Compile();
-        return json;
+        const obj = JSON.parse(json.ToJson()!);
+        if (obj && "root" in obj && obj.root.length === 3) {
+            obj.root[2] = {
+                __pixi_vn_start__: obj.root[0],
+                ...obj.root[2],
+            };
+        }
+        return new Story(JSON.stringify(obj));
     } catch (e) {
         const error = issues.find((em) => em.type === ErrorType.Error);
         if (error) {
