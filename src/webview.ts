@@ -134,7 +134,7 @@ export async function openWebview(
     const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
         if (doc.uri.toString() === uri.toString()) {
             try {
-                const engine = config.get<"Inky" | "pixi-vn">("engine");
+                const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
                 let updatedCompiled: string | void;
                 if (engine === "pixi-vn") {
                     updatedCompiled = compilePixiVN(text, {
@@ -150,6 +150,7 @@ export async function openWebview(
 
                 panel.webview.postMessage({
                     type: "compiled-story",
+                    engine: engine,
                     data: updatedCompiled,
                 });
             } catch (err: any) {
