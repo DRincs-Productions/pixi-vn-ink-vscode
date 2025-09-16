@@ -81,7 +81,7 @@ export async function openWebview(
         if (engine === "pixi-vn") {
             compiled = compilePixiVN(text, {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            }).ToJson();
+            });
         } else {
             compiled = compile(text, {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
@@ -120,6 +120,7 @@ export async function openWebview(
             console.log("Webview is ready, sending compiled story.");
             panel.webview.postMessage({
                 type: "compiled-story",
+                engine: engine,
                 data: compiled,
             });
             console.log("Sending markup setting:", markup);
@@ -140,7 +141,7 @@ export async function openWebview(
                     updatedCompiled = compilePixiVN(text, {
                         LoadInkFileContents: (filename: string) =>
                             loadInkFileContent(filename, rootFolderSetting) || "",
-                    }).ToJson();
+                    });
                 } else {
                     updatedCompiled = compile(text, {
                         LoadInkFileContents: (filename: string) =>

@@ -1,4 +1,3 @@
-import { convertInkStoryToJson } from "@drincs/pixi-vn-ink";
 import { Compiler } from "inkjs/compiler/Compiler";
 import { IFileHandler } from "inkjs/compiler/IFileHandler";
 import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
@@ -82,7 +81,7 @@ export function compilePixiVN(
                 ...json.root[2],
             };
         }
-        return convertInkStoryToJson(json);
+        return json;
     } catch (e) {
         const error = issues.find((em) => em.type === ErrorType.Error);
         if (error) {

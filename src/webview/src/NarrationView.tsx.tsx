@@ -1,5 +1,5 @@
 import { Game, narration } from "@drincs/pixi-vn";
-import { importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
+import { convertInkStoryToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -119,7 +119,7 @@ export default function NarrationView() {
                 switch (engine) {
                     case "pixi-vn": {
                         Game.clear();
-                        importJson(storyJson);
+                        importJson(convertInkStoryToJson(storyJson)!);
                         await narration.call("__pixi_vn_start__", {});
                         const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
                         setHistory(history);
