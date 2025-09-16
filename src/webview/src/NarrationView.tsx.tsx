@@ -119,7 +119,7 @@ export default function NarrationView() {
                 switch (engine) {
                     case "pixi-vn": {
                         Game.clear();
-                        importJson(convertInkStoryToJson(storyJson)!);
+                        await importJson(convertInkStoryToJson(storyJson)!);
                         await narration.call("__pixi_vn_start__", {});
                         const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
                         setHistory(history);
