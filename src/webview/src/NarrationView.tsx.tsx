@@ -55,6 +55,7 @@ function Text({ children }: { children: string }) {
 }
 
 export default function NarrationView() {
+    const [engine, setEngine] = useState<"Inky" | "pixi-vn">();
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
@@ -78,11 +79,23 @@ export default function NarrationView() {
         const handler = (event: MessageEvent) => {
             if (event.data.type === "compiled-story") {
                 const storyJson: string = event.data.data;
-                const story = new Story(storyJson);
-                setStory(story);
-                const history: HistoryItem[] = nextChoices(story, [], oldChoices);
-                setHistory(history);
-                setAwaitingInput(false);
+                const engine: "Inky" | "pixi-vn" = event.data.engine;
+                setEngine(engine);
+                switch (engine) {
+                    case "pixi-vn": {
+                        console.log("Using pixi-vn engine");
+                        break;
+                    }
+                    case "Inky":
+                    default: {
+                        const story = new Story(storyJson);
+                        setStory(story);
+                        const history: HistoryItem[] = nextChoices(story, [], oldChoices);
+                        setHistory(history);
+                        setAwaitingInput(false);
+                        break;
+                    }
+                }
             }
         };
         window.addEventListener("message", handler);
@@ -91,32 +104,56 @@ export default function NarrationView() {
     }, [oldChoices]);
 
     const makeChoice = (choice: Choice) => {
-        if (!story) return;
-        let newHistory = [...history];
-        story.ChooseChoiceIndex(choice.index);
-        setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-        newHistory = nextChoices(story, newHistory);
-        setHistory(newHistory);
+        switch (engine) {
+            case "pixi-vn": {
+                break;
+            }
+            case "Inky":
+            default: {
+                if (!story) return;
+                let newHistory = [...history];
+                story.ChooseChoiceIndex(choice.index);
+                setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+                newHistory = nextChoices(story, newHistory);
+                setHistory(newHistory);
+            }
+        }
     };
 
     const submitInput = () => {};
 
     const goBack = () => {
-        if (!story || history.length === 0) return;
+        switch (engine) {
+            case "pixi-vn": {
+                break;
+            }
+            case "Inky":
+            default: {
+                if (!story || history.length === 0) return;
 
-        story.ResetState();
-        oldChoices.pop();
-        const newHistory = nextChoices(story, [], oldChoices);
+                story.ResetState();
+                oldChoices.pop();
+                const newHistory = nextChoices(story, [], oldChoices);
 
-        setHistory(newHistory);
+                setHistory(newHistory);
+            }
+        }
     };
 
     const restart = () => {
-        story?.ResetState();
-        const newHistory = nextChoices(story!);
-        setHistory(newHistory);
-        setAwaitingInput(false);
-        setOldChoices([]);
+        switch (engine) {
+            case "pixi-vn": {
+                break;
+            }
+            case "Inky":
+            default: {
+                story?.ResetState();
+                const newHistory = nextChoices(story!);
+                setHistory(newHistory);
+                setAwaitingInput(false);
+                setOldChoices([]);
+            }
+        }
     };
 
     return (
