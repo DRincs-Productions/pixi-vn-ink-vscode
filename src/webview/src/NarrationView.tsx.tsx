@@ -1,5 +1,6 @@
+import { Game, narration } from "@drincs/pixi-vn";
+import { onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
-import type { Choice } from "inkjs/engine/Choice";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -10,11 +11,16 @@ import { Separator } from "./components/ui/separator";
 import { vscode } from "./vscode";
 
 type HistoryItem = {
-    dialogue: string | null;
+    dialogue?: string | null;
     choices?: Choice[];
     tags: string[] | null;
     choice?: number;
     input?: string;
+};
+
+type Choice = {
+    index: number;
+    text: string;
 };
 
 function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
@@ -27,6 +33,35 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
         const text = story.Continue();
         const choices = story.currentChoices;
         const tags = story.currentTags;
+        history.push({ dialogue: text, choices, tags });
+    }
+    return history;
+}
+
+async function nextChoicesPixi(history: HistoryItem[] = [], oldChoices: number[] = []): Promise<HistoryItem[]> {
+    const list = [...oldChoices];
+    let tags: string[] = [];
+    onInkHashtagScript((script) => {
+        const tag: string = script.join(" ");
+        tags.push(tag);
+        return true;
+    });
+    while (narration.canContinue || (!narration.canContinue && list.length > 0)) {
+        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
+            index: c.choiceIndex,
+            text: Array.isArray(c.text) ? c.text.join("") : c.text,
+        }));
+        if (!narration.canContinue && list.length > 0) {
+            const choiceIndex = list.shift();
+            const choice = narration.choiceMenuOptions?.find((c) => c.choiceIndex === choiceIndex);
+            await narration.selectChoice(choice!, {});
+        }
+        tags = [];
+        await narration.continue({});
+        let text = narration.dialogue?.text;
+        if (Array.isArray(text)) {
+            text = text.join("");
+        }
         history.push({ dialogue: text, choices, tags });
     }
     return history;
@@ -103,9 +138,16 @@ export default function NarrationView() {
         return () => window.removeEventListener("message", handler);
     }, [oldChoices]);
 
-    const makeChoice = (choice: Choice) => {
+    const makeChoice = async (choice: Choice) => {
         switch (engine) {
             case "pixi-vn": {
+                let newHistory = [...history];
+                const pixiChoice = narration.choiceMenuOptions?.find((c) => c.choiceIndex === choice.index);
+                if (!pixiChoice) return;
+                await narration.selectChoice(pixiChoice, {});
+                setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+                newHistory = await nextChoicesPixi(newHistory);
+                setHistory(newHistory);
                 break;
             }
             case "Inky":
@@ -122,9 +164,14 @@ export default function NarrationView() {
 
     const submitInput = () => {};
 
-    const goBack = () => {
+    const goBack = async () => {
         switch (engine) {
             case "pixi-vn": {
+                Game.clear();
+                await narration.call("__pixi_vn_start__", {});
+                oldChoices.pop();
+                const newHistory = await nextChoicesPixi([], oldChoices);
+                setHistory(newHistory);
                 break;
             }
             case "Inky":
@@ -140,9 +187,15 @@ export default function NarrationView() {
         }
     };
 
-    const restart = () => {
+    const restart = async () => {
         switch (engine) {
             case "pixi-vn": {
+                Game.clear();
+                await narration.call("__pixi_vn_start__", {});
+                const newHistory = await nextChoicesPixi([], []);
+                setHistory(newHistory);
+                setAwaitingInput(false);
+                setOldChoices([]);
                 break;
             }
             case "Inky":
