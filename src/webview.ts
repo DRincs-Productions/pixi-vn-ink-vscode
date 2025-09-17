@@ -73,7 +73,7 @@ export async function openWebview(
     const { name, text, uri } = file;
 
     const config = workspace.getConfiguration("ink");
-    const engine = config.get<"Inky" | "pixi-vn">("engine");
+    const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
     const markup = config.get<string | null>("markup");
 
     let compiled: string | void;
@@ -118,6 +118,18 @@ export async function openWebview(
     panel.webview.onDidReceiveMessage((message) => {
         if (message.type === "log") {
             console.log("Log from webview:", message.message, message.data);
+        }
+        if (message.type === "ready") {
+            console.log("Webview is ready, sending compiled story.");
+            panel.webview.postMessage({
+                type: "compiled-story",
+                engine: engine,
+                data: compiled,
+            });
+            panel.webview.postMessage({
+                type: "set-markup",
+                data: markup,
+            });
         }
     });
 
