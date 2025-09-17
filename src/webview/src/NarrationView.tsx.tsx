@@ -76,6 +76,7 @@ function Text({ children }: { children: string }) {
             }
         };
         window.addEventListener("message", handler);
+        vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
     }, []);
 
