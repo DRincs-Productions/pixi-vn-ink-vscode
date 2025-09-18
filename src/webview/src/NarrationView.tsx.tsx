@@ -51,17 +51,17 @@ async function nextChoicesPixi(history: HistoryItem[] = [], oldChoices: number[]
         isEnd = true;
     });
     while ((!isEnd && narration.canContinue) || (!narration.canContinue && list.length > 0)) {
-        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
-            index: c.choiceIndex,
-            text: Array.isArray(c.text) ? c.text.join("") : c.text,
-        }));
         if (!narration.canContinue && list.length > 0) {
             const choiceIndex = list.shift();
-            const choice = narration.choiceMenuOptions?.find((c) => c.choiceIndex === choiceIndex);
+            const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
             await narration.selectChoice(choice!, {});
         }
         tags = [];
         await narration.continue({});
+        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
+            index: c.choiceIndex,
+            text: Array.isArray(c.text) ? c.text.join("") : c.text,
+        }));
         let text = narration.dialogue?.text;
         if (Array.isArray(text)) {
             text = text.join("");
@@ -162,7 +162,7 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 let newHistory = [...history];
-                const pixiChoice = narration.choiceMenuOptions?.find((c) => c.choiceIndex === choice.index);
+                const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
                 if (!pixiChoice) return;
                 await narration.selectChoice(pixiChoice, {});
                 setOldChoices((oldChoices) => [...oldChoices, choice.index]);
