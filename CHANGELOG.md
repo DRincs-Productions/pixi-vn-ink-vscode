@@ -4,7 +4,11 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
-## [Unreleased]
+## [0.5.0] - 2025-09-18
+
+### Changed
+
+- If the pixi-vn engine is used, the ink file will be compiled with pixi-vn-ink and not with inkjs
 
 ### Fixed
 
