@@ -1,5 +1,6 @@
+import { Game, narration } from "@drincs/pixi-vn";
+import { convertInkStoryToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
-import type { Choice } from "inkjs/engine/Choice";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -10,11 +11,16 @@ import { Separator } from "./components/ui/separator";
 import { vscode } from "./vscode";
 
 type HistoryItem = {
-    dialogue: string | null;
+    dialogue?: string | null;
     choices?: Choice[];
     tags: string[] | null;
     choice?: number;
     input?: string;
+};
+
+type Choice = {
+    index: number;
+    text: string;
 };
 
 function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
@@ -27,6 +33,39 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
         const text = story.Continue();
         const choices = story.currentChoices;
         const tags = story.currentTags;
+        history.push({ dialogue: text, choices, tags });
+    }
+    return history;
+}
+
+async function nextChoicesPixi(history: HistoryItem[] = [], oldChoices: number[] = []): Promise<HistoryItem[]> {
+    const list = [...oldChoices];
+    let isEnd = false;
+    let tags: string[] = [];
+    onInkHashtagScript((script) => {
+        const tag: string = script.join(" ");
+        tags.push(tag);
+        return true;
+    });
+    Game.onEnd(() => {
+        isEnd = true;
+    });
+    while ((!isEnd && narration.canContinue) || (!narration.canContinue && list.length > 0)) {
+        if (!narration.canContinue && list.length > 0) {
+            const choiceIndex = list.shift();
+            const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
+            await narration.selectChoice(choice!, {});
+        }
+        tags = [];
+        await narration.continue({});
+        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
+            index: c.choiceIndex,
+            text: Array.isArray(c.text) ? c.text.join("") : c.text,
+        }));
+        let text = narration.dialogue?.text;
+        if (Array.isArray(text)) {
+            text = text.join("");
+        }
         history.push({ dialogue: text, choices, tags });
     }
     return history;
@@ -55,6 +94,8 @@ function Text({ children }: { children: string }) {
 }
 
 export default function NarrationView() {
+    const [engine, setEngine] = useState<"Inky" | "pixi-vn">();
+    const [log, setLog] = useState<{ text: string; data?: any }>();
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
@@ -75,14 +116,37 @@ export default function NarrationView() {
     }, [history]);
 
     useEffect(() => {
-        const handler = (event: MessageEvent) => {
+        const handler = async (event: MessageEvent) => {
             if (event.data.type === "compiled-story") {
-                const storyJson: string = event.data.data;
-                const story = new Story(storyJson);
-                setStory(story);
-                const history: HistoryItem[] = nextChoices(story, [], oldChoices);
-                setHistory(history);
-                setAwaitingInput(false);
+                const storyJson = event.data.data;
+                const engine: "Inky" | "pixi-vn" = event.data.engine;
+                setEngine(engine);
+                switch (engine) {
+                    case "pixi-vn": {
+                        try {
+                            Game.clear();
+                            const json = convertInkStoryToJson(storyJson);
+                            await importJson(json!);
+                            await narration.call("__pixi_vn_start__", {});
+                            const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
+                            setHistory(history);
+                            setAwaitingInput(false);
+                            setLog({ text: "Pixi-VN story loaded" });
+                        } catch (e) {
+                            setLog({ text: "Error loading Pixi-VN story", data: (e as any).toString() });
+                        }
+                        break;
+                    }
+                    case "Inky":
+                    default: {
+                        const story = new Story(storyJson);
+                        setStory(story);
+                        const history: HistoryItem[] = nextChoices(story, [], oldChoices);
+                        setHistory(history);
+                        setAwaitingInput(false);
+                        break;
+                    }
+                }
             }
         };
         window.addEventListener("message", handler);
@@ -90,33 +154,79 @@ export default function NarrationView() {
         return () => window.removeEventListener("message", handler);
     }, [oldChoices]);
 
-    const makeChoice = (choice: Choice) => {
-        if (!story) return;
-        let newHistory = [...history];
-        story.ChooseChoiceIndex(choice.index);
-        setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-        newHistory = nextChoices(story, newHistory);
-        setHistory(newHistory);
+    useEffect(() => {
+        vscode.postMessage({ type: "log", message: log?.text, data: log?.data });
+    }, [log]);
+
+    const makeChoice = async (choice: Choice) => {
+        switch (engine) {
+            case "pixi-vn": {
+                let newHistory = [...history];
+                const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
+                if (!pixiChoice) return;
+                await narration.selectChoice(pixiChoice, {});
+                setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+                newHistory = await nextChoicesPixi(newHistory);
+                setHistory(newHistory);
+                break;
+            }
+            case "Inky":
+            default: {
+                if (!story) return;
+                let newHistory = [...history];
+                story.ChooseChoiceIndex(choice.index);
+                setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+                newHistory = nextChoices(story, newHistory);
+                setHistory(newHistory);
+            }
+        }
     };
 
     const submitInput = () => {};
 
-    const goBack = () => {
-        if (!story || history.length === 0) return;
+    const goBack = async () => {
+        switch (engine) {
+            case "pixi-vn": {
+                Game.clear();
+                await narration.call("__pixi_vn_start__", {});
+                oldChoices.pop();
+                const newHistory = await nextChoicesPixi([], oldChoices);
+                setHistory(newHistory);
+                break;
+            }
+            case "Inky":
+            default: {
+                if (!story || history.length === 0) return;
 
-        story.ResetState();
-        oldChoices.pop();
-        const newHistory = nextChoices(story, [], oldChoices);
+                story.ResetState();
+                oldChoices.pop();
+                const newHistory = nextChoices(story, [], oldChoices);
 
-        setHistory(newHistory);
+                setHistory(newHistory);
+            }
+        }
     };
 
-    const restart = () => {
-        story?.ResetState();
-        const newHistory = nextChoices(story!);
-        setHistory(newHistory);
-        setAwaitingInput(false);
-        setOldChoices([]);
+    const restart = async () => {
+        switch (engine) {
+            case "pixi-vn": {
+                Game.clear();
+                await narration.call("__pixi_vn_start__", {});
+                const newHistory = await nextChoicesPixi([], []);
+                setHistory(newHistory);
+                setAwaitingInput(false);
+                setOldChoices([]);
+                break;
+            }
+            case "Inky":
+            default: {
+                story?.ResetState();
+                const newHistory = nextChoices(story!);
+                setHistory(newHistory);
+                setAwaitingInput(false);
+                setOldChoices([]);
+            }
+        }
     };
 
     return (

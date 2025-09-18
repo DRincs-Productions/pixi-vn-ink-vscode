@@ -74,7 +74,13 @@ export function compilePixiVN(
             pluginNames: [],
             sourceFilename: null,
         });
-        const json = compiler.Compile();
+        const json = JSON.parse(compiler.Compile().ToJson()!);
+        if (json && "root" in json && json.root.length === 3) {
+            json.root[2] = {
+                __pixi_vn_start__: json.root[0],
+                ...json.root[2],
+            };
+        }
         return json;
     } catch (e) {
         const error = issues.find((em) => em.type === ErrorType.Error);
