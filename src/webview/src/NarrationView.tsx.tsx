@@ -112,7 +112,6 @@ export default function NarrationView() {
 
     useEffect(() => {
         const handler = async (event: MessageEvent) => {
-            vscode.postMessage({ type: "log", message: "Received message.", event });
             if (event.data.type === "compiled-story") {
                 const storyJson = event.data.data;
                 const engine: "Inky" | "pixi-vn" = event.data.engine;
@@ -120,18 +119,15 @@ export default function NarrationView() {
                 switch (engine) {
                     case "pixi-vn": {
                         try {
-                            vscode.postMessage({ type: "log", message: "Loading Pixi-VN story.", data: storyJson });
                             Game.clear();
                             const json = convertInkStoryToJson(storyJson);
-                            vscode.postMessage({ type: "log", message: "Pixi-VN story converted.", data: json });
                             await importJson(json!);
                             await narration.call("__pixi_vn_start__", {});
                             const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
                             setHistory(history);
                             setAwaitingInput(false);
-                            vscode.postMessage({ type: "log", message: "Pixi-VN story loaded.", data: json });
                         } catch (e) {
-                            vscode.postMessage({ type: "log", message: "Error loading Pixi-VN story.", data: e });
+                            console.error("Failed to load Pixi-VN story:", e);
                         }
                         break;
                     }
