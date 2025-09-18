@@ -40,13 +40,17 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
 
 async function nextChoicesPixi(history: HistoryItem[] = [], oldChoices: number[] = []): Promise<HistoryItem[]> {
     const list = [...oldChoices];
+    let isEnd = false;
     let tags: string[] = [];
     onInkHashtagScript((script) => {
         const tag: string = script.join(" ");
         tags.push(tag);
         return true;
     });
-    while (narration.canContinue || (!narration.canContinue && list.length > 0)) {
+    Game.onEnd(() => {
+        isEnd = true;
+    });
+    while ((!isEnd && narration.canContinue) || (!narration.canContinue && list.length > 0)) {
         const choices: Choice[] | undefined = narration.choices?.map((c) => ({
             index: c.choiceIndex,
             text: Array.isArray(c.text) ? c.text.join("") : c.text,
@@ -91,6 +95,7 @@ function Text({ children }: { children: string }) {
 
 export default function NarrationView() {
     const [engine, setEngine] = useState<"Inky" | "pixi-vn">();
+    const [log, setLog] = useState<{ text: string; data?: any }>();
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string>();
@@ -126,8 +131,9 @@ export default function NarrationView() {
                             const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
                             setHistory(history);
                             setAwaitingInput(false);
+                            setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
-                            console.error("Failed to load Pixi-VN story:", e);
+                            setLog({ text: "Error loading Pixi-VN story", data: (e as any).toString() });
                         }
                         break;
                     }
@@ -147,6 +153,10 @@ export default function NarrationView() {
         vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
     }, [oldChoices]);
+
+    useEffect(() => {
+        vscode.postMessage({ type: "log", message: log?.text, data: log?.data });
+    }, [log]);
 
     const makeChoice = async (choice: Choice) => {
         switch (engine) {
