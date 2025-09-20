@@ -43,6 +43,23 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
     return history;
 }
 
+function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
+    const choices: Choice[] | undefined = narration.choices?.map((c) => ({
+        index: c.choiceIndex,
+        text: Array.isArray(c.text) ? c.text.join("") : c.text,
+    }));
+    let text = narration.dialogue?.text;
+    if (Array.isArray(text)) {
+        text = text.join("");
+    }
+    const inputRequest = narration.isRequiredInput
+        ? {
+              type: narration.inputType as "text" | "number",
+              input: narration.inputValue as string | number,
+          }
+        : undefined;
+    history.push({ dialogue: text, choices, tags, inputRequest });
+}
 async function nextChoicesPixi(
     history: HistoryItem[] = [],
     oldChoices: number[] = [],
@@ -64,6 +81,7 @@ async function nextChoicesPixi(
     Game.onEnd(() => {
         isEnd = true;
     });
+    pushPixiHystory(history, tags.length > 0 ? tags : null);
     while (
         (!isEnd && narration.canContinue) ||
         (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0))
@@ -81,21 +99,7 @@ async function nextChoicesPixi(
         }
         tags = [];
         await narration.continue({});
-        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
-            index: c.choiceIndex,
-            text: Array.isArray(c.text) ? c.text.join("") : c.text,
-        }));
-        let text = narration.dialogue?.text;
-        if (Array.isArray(text)) {
-            text = text.join("");
-        }
-        const inputRequest = narration.isRequiredInput
-            ? {
-                  type: narration.inputType as "text" | "number",
-                  input: narration.inputValue as string | number,
-              }
-            : undefined;
-        history.push({ dialogue: text, choices, tags, inputRequest });
+        pushPixiHystory(history, tags.length > 0 ? tags : null);
     }
     return history;
 }
@@ -128,8 +132,7 @@ export default function NarrationView() {
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string | number>();
-    const [oldChoices, setOldChoices] = useState<number[]>([]);
-    const [oldInputs, setOldInputs] = useState<(string | number)[]>([]);
+    const [oldChoices, setOldChoices] = useState<(number | { type: "input"; value: string | number })[]>([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices, inputRequest } = currentState || {};
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -157,7 +160,13 @@ export default function NarrationView() {
                             const json = convertInkStoryToJson(storyJson);
                             await importJson(json!);
                             await narration.call("__pixi_vn_start__", {});
-                            const history: HistoryItem[] = await nextChoicesPixi([], oldChoices, oldInputs);
+                            const tempChoices = oldChoices
+                                .map((c) => (typeof c === "number" ? c : undefined))
+                                .filter((c): c is number => c !== undefined);
+                            const tempInputs = oldChoices
+                                .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
+                                .filter((c): c is string | number => c !== undefined);
+                            const history: HistoryItem[] = await nextChoicesPixi([], tempChoices, tempInputs);
                             setHistory(history);
                             setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
@@ -169,7 +178,10 @@ export default function NarrationView() {
                     default: {
                         const story = new Story(storyJson);
                         setStory(story);
-                        const history: HistoryItem[] = nextChoices(story, [], oldChoices);
+                        const tempChoices = oldChoices
+                            .map((c) => (typeof c === "number" ? c : undefined))
+                            .filter((c): c is number => c !== undefined);
+                        const history: HistoryItem[] = nextChoices(story, [], tempChoices);
                         setHistory(history);
                         break;
                     }
@@ -179,7 +191,7 @@ export default function NarrationView() {
         window.addEventListener("message", handler);
         vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
-    }, [oldChoices, oldInputs]);
+    }, [oldChoices]);
 
     useEffect(() => {
         vscode.postMessage({ type: "log", message: log?.text, data: log?.data });
@@ -215,7 +227,7 @@ export default function NarrationView() {
                 let newHistory = [...history];
                 narration.inputValue = value;
                 await narration.continue({});
-                setOldInputs((values) => [...values, value]);
+                setOldChoices((values) => [...values, { type: "input", value: value }]);
                 newHistory = await nextChoicesPixi(newHistory);
                 setHistory(newHistory);
                 break;
@@ -229,7 +241,13 @@ export default function NarrationView() {
                 Game.clear();
                 await narration.call("__pixi_vn_start__", {});
                 oldChoices.pop();
-                const newHistory = await nextChoicesPixi([], oldChoices, oldInputs);
+                const tempChoices = oldChoices
+                    .map((c) => (typeof c === "number" ? c : undefined))
+                    .filter((c): c is number => c !== undefined);
+                const tempInputs = oldChoices
+                    .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
+                    .filter((c): c is string | number => c !== undefined);
+                const newHistory = await nextChoicesPixi([], tempChoices, tempInputs);
                 setHistory(newHistory);
                 break;
             }
@@ -239,7 +257,10 @@ export default function NarrationView() {
 
                 story.ResetState();
                 oldChoices.pop();
-                const newHistory = nextChoices(story, [], oldChoices);
+                const tempChoices = oldChoices
+                    .map((c) => (typeof c === "number" ? c : undefined))
+                    .filter((c): c is number => c !== undefined);
+                const newHistory = nextChoices(story, [], tempChoices);
 
                 setHistory(newHistory);
             }
@@ -253,7 +274,6 @@ export default function NarrationView() {
                 await narration.call("__pixi_vn_start__", {});
                 const newHistory = await nextChoicesPixi([]);
                 setHistory(newHistory);
-                setOldInputs([]);
                 setOldChoices([]);
                 break;
             }
@@ -262,7 +282,6 @@ export default function NarrationView() {
                 story?.ResetState();
                 const newHistory = nextChoices(story!);
                 setHistory(newHistory);
-                setOldInputs([]);
                 setOldChoices([]);
             }
         }
