@@ -61,6 +61,7 @@ function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
     history.push({ dialogue: text, choices, tags, inputRequest });
 }
 async function nextChoicesPixi(
+    start: () => Promise<any>,
     history: HistoryItem[] = [],
     oldChoices: number[] = [],
     oldInputs: (string | number)[] = []
@@ -71,8 +72,15 @@ async function nextChoicesPixi(
     let tags: string[] = [];
     onInkHashtagScript((script) => {
         if (script.length === 0) return true;
-        if (script.length > 1 && script[1] == "input") {
-            return false;
+        if (script.length > 1) {
+            switch (script[1]) {
+                case "input":
+                    return false;
+            }
+        }
+        switch (script[0]) {
+            case "continue":
+                return false;
         }
         const tag: string = script.join(" ");
         tags.push(tag);
@@ -81,20 +89,24 @@ async function nextChoicesPixi(
     Game.onEnd(() => {
         isEnd = true;
     });
+    await start();
     pushPixiHystory(history, tags.length > 0 ? tags : null);
     while (
-        (!isEnd && narration.canContinue) ||
-        (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0))
+        !isEnd &&
+        (narration.canContinue || (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
     ) {
+        tags = [];
         if (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)) {
             if (narration.isRequiredInput) {
                 const input = listInputs.shift();
                 narration.inputValue = input;
                 await narration.continue({});
+                pushPixiHystory(history, tags.length > 0 ? tags : null);
             } else {
                 const choiceIndex = listChoices.shift();
                 const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
                 await narration.selectChoice(choice!, {});
+                pushPixiHystory(history, tags.length > 0 ? tags : null);
             }
         }
         tags = [];
@@ -159,14 +171,18 @@ export default function NarrationView() {
                             Game.clear();
                             const json = convertInkStoryToJson(storyJson);
                             await importJson(json!);
-                            await narration.call("__pixi_vn_start__", {});
                             const tempChoices = oldChoices
                                 .map((c) => (typeof c === "number" ? c : undefined))
                                 .filter((c): c is number => c !== undefined);
                             const tempInputs = oldChoices
                                 .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
                                 .filter((c): c is string | number => c !== undefined);
-                            const history: HistoryItem[] = await nextChoicesPixi([], tempChoices, tempInputs);
+                            const history: HistoryItem[] = await nextChoicesPixi(
+                                () => narration.call("__pixi_vn_start__", {}),
+                                [],
+                                tempChoices,
+                                tempInputs
+                            );
                             setHistory(history);
                             setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
@@ -203,9 +219,8 @@ export default function NarrationView() {
                 let newHistory = [...history];
                 const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
                 if (!pixiChoice) return;
-                await narration.selectChoice(pixiChoice, {});
                 setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-                newHistory = await nextChoicesPixi(newHistory);
+                newHistory = await nextChoicesPixi(() => narration.selectChoice(pixiChoice, {}), newHistory);
                 setHistory(newHistory);
                 break;
             }
@@ -226,9 +241,8 @@ export default function NarrationView() {
             case "pixi-vn": {
                 let newHistory = [...history];
                 narration.inputValue = value;
-                await narration.continue({});
                 setOldChoices((values) => [...values, { type: "input", value: value }]);
-                newHistory = await nextChoicesPixi(newHistory);
+                newHistory = await nextChoicesPixi(() => narration.continue({}), newHistory);
                 setHistory(newHistory);
                 break;
             }
@@ -239,7 +253,6 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 Game.clear();
-                await narration.call("__pixi_vn_start__", {});
                 oldChoices.pop();
                 const tempChoices = oldChoices
                     .map((c) => (typeof c === "number" ? c : undefined))
@@ -247,7 +260,12 @@ export default function NarrationView() {
                 const tempInputs = oldChoices
                     .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
                     .filter((c): c is string | number => c !== undefined);
-                const newHistory = await nextChoicesPixi([], tempChoices, tempInputs);
+                const newHistory = await nextChoicesPixi(
+                    () => narration.call("__pixi_vn_start__", {}),
+                    [],
+                    tempChoices,
+                    tempInputs
+                );
                 setHistory(newHistory);
                 break;
             }
@@ -271,8 +289,7 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 Game.clear();
-                await narration.call("__pixi_vn_start__", {});
-                const newHistory = await nextChoicesPixi([]);
+                const newHistory = await nextChoicesPixi(() => narration.call("__pixi_vn_start__", {}), []);
                 setHistory(newHistory);
                 setOldChoices([]);
                 break;
@@ -297,7 +314,7 @@ export default function NarrationView() {
                 <Button
                     className='my-vscode-button'
                     onClick={goBack}
-                    disabled={history.length === 0}
+                    disabled={oldChoices.length === 0}
                     variant='secondary'
                     size='sm'
                     style={{
