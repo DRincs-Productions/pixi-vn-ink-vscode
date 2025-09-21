@@ -88,6 +88,7 @@ async function nextChoicesPixi(
     });
     Game.onEnd(() => {
         isEnd = true;
+        history.pop();
     });
     await start();
     pushPixiHystory(history, tags.length > 0 ? tags : null);
