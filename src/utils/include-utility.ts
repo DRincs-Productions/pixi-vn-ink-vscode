@@ -120,7 +120,7 @@ export function getInkRootFolder(document: TextDocument): string {
 
     // Leggo la configurazione "ink" dal settings.json
     const config = workspace.getConfiguration("ink", document.uri);
-    const rootFolderSetting: string = config.get("rootFolder") || "";
+    const rootFolderSetting: string = config.get("rootFolder", "");
 
     // Se rootFolder è impostato → risolvo rispetto alla workspaceRoot
     return rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
@@ -147,7 +147,7 @@ export function includeCtrlClick(): DefinitionProvider {
             // Get rootFolder from config
             const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
             const config = workspace.getConfiguration("ink");
-            const rootFolderSetting: string = config.get("rootFolder") || "";
+            const rootFolderSetting: string = config.get("rootFolder", "");
             const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 
             // Resolve path
@@ -181,7 +181,7 @@ export function suggestionsInclude(): CompletionItemProvider {
 
             const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
             const config = workspace.getConfiguration("ink");
-            const rootFolderSetting: string = config.get("rootFolder") || "";
+            const rootFolderSetting: string = config.get("rootFolder", "");
             const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 
             // Split path in segmenti

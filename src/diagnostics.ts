@@ -8,7 +8,7 @@ import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
 
 export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) {
     const config = workspace.getConfiguration("ink");
-    const engine = config.get<"Inky" | "pixi-vn">("engine");
+    const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
     const rootFolderSetting = getInkRootFolder(doc);
 
     let errors;
@@ -48,7 +48,7 @@ export function checkIncludes(document: TextDocument, diagnostics: Diagnostic[])
 
     const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
     const config = workspace.getConfiguration("ink");
-    const rootFolderSetting: string = config.get("rootFolder") || "";
+    const rootFolderSetting: string = config.get("rootFolder", "");
     const baseFolder = rootFolderSetting ? path.resolve(workspaceRoot, rootFolderSetting) : workspaceRoot;
 
     lines.forEach((line, lineIndex) => {

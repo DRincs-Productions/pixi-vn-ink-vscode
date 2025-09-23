@@ -73,8 +73,8 @@ export async function openWebview(
     const { name, text, uri } = file;
 
     const config = workspace.getConfiguration("ink");
-    const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
-    const markup = config.get<string | null>("markup");
+    const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
+    const markup = config.get<string | null>("markup", null);
 
     let compiled: string | void;
     try {

@@ -24,11 +24,11 @@ export function activate(context: ExtensionContext) {
 
     workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("ink.engine")) {
-            const newEngine = workspace.getConfiguration("ink").get<string>("engine");
+            const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
             window.showInformationMessage(`Engine changed to ${newEngine}`);
         }
         if (event.affectsConfiguration("ink.markup")) {
-            const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup");
+            const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup", null);
             window.showInformationMessage(`Markup changed to ${newMarkup ?? "none"}`);
         }
     });
