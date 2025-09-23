@@ -13,14 +13,19 @@ import { vscode } from "./vscode";
 type HistoryItem = {
     dialogue?: string | null;
     choices?: Choice[];
+    inputRequest?: InputRequest;
     tags: string[] | null;
     choice?: number;
-    input?: string;
 };
 
 type Choice = {
     index: number;
     text: string;
+};
+
+type InputRequest = {
+    type: "text" | "number";
+    input: string | number;
 };
 
 function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
@@ -38,35 +43,76 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
     return history;
 }
 
-async function nextChoicesPixi(history: HistoryItem[] = [], oldChoices: number[] = []): Promise<HistoryItem[]> {
-    const list = [...oldChoices];
+function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
+    const choices: Choice[] | undefined = narration.choices?.map((c) => ({
+        index: c.choiceIndex,
+        text: Array.isArray(c.text) ? c.text.join("") : c.text,
+    }));
+    let text = narration.dialogue?.text;
+    if (Array.isArray(text)) {
+        text = text.join("");
+    }
+    const inputRequest = narration.isRequiredInput
+        ? {
+              type: narration.inputType as "text" | "number",
+              input: narration.inputValue as string | number,
+          }
+        : undefined;
+    history.push({ dialogue: text, choices, tags, inputRequest });
+}
+async function nextChoicesPixi(
+    start: () => Promise<any>,
+    history: HistoryItem[] = [],
+    oldChoices: number[] = [],
+    oldInputs: (string | number)[] = []
+): Promise<HistoryItem[]> {
+    const listChoices = [...oldChoices];
+    const listInputs = [...oldInputs];
     let isEnd = false;
     let tags: string[] = [];
     onInkHashtagScript((script) => {
+        if (script.length === 0) return true;
+        if (script.length > 1) {
+            switch (script[1]) {
+                case "input":
+                    return false;
+            }
+        }
+        switch (script[0]) {
+            case "continue":
+                return false;
+        }
         const tag: string = script.join(" ");
         tags.push(tag);
         return true;
     });
     Game.onEnd(() => {
         isEnd = true;
+        history.pop();
     });
-    while ((!isEnd && narration.canContinue) || (!narration.canContinue && list.length > 0)) {
-        if (!narration.canContinue && list.length > 0) {
-            const choiceIndex = list.shift();
-            const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
-            await narration.selectChoice(choice!, {});
+    await start();
+    pushPixiHystory(history, tags.length > 0 ? tags : null);
+    while (
+        !isEnd &&
+        (narration.canContinue || (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
+    ) {
+        tags = [];
+        if (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)) {
+            if (narration.isRequiredInput) {
+                const input = listInputs.shift();
+                narration.inputValue = input;
+                await narration.continue({});
+                pushPixiHystory(history, tags.length > 0 ? tags : null);
+            } else {
+                const choiceIndex = listChoices.shift();
+                const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
+                await narration.selectChoice(choice!, {});
+                pushPixiHystory(history, tags.length > 0 ? tags : null);
+            }
         }
         tags = [];
         await narration.continue({});
-        const choices: Choice[] | undefined = narration.choices?.map((c) => ({
-            index: c.choiceIndex,
-            text: Array.isArray(c.text) ? c.text.join("") : c.text,
-        }));
-        let text = narration.dialogue?.text;
-        if (Array.isArray(text)) {
-            text = text.join("");
-        }
-        history.push({ dialogue: text, choices, tags });
+        pushPixiHystory(history, tags.length > 0 ? tags : null);
     }
     return history;
 }
@@ -98,11 +144,10 @@ export default function NarrationView() {
     const [log, setLog] = useState<{ text: string; data?: any }>();
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
-    const [inputValue, setInputValue] = useState<string>();
-    const [awaitingInput, setAwaitingInput] = useState(false);
-    const [oldChoices, setOldChoices] = useState<number[]>([]);
+    const [inputValue, setInputValue] = useState<string | number>();
+    const [oldChoices, setOldChoices] = useState<(number | { type: "input"; value: string | number })[]>([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
-    const { choices } = currentState || {};
+    const { choices, inputRequest } = currentState || {};
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -127,10 +172,19 @@ export default function NarrationView() {
                             Game.clear();
                             const json = convertInkStoryToJson(storyJson);
                             await importJson(json!);
-                            await narration.call("__pixi_vn_start__", {});
-                            const history: HistoryItem[] = await nextChoicesPixi([], oldChoices);
+                            const tempChoices = oldChoices
+                                .map((c) => (typeof c === "number" ? c : undefined))
+                                .filter((c): c is number => c !== undefined);
+                            const tempInputs = oldChoices
+                                .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
+                                .filter((c): c is string | number => c !== undefined);
+                            const history: HistoryItem[] = await nextChoicesPixi(
+                                () => narration.call("__pixi_vn_start__", {}),
+                                [],
+                                tempChoices,
+                                tempInputs
+                            );
                             setHistory(history);
-                            setAwaitingInput(false);
                             setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
                             setLog({ text: "Error loading Pixi-VN story", data: (e as any).toString() });
@@ -141,9 +195,11 @@ export default function NarrationView() {
                     default: {
                         const story = new Story(storyJson);
                         setStory(story);
-                        const history: HistoryItem[] = nextChoices(story, [], oldChoices);
+                        const tempChoices = oldChoices
+                            .map((c) => (typeof c === "number" ? c : undefined))
+                            .filter((c): c is number => c !== undefined);
+                        const history: HistoryItem[] = nextChoices(story, [], tempChoices);
                         setHistory(history);
-                        setAwaitingInput(false);
                         break;
                     }
                 }
@@ -164,9 +220,8 @@ export default function NarrationView() {
                 let newHistory = [...history];
                 const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
                 if (!pixiChoice) return;
-                await narration.selectChoice(pixiChoice, {});
                 setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-                newHistory = await nextChoicesPixi(newHistory);
+                newHistory = await nextChoicesPixi(() => narration.selectChoice(pixiChoice, {}), newHistory);
                 setHistory(newHistory);
                 break;
             }
@@ -182,15 +237,36 @@ export default function NarrationView() {
         }
     };
 
-    const submitInput = () => {};
+    const submitInput = async (value: string | number = "") => {
+        switch (engine) {
+            case "pixi-vn": {
+                let newHistory = [...history];
+                narration.inputValue = value;
+                setOldChoices((values) => [...values, { type: "input", value: value }]);
+                newHistory = await nextChoicesPixi(() => narration.continue({}), newHistory);
+                setHistory(newHistory);
+                break;
+            }
+        }
+    };
 
     const goBack = async () => {
         switch (engine) {
             case "pixi-vn": {
                 Game.clear();
-                await narration.call("__pixi_vn_start__", {});
                 oldChoices.pop();
-                const newHistory = await nextChoicesPixi([], oldChoices);
+                const tempChoices = oldChoices
+                    .map((c) => (typeof c === "number" ? c : undefined))
+                    .filter((c): c is number => c !== undefined);
+                const tempInputs = oldChoices
+                    .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
+                    .filter((c): c is string | number => c !== undefined);
+                const newHistory = await nextChoicesPixi(
+                    () => narration.call("__pixi_vn_start__", {}),
+                    [],
+                    tempChoices,
+                    tempInputs
+                );
                 setHistory(newHistory);
                 break;
             }
@@ -200,7 +276,10 @@ export default function NarrationView() {
 
                 story.ResetState();
                 oldChoices.pop();
-                const newHistory = nextChoices(story, [], oldChoices);
+                const tempChoices = oldChoices
+                    .map((c) => (typeof c === "number" ? c : undefined))
+                    .filter((c): c is number => c !== undefined);
+                const newHistory = nextChoices(story, [], tempChoices);
 
                 setHistory(newHistory);
             }
@@ -211,10 +290,8 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 Game.clear();
-                await narration.call("__pixi_vn_start__", {});
-                const newHistory = await nextChoicesPixi([], []);
+                const newHistory = await nextChoicesPixi(() => narration.call("__pixi_vn_start__", {}), []);
                 setHistory(newHistory);
-                setAwaitingInput(false);
                 setOldChoices([]);
                 break;
             }
@@ -223,7 +300,6 @@ export default function NarrationView() {
                 story?.ResetState();
                 const newHistory = nextChoices(story!);
                 setHistory(newHistory);
-                setAwaitingInput(false);
                 setOldChoices([]);
             }
         }
@@ -239,7 +315,7 @@ export default function NarrationView() {
                 <Button
                     className='my-vscode-button'
                     onClick={goBack}
-                    disabled={history.length === 0}
+                    disabled={oldChoices.length === 0}
                     variant='secondary'
                     size='sm'
                     style={{
@@ -275,7 +351,10 @@ export default function NarrationView() {
                 }}
             >
                 {history.map((item, idx) => (
-                    <div key={`block-${idx}`} className='motion-preset-slide-up motion-duration-500'>
+                    <div
+                        key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
+                        className='motion-preset-slide-up motion-duration-500'
+                    >
                         {item.tags?.map((tag, tIdx) => (
                             <div
                                 key={`tag-${idx}-${tIdx}`}
@@ -302,7 +381,7 @@ export default function NarrationView() {
                             </div>
                         )}
 
-                        {item.input && (
+                        {item.inputRequest?.input !== undefined && (
                             <div
                                 key={`input-${idx}`}
                                 style={{
@@ -311,7 +390,7 @@ export default function NarrationView() {
                                     fontWeight: "bold",
                                 }}
                             >
-                                You: {item.input}
+                                You: {item.inputRequest.input}
                             </div>
                         )}
                     </div>
@@ -319,7 +398,7 @@ export default function NarrationView() {
             </div>
 
             {/* Choices */}
-            {!awaitingInput && choices && choices?.length > 0 && (
+            {!inputRequest && choices && choices?.length > 0 && (
                 <div className='mt-3'>
                     <Separator className='mb-2' />
                     <div className='font-semibold mb-2' style={{ color: "var(--vscode-editor-foreground)" }}>
@@ -344,21 +423,27 @@ export default function NarrationView() {
             )}
 
             {/* Input text */}
-            {awaitingInput && (
+            {inputRequest && (
                 <div className='mt-3 flex gap-2'>
                     <input
-                        type='text'
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        type={inputRequest.type}
+                        value={inputValue ?? ""}
+                        onChange={(e) => {
+                            let value: string | number = e.target.value;
+                            if (inputRequest.type === "number") {
+                                value = Number(value);
+                            }
+                            setInputValue(value);
+                        }}
                         className='flex-1 px-3 py-2 rounded-md border'
-                        placeholder='Type your response...'
+                        placeholder={inputRequest.type === "number" ? "Enter a number..." : "Type your response..."}
                         style={{
                             backgroundColor: "var(--vscode-input-background)",
                             color: "var(--vscode-input-foreground)",
                             borderColor: "var(--vscode-input-border)",
                         }}
                     />
-                    <Button className='my-vscode-button' onClick={submitInput} variant='default'>
+                    <Button className='my-vscode-button' onClick={() => submitInput(inputValue)} variant='default'>
                         Submit
                     </Button>
                 </div>

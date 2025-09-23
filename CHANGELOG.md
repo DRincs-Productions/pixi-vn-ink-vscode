@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ## [Unreleased]
 
+### Added
+
+- Input text support in the webview for interactive user responses
+
 ### Fixed
 
 - When a file is modified, the preview is also updated.
