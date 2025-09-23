@@ -171,7 +171,9 @@ export default function NarrationView() {
             if (event.data.type === "compiled-story") {
                 const storyJson = event.data.data;
                 const engine: "Inky" | "pixi-vn" = event.data.engine;
-                const characters: any[] | undefined = JSON.parse(event.data.characters);
+                const characters: any[] | undefined = event.data.characters
+                    ? JSON.parse(event.data.characters)
+                    : undefined;
                 setEngine(engine);
                 switch (engine) {
                     case "pixi-vn": {
