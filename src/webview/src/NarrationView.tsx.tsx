@@ -1,4 +1,4 @@
-import { Game, narration } from "@drincs/pixi-vn";
+import { Game, narration, RegisteredCharacters } from "@drincs/pixi-vn";
 import { convertInkStoryToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
 import { ArrowLeft, RotateCcw } from "lucide-react";
@@ -171,11 +171,13 @@ export default function NarrationView() {
             if (event.data.type === "compiled-story") {
                 const storyJson = event.data.data;
                 const engine: "Inky" | "pixi-vn" = event.data.engine;
+                const characters: any[] | undefined = JSON.parse(event.data.characters);
                 setEngine(engine);
                 switch (engine) {
                     case "pixi-vn": {
                         try {
                             Game.clear();
+                            RegisteredCharacters.add(characters || []);
                             const json = convertInkStoryToJson(storyJson);
                             await importJson(json!);
                             const tempChoices = oldChoices
