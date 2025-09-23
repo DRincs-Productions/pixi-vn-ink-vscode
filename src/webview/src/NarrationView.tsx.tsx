@@ -117,26 +117,15 @@ async function nextChoicesPixi(
     return history;
 }
 
-function Text({ children }: { children: string }) {
-    const [markup, setMarkup] = useState<"Markdown" | null>();
-    useEffect(() => {
-        const handler = (event: MessageEvent) => {
-            if (event.data.type === "set-markup") {
-                setMarkup(event.data.data);
-            }
-        };
-        window.addEventListener("message", handler);
-        vscode.postMessage({ type: "ready" });
-        return () => window.removeEventListener("message", handler);
-    }, []);
-
-    if (markup === "Markdown")
+function Text({ children, markup }: { children: string; markup: "Markdown" | null }) {
+    if (markup === "Markdown") {
         return (
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                 {children}
             </ReactMarkdown>
         );
-    else return children;
+    }
+    return <>{children}</>;
 }
 
 export default function NarrationView() {
@@ -148,6 +137,7 @@ export default function NarrationView() {
     const [oldChoices, setOldChoices] = useState<(number | { type: "input"; value: string | number })[]>([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices, inputRequest } = currentState || {};
+    const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -159,6 +149,17 @@ export default function NarrationView() {
             });
         }
     }, [history]);
+
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.data.type === "set-markup") {
+                setMarkup(event.data.data);
+            }
+        };
+        window.addEventListener("message", handler);
+        vscode.postMessage({ type: "ready" });
+        return () => window.removeEventListener("message", handler);
+    }, []);
 
     useEffect(() => {
         const handler = async (event: MessageEvent) => {
@@ -377,7 +378,7 @@ export default function NarrationView() {
                                     fontStyle: "normal",
                                 }}
                             >
-                                <Text>{item.dialogue}</Text>
+                                <Text markup={markup}>{item.dialogue}</Text>
                             </div>
                         )}
 
@@ -415,7 +416,7 @@ export default function NarrationView() {
                                     justifyContent: "flex-start",
                                 }}
                             >
-                                {index + 1}. <Text>{c.text}</Text>
+                                {index + 1}. <Text markup={markup}>{c.text}</Text>
                             </Button>
                         ))}
                     </div>
