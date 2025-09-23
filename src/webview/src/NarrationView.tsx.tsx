@@ -384,8 +384,9 @@ export default function NarrationView() {
                                     textAlign: "left",
                                     fontStyle: "normal",
                                     display: "flex",
-                                    flexDirection: "column",
-                                    gap: "2px",
+                                    flexDirection: "row", // affianca chip e testo
+                                    gap: "8px", // distanza tra chip e testo
+                                    alignItems: "flex-start", // allinea in alto
                                 }}
                             >
                                 {/* Character chip */}
@@ -399,7 +400,7 @@ export default function NarrationView() {
                                             borderRadius: "12px",
                                             fontSize: "0.75rem",
                                             fontWeight: "bold",
-                                            alignSelf: "flex-start",
+                                            flexShrink: 0, // evita che la chip si riduca
                                         }}
                                     >
                                         {item.character}
