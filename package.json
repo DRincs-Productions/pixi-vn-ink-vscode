@@ -90,6 +90,11 @@
           "type": "string",
           "default": "",
           "description": "Root folder containing .ink files to be loaded. If empty, no root folder is defined."
+        },
+        "ink.port": {
+          "type": "number",
+          "default": 5173,
+          "description": "Port used by the engine for localhost connections."
         }
       }
     },
