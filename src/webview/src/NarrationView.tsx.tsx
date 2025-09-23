@@ -351,7 +351,10 @@ export default function NarrationView() {
                 }}
             >
                 {history.map((item, idx) => (
-                    <div key={`block-${idx}`} className='motion-preset-slide-up motion-duration-500'>
+                    <div
+                        key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
+                        className='motion-preset-slide-up motion-duration-500'
+                    >
                         {item.tags?.map((tag, tIdx) => (
                             <div
                                 key={`tag-${idx}-${tIdx}`}
