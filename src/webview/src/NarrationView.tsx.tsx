@@ -16,6 +16,7 @@ type HistoryItem = {
     inputRequest?: InputRequest;
     tags: string[] | null;
     choice?: number;
+    character?: string;
 };
 
 type Choice = {
@@ -49,6 +50,10 @@ function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
         text: Array.isArray(c.text) ? c.text.join("") : c.text,
     }));
     let text = narration.dialogue?.text;
+    let character = narration.dialogue?.character;
+    if (typeof character === "object" && character !== null) {
+        character = character.id;
+    }
     if (Array.isArray(text)) {
         text = text.join("");
     }
@@ -58,7 +63,7 @@ function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
               input: narration.inputValue as string | number,
           }
         : undefined;
-    history.push({ dialogue: text, choices, tags, inputRequest });
+    history.push({ dialogue: text, choices, tags, inputRequest, character });
 }
 async function nextChoicesPixi(
     start: () => Promise<any>,
