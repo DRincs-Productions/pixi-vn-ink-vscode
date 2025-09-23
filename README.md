@@ -30,6 +30,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Opened the main file via <img width="21" height="20" alt="image" src="https://github.com/user-attachments/assets/1e4c6f9c-2a82-4723-85e0-0b1008f4e710" /> **button** (Is visible only if `ink.mainFile` is set)
   - Displays story dialogues in a **VSCode-themed webview**
   - Supports **choices**, **text input** (for pixi-vn engine), **Back** and **Restart**
+  - Character chips displayed **beside dialogue text** for `pixi-vn` engine
   - Dialogues and choices optionally rendered with **Markdown**
   - Tags (`#`) are aligned to the right and styled differently
   - Preview **updates live** when the file is saved
@@ -74,7 +75,8 @@ This extension provides the following configurable settings in VS Code (go to `F
 - **Options**:
   - `Inky` (default)
   - [`pixi-vn`](https://github.com/DRincs-Productions/pixi-vn)
-- **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.
+- **Effect**: Determines which diagnostic and script features are enabled based on the selected engine.  
+  - `pixi-vn` engine now automatically fetches **characters** and displays them in the preview.
 
 ### Markup
 
@@ -84,6 +86,13 @@ This extension provides the following configurable settings in VS Code (go to `F
   - `Markdown`
   - `null` (default)
 - **Effect**: Enables syntax support and highlighting for the selected markup.
+
+### Port
+
+- **Setting name**: `ink.pixiVnPort`
+- **Description**: Specify the port used to fetch Pixi-VN characters from the local server.
+- **Options**: Any valid port number (e.g., `3000`).
+- **Effect**: The extension will call `http://localhost:[PORT]/pixi-vn/characters` to load the characters for the `pixi-vn` engine automatically.
 
 ---
 

@@ -8,7 +8,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ### Added
 
-- Input text support in the webview for interactive user responses
+- Input text support in the webview for interactive user responses.
+- Loading indicator displayed in the preview while waiting for story initialization.
+- Fetch characters automatically for `pixi-vn` engine from `http://localhost:[PORT]/pixi-vn/characters` after compilation.
+- Character chips displayed **next to** dialogue text instead of above it.
+
+### Changed
+
+- `pixi-vn` engine now supports live fetching of characters and displays them in the preview.
+- Dialogue layout updated to align character chip beside the text.
 
 ### Fixed
 

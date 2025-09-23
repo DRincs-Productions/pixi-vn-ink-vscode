@@ -115,16 +115,28 @@ export async function openWebview(
 
     // ✅ Send the compiled JSON to the webview
     // 🔹 listen for messages from the webview
-    panel.webview.onDidReceiveMessage((message) => {
+    panel.webview.onDidReceiveMessage(async (message) => {
         if (message.type === "log") {
             console.log("Log from webview:", message.message, message.data);
         }
         if (message.type === "ready") {
             console.log("Webview is ready, sending compiled story.");
+            let characters: string | undefined;
+            if (engine === "pixi-vn") {
+                const port = config.get<number>("port", 5173); // legge la porta dalle impostazioni
+                try {
+                    const res = await fetch(`http://localhost:${port}/pixi-vn/characters`);
+                    if (res.ok) {
+                        characters = await res.text();
+                        console.log("Fetched Pixi-VN characters:", characters);
+                    }
+                } catch (err) {}
+            }
             panel.webview.postMessage({
                 type: "compiled-story",
                 engine: engine,
                 data: compiled,
+                characters: characters,
             });
             panel.webview.postMessage({
                 type: "set-markup",
