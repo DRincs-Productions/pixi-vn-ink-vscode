@@ -354,80 +354,90 @@ export default function NarrationView() {
             {/* Dialogues */}
             <div
                 ref={scrollRef}
-                className='flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border'
+                className='flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border flex flex-col'
                 style={{
                     backgroundColor: "var(--vscode-editor-background)",
                     borderColor: "var(--vscode-editorWidget-border)",
                 }}
             >
-                {history.map((item, idx) => (
+                {history.length === 0 ? (
+                    // Loader
                     <div
-                        key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
-                        className='motion-preset-slide-up motion-duration-500'
+                        className='flex justify-center items-center w-full h-full'
+                        style={{ color: "var(--vscode-editorHint-foreground)", fontStyle: "italic" }}
                     >
-                        {item.tags?.map((tag, tIdx) => (
-                            <div
-                                key={`tag-${idx}-${tIdx}`}
-                                style={{
-                                    color: "var(--vscode-editorHint-foreground)",
-                                    textAlign: "right",
-                                    fontStyle: "italic",
-                                }}
-                            >
-                                {tag}
-                            </div>
-                        ))}
-
-                        {item.dialogue?.trim() && (
-                            <div
-                                key={`dialogue-${idx}`}
-                                style={{
-                                    color: "var(--vscode-editor-foreground)",
-                                    textAlign: "left",
-                                    fontStyle: "normal",
-                                    display: "flex",
-                                    flexDirection: "row", // affianca chip e testo
-                                    gap: "8px", // distanza tra chip e testo
-                                    alignItems: "flex-start", // allinea in alto
-                                }}
-                            >
-                                {/* Character chip */}
-                                {item.character && (
-                                    <span
-                                        style={{
-                                            display: "inline-block",
-                                            backgroundColor: "var(--vscode-button-background)",
-                                            color: "var(--vscode-button-foreground)",
-                                            padding: "2px 6px",
-                                            borderRadius: "12px",
-                                            fontSize: "0.75rem",
-                                            fontWeight: "bold",
-                                            flexShrink: 0, // evita che la chip si riduca
-                                        }}
-                                    >
-                                        {item.character}
-                                    </span>
-                                )}
-
-                                {/* Dialogue text */}
-                                <Text markup={markup}>{item.dialogue}</Text>
-                            </div>
-                        )}
-
-                        {item.inputRequest?.input !== undefined && (
-                            <div
-                                key={`input-${idx}`}
-                                style={{
-                                    color: "var(--vscode-editor-foreground)",
-                                    textAlign: "left",
-                                    fontWeight: "bold",
-                                }}
-                            >
-                                You: {item.inputRequest.input}
-                            </div>
-                        )}
+                        Loading story...
                     </div>
-                ))}
+                ) : (
+                    history.map((item, idx) => (
+                        <div
+                            key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
+                            className='motion-preset-slide-up motion-duration-500'
+                        >
+                            {item.tags?.map((tag, tIdx) => (
+                                <div
+                                    key={`tag-${idx}-${tIdx}`}
+                                    style={{
+                                        color: "var(--vscode-editorHint-foreground)",
+                                        textAlign: "right",
+                                        fontStyle: "italic",
+                                    }}
+                                >
+                                    {tag}
+                                </div>
+                            ))}
+
+                            {item.dialogue?.trim() && (
+                                <div
+                                    key={`dialogue-${idx}`}
+                                    style={{
+                                        color: "var(--vscode-editor-foreground)",
+                                        textAlign: "left",
+                                        fontStyle: "normal",
+                                        display: "flex",
+                                        flexDirection: "row", // affianca chip e testo
+                                        gap: "8px",
+                                        alignItems: "flex-start",
+                                    }}
+                                >
+                                    {/* Character chip */}
+                                    {item.character && (
+                                        <span
+                                            style={{
+                                                display: "inline-block",
+                                                backgroundColor: "var(--vscode-button-background)",
+                                                color: "var(--vscode-button-foreground)",
+                                                padding: "2px 6px",
+                                                borderRadius: "12px",
+                                                fontSize: "0.75rem",
+                                                fontWeight: "bold",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            {item.character}
+                                        </span>
+                                    )}
+
+                                    {/* Dialogue text */}
+                                    <Text markup={markup}>{item.dialogue}</Text>
+                                </div>
+                            )}
+
+                            {item.inputRequest?.input !== undefined && (
+                                <div
+                                    key={`input-${idx}`}
+                                    style={{
+                                        color: "var(--vscode-editor-foreground)",
+                                        textAlign: "left",
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    You: {item.inputRequest.input}
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
 
             {/* Choices */}
