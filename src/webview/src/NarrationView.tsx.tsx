@@ -381,8 +381,30 @@ export default function NarrationView() {
                                     color: "var(--vscode-editor-foreground)",
                                     textAlign: "left",
                                     fontStyle: "normal",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "2px",
                                 }}
                             >
+                                {/* Character chip */}
+                                {item.character && (
+                                    <span
+                                        style={{
+                                            display: "inline-block",
+                                            backgroundColor: "var(--vscode-button-background)",
+                                            color: "var(--vscode-button-foreground)",
+                                            padding: "2px 6px",
+                                            borderRadius: "12px",
+                                            fontSize: "0.75rem",
+                                            fontWeight: "bold",
+                                            alignSelf: "flex-start",
+                                        }}
+                                    >
+                                        {item.character}
+                                    </span>
+                                )}
+
+                                {/* Dialogue text */}
                                 <Text markup={markup}>{item.dialogue}</Text>
                             </div>
                         )}
