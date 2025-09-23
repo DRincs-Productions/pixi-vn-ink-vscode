@@ -89,9 +89,9 @@ This extension provides the following configurable settings in VS Code (go to `F
 
 ### Port
 
-- **Setting name**: `ink.pixiVnPort`
-- **Description**: Specify the port used to fetch Pixi-VN characters from the local server.
-- **Options**: Any valid port number (e.g., `3000`).
+- **Setting name**: `ink.port`
+- **Description**: For example, if you're using the `pixi-vn` engine, specify the port used by the engine for localhost connections.
+- **Options**: Any valid port number (e.g., `3000`). Default is `5173`.
 - **Effect**: The extension will call `http://localhost:[PORT]/pixi-vn/characters` to load the characters for the `pixi-vn` engine automatically.
 
 ---
