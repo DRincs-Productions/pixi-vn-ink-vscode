@@ -192,7 +192,7 @@
 							"name": "keyword.other.knot.ink"
 						}
 					},
-					"end": "\\s*(=+)",
+					"end": "\\s*(=+)?(?=\\s*(//|/\\*|$))",
 					"endCaptures": {
 						"1": {
 							"name": "keyword.other.knot.ink"
