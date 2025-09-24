@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [0.5.2] - 2025-09-24
+
+### Changed
+
+- Enhance ink syntax highlighting for tags and add multiline support
+
 ## [0.5.1] - 2025-09-23
 
 ### Added
