@@ -7,7 +7,7 @@ TEST =
 Hello world!END
 -> END
 
-=== knot1 ===
+=== knot1 === // This is a comment
 top_knot
 DONE
 ->DONE

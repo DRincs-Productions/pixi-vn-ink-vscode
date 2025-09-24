@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Fixed
+
+- Fix syntax highlighting
+
 ## [0.5.2] - 2025-09-24
 
 ### Changed
