@@ -39,6 +39,15 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
                     return getErrorsPixiVN(text, labelToRemove, [...initialVarsToRemove, varName]);
                 }
             }
+            if (error.message.includes("Variable could not be found to assign to")) {
+                const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
+                if (match && match[1]) {
+                    const varName = match[1];
+                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
+                    text = textToAdd.concat(text);
+                    return getErrorsPixiVN(text, labelToRemove, [...initialVarsToRemove, varName]);
+                }
+            }
         }
         return issues;
     }
@@ -96,6 +105,15 @@ export function compilePixiVN(
             }
             if (error.message.includes("Unresolved variable")) {
                 const match = error.message.match(/Unresolved variable: (\w+)/);
+                if (match && match[1]) {
+                    const varName = match[1];
+                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
+                    text = textToAdd.concat(text);
+                    return compilePixiVN(text, fileHandler, labelToRemove, [...initialVarsToRemove, varName]);
+                }
+            }
+            if (error.message.includes("Variable could not be found to assign to")) {
+                const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
                 if (match && match[1]) {
                     const varName = match[1];
                     const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
