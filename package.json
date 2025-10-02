@@ -2,7 +2,7 @@
   "name": "pixi-vn-ink-vscode",
   "displayName": "ink language",
   "description": "Inkle's ink scripting language support for Visual Studio Code",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DRincs-Productions/pixi-vn-ink-vscode.git"
