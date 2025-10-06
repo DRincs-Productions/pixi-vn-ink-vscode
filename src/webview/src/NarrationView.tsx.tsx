@@ -57,13 +57,7 @@ function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
     if (Array.isArray(text)) {
         text = text.join("");
     }
-    const inputRequest = narration.isRequiredInput
-        ? {
-              type: narration.inputType as "text" | "number",
-              input: narration.inputValue as string | number,
-          }
-        : undefined;
-    history.push({ dialogue: text, choices, tags, inputRequest, character });
+    history.push({ dialogue: text, choices, tags, character });
 }
 async function nextChoicesPixi(
     start: () => Promise<any>,
