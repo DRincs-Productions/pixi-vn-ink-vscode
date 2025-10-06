@@ -26,7 +26,7 @@ type Choice = {
 
 type InputRequest = {
     type: "text" | "number";
-    input: string | number;
+    input?: string | number;
 };
 
 function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
@@ -44,7 +44,7 @@ function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: numb
     return history;
 }
 
-function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
+function pushPixiHistory(history: HistoryItem[], tags: string[] | null) {
     const choices: Choice[] | undefined = narration.choices?.map((c) => ({
         index: c.choiceIndex,
         text: Array.isArray(c.text) ? c.text.join("") : c.text,
@@ -57,7 +57,13 @@ function pushPixiHystory(history: HistoryItem[], tags: string[] | null) {
     if (Array.isArray(text)) {
         text = text.join("");
     }
-    history.push({ dialogue: text, choices, tags, character });
+    const inputRequest = narration.isRequiredInput
+        ? {
+              type: narration.inputType as "text" | "number",
+              input: narration.inputValue as string | number | undefined,
+          }
+        : undefined;
+    history.push({ dialogue: text, choices, tags, inputRequest, character });
 }
 async function nextChoicesPixi(
     start: () => Promise<any>,
@@ -90,7 +96,7 @@ async function nextChoicesPixi(
         history.pop();
     });
     await start();
-    pushPixiHystory(history, tags.length > 0 ? tags : null);
+    pushPixiHistory(history, tags.length > 0 ? tags : null);
     while (
         !isEnd &&
         (narration.canContinue || (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
@@ -100,18 +106,23 @@ async function nextChoicesPixi(
             if (narration.isRequiredInput) {
                 const input = listInputs.shift();
                 narration.inputValue = input;
+                history[history.length - 1].inputRequest = {
+                    type: narration.inputType as "text" | "number",
+                    input: input,
+                };
                 await narration.continue({});
-                pushPixiHystory(history, tags.length > 0 ? tags : null);
+                pushPixiHistory(history, tags.length > 0 ? tags : null);
             } else {
                 const choiceIndex = listChoices.shift();
                 const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
+                history[history.length - 1].choice = choiceIndex;
                 await narration.selectChoice(choice!, {});
-                pushPixiHystory(history, tags.length > 0 ? tags : null);
+                pushPixiHistory(history, tags.length > 0 ? tags : null);
             }
         }
         tags = [];
         await narration.continue({});
-        pushPixiHystory(history, tags.length > 0 ? tags : null);
+        pushPixiHistory(history, tags.length > 0 ? tags : null);
     }
     return history;
 }
