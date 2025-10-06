@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- Webview improvements
+
 ## [0.5.3] - 2025-10-02
 
 ### Fixed
