@@ -218,6 +218,9 @@
 						},
 						{
 							"include": "#comments"
+						},
+						{
+							"include": "#tags"
 						}
 					]
 				}
@@ -473,6 +476,9 @@
 								},
 								{
 									"include": "#comments"
+								},
+								{
+									"include": "#tags"
 								}
 							]
 						}
@@ -524,6 +530,9 @@
 								},
 								{
 									"include": "#comments"
+								},
+								{
+									"include": "#tags"
 								}
 							]
 						},
@@ -545,6 +554,9 @@
 								},
 								{
 									"include": "#comments"
+								},
+								{
+									"include": "#tags"
 								}
 							]
 						}
@@ -580,6 +592,9 @@
 			"patterns": [
 				{
 					"include": "#comments"
+				},
+				{
+					"include": "#tags"
 				},
 				{
 					"include": "#knots"

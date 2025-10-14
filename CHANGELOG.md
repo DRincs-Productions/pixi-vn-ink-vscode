@@ -9,6 +9,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Changed
 
 - Webview improvements
+- Update pixi-vn-ink
+
+### Fixed
+
+- Fix syntax highlighting for tags
 
 ## [0.5.3] - 2025-10-02
 
