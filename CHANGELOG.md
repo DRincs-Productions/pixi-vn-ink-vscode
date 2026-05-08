@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- Update pixi-vn-ink
+
 ## [0.5.5] - 2025-11-05
 
 ### Changed
@@ -79,8 +85,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ### Added
 
-- New command **Run Ink Project** (`ink.runProject`) with a button in the editor title bar  
-  - Only visible when the `ink.mainFile` setting is configured  
+- New command **Run Ink Project** (`ink.runProject`) with a button in the editor title bar
+  - Only visible when the `ink.mainFile` setting is configured
   - Uses the ▶ icon and runs the project starting from the main file
 
 ### Changed
@@ -132,7 +138,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
   - Support for `rootFolder` setting: all `INCLUDE` paths are resolved relative to the root folder if defined.
   - Ctrl+Click support: clicking an `INCLUDE` path opens the target file.
   - Autocomplete suggestions while typing `INCLUDE` paths:
-    - Triggered automatically after typing `INCLUDE ` or with Ctrl+Space.
+    - Triggered automatically after typing `INCLUDE` or with Ctrl+Space.
     - Navigates into folders recursively.
     - Supports files and folders with spaces in names.
     - Suggestions respect `rootFolder` and subfolders.
