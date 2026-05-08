@@ -1,5 +1,5 @@
 import { Game, narration, RegisteredCharacters } from "@drincs/pixi-vn";
-import { convertInkStoryToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
+import { convertInkToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -29,7 +29,11 @@ type InputRequest = {
     input?: string | number;
 };
 
-function nextChoices(story: Story, history: HistoryItem[] = [], oldChoices: number[] = []): HistoryItem[] {
+function nextChoices(
+    story: Story,
+    history: HistoryItem[] = [],
+    oldChoices: number[] = [],
+): HistoryItem[] {
     const list = [...oldChoices];
     while (story.canContinue || (!story.canContinue && list.length > 0)) {
         if (!story.canContinue && list.length > 0) {
@@ -69,7 +73,7 @@ async function nextChoicesPixi(
     start: () => Promise<any>,
     history: HistoryItem[] = [],
     oldChoices: number[] = [],
-    oldInputs: (string | number)[] = []
+    oldInputs: (string | number)[] = [],
 ): Promise<HistoryItem[]> {
     const listChoices = [...oldChoices];
     const listInputs = [...oldInputs];
@@ -99,7 +103,8 @@ async function nextChoicesPixi(
     pushPixiHistory(history, tags.length > 0 ? tags : null);
     while (
         !isEnd &&
-        (narration.canContinue || (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
+        (narration.canContinue ||
+            (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
     ) {
         tags = [];
         if (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)) {
@@ -144,7 +149,9 @@ export default function NarrationView() {
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [inputValue, setInputValue] = useState<string | number>();
-    const [oldChoices, setOldChoices] = useState<(number | { type: "input"; value: string | number })[]>([]);
+    const [oldChoices, setOldChoices] = useState<
+        (number | { type: "input"; value: string | number })[]
+    >([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices, inputRequest } = currentState || {};
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
@@ -185,24 +192,31 @@ export default function NarrationView() {
                         try {
                             Game.clear();
                             RegisteredCharacters.add(characters || []);
-                            const json = convertInkStoryToJson(storyJson);
+                            const json = convertInkToJson(storyJson);
                             await importJson(json!);
                             const tempChoices = oldChoices
                                 .map((c) => (typeof c === "number" ? c : undefined))
                                 .filter((c): c is number => c !== undefined);
                             const tempInputs = oldChoices
-                                .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
+                                .map((c) =>
+                                    typeof c === "object" && c.type === "input"
+                                        ? c.value
+                                        : undefined,
+                                )
                                 .filter((c): c is string | number => c !== undefined);
                             const history: HistoryItem[] = await nextChoicesPixi(
                                 () => narration.call("__pixi_vn_start__", {}),
                                 [],
                                 tempChoices,
-                                tempInputs
+                                tempInputs,
                             );
                             setHistory(history);
                             setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
-                            setLog({ text: "Error loading Pixi-VN story", data: (e as any).toString() });
+                            setLog({
+                                text: "Error loading Pixi-VN story",
+                                data: (e as any).toString(),
+                            });
                         }
                         break;
                     }
@@ -236,7 +250,10 @@ export default function NarrationView() {
                 const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
                 if (!pixiChoice) return;
                 setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-                newHistory = await nextChoicesPixi(() => narration.selectChoice(pixiChoice, {}), newHistory);
+                newHistory = await nextChoicesPixi(
+                    () => narration.selectChoice(pixiChoice, {}),
+                    newHistory,
+                );
                 setHistory(newHistory);
                 break;
             }
@@ -280,7 +297,7 @@ export default function NarrationView() {
                     () => narration.call("__pixi_vn_start__", {}),
                     [],
                     tempChoices,
-                    tempInputs
+                    tempInputs,
                 );
                 setHistory(newHistory);
                 break;
@@ -305,7 +322,10 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 Game.clear();
-                const newHistory = await nextChoicesPixi(() => narration.call("__pixi_vn_start__", {}), []);
+                const newHistory = await nextChoicesPixi(
+                    () => narration.call("__pixi_vn_start__", {}),
+                    [],
+                );
                 setHistory(newHistory);
                 setOldChoices([]);
                 break;
@@ -322,44 +342,47 @@ export default function NarrationView() {
 
     return (
         <div
-            className='flex flex-col h-full p-4 font-sans'
-            style={{ backgroundColor: "var(--vscode-editor-background)", color: "var(--vscode-editor-foreground)" }}
+            className="flex flex-col h-full p-4 font-sans"
+            style={{
+                backgroundColor: "var(--vscode-editor-background)",
+                color: "var(--vscode-editor-foreground)",
+            }}
         >
             {/* Top bar */}
-            <div className='flex justify-end gap-2 mb-4'>
+            <div className="flex justify-end gap-2 mb-4">
                 <Button
-                    className='my-vscode-button'
+                    className="my-vscode-button"
                     onClick={goBack}
                     disabled={oldChoices.length === 0}
-                    variant='secondary'
-                    size='sm'
+                    variant="secondary"
+                    size="sm"
                     style={{
                         padding: "2px 6px",
                         height: "28px",
                         fontSize: "0.75rem",
                     }}
                 >
-                    <ArrowLeft size={14} className='mr-1' /> Back
+                    <ArrowLeft size={14} className="mr-1" /> Back
                 </Button>
                 <Button
-                    className='my-vscode-button'
+                    className="my-vscode-button"
                     onClick={restart}
-                    variant='destructive'
-                    size='sm'
+                    variant="destructive"
+                    size="sm"
                     style={{
                         padding: "2px 6px",
                         height: "28px",
                         fontSize: "0.75rem",
                     }}
                 >
-                    <RotateCcw size={14} className='mr-1' /> Restart
+                    <RotateCcw size={14} className="mr-1" /> Restart
                 </Button>
             </div>
 
             {/* Dialogues */}
             <div
                 ref={scrollRef}
-                className='flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border flex flex-col'
+                className="flex-1 overflow-y-auto space-y-3 mb-4 p-3 rounded-md border flex flex-col"
                 style={{
                     backgroundColor: "var(--vscode-editor-background)",
                     borderColor: "var(--vscode-editorWidget-border)",
@@ -368,8 +391,11 @@ export default function NarrationView() {
                 {history.length === 0 ? (
                     // Loader
                     <div
-                        className='flex justify-center items-center w-full h-full'
-                        style={{ color: "var(--vscode-editorHint-foreground)", fontStyle: "italic" }}
+                        className="flex justify-center items-center w-full h-full"
+                        style={{
+                            color: "var(--vscode-editorHint-foreground)",
+                            fontStyle: "italic",
+                        }}
                     >
                         Loading story...
                     </div>
@@ -377,7 +403,7 @@ export default function NarrationView() {
                     history.map((item, idx) => (
                         <div
                             key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
-                            className='motion-preset-slide-up motion-duration-500'
+                            className="motion-preset-slide-up motion-duration-500"
                         >
                             {item.tags?.map((tag, tIdx) => (
                                 <div
@@ -447,17 +473,20 @@ export default function NarrationView() {
 
             {/* Choices */}
             {!inputRequest && choices && choices?.length > 0 && (
-                <div className='mt-3'>
-                    <Separator className='mb-2' />
-                    <div className='font-semibold mb-2' style={{ color: "var(--vscode-editor-foreground)" }}>
+                <div className="mt-3">
+                    <Separator className="mb-2" />
+                    <div
+                        className="font-semibold mb-2"
+                        style={{ color: "var(--vscode-editor-foreground)" }}
+                    >
                         What do you choose?
                     </div>
-                    <div className='flex flex-col gap-2'>
+                    <div className="flex flex-col gap-2">
                         {choices.map((c, index) => (
                             <Button
-                                className='my-vscode-button'
+                                className="my-vscode-button"
                                 key={c.index}
-                                variant='outline'
+                                variant="outline"
                                 onClick={() => makeChoice(c)}
                                 style={{
                                     justifyContent: "flex-start",
@@ -472,7 +501,7 @@ export default function NarrationView() {
 
             {/* Input text */}
             {inputRequest && (
-                <div className='mt-3 flex gap-2'>
+                <div className="mt-3 flex gap-2">
                     <input
                         type={inputRequest.type}
                         value={inputValue ?? ""}
@@ -483,15 +512,23 @@ export default function NarrationView() {
                             }
                             setInputValue(value);
                         }}
-                        className='flex-1 px-3 py-2 rounded-md border'
-                        placeholder={inputRequest.type === "number" ? "Enter a number..." : "Type your response..."}
+                        className="flex-1 px-3 py-2 rounded-md border"
+                        placeholder={
+                            inputRequest.type === "number"
+                                ? "Enter a number..."
+                                : "Type your response..."
+                        }
                         style={{
                             backgroundColor: "var(--vscode-input-background)",
                             color: "var(--vscode-input-foreground)",
                             borderColor: "var(--vscode-input-border)",
                         }}
                     />
-                    <Button className='my-vscode-button' onClick={() => submitInput(inputValue)} variant='default'>
+                    <Button
+                        className="my-vscode-button"
+                        onClick={() => submitInput(inputValue)}
+                        variant="default"
+                    >
                         Submit
                     </Button>
                 </div>
