@@ -1,5 +1,4 @@
 {
-  "root": false,
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "vcs": {
     "enabled": true,
@@ -8,13 +7,19 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!!**/dist", "!!**/*.gen*"]
+    "includes": [
+      "**",
+      "!!**/dist",
+      "!!**/test",
+      "!!src/generated",
+      "!!**/generated"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 4,
-    "lineWidth": 100
+    "lineWidth": 125
   },
   "linter": {
     "enabled": true,
@@ -32,24 +37,15 @@
         "useConst": "info"
       }
     },
-    "domains": {
-      "react": "recommended"
-    }
+    "domains": {}
   },
   "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    },
     "formatter": {
       "enabled": true,
       "quoteStyle": "double"
-    }
-  },
-  "css": {
-    "formatter": {
-      "enabled": true,
-      "indentStyle": "space",
-      "indentWidth": 2
-    },
-    "parser": {
-      "tailwindDirectives": true
     }
   },
   "json": {

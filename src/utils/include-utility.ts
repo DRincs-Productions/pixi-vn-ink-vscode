@@ -24,7 +24,7 @@ import InkFile from "../types/InkFile";
 export async function loadInkFiles(
     entryPath: string,
     rootFolder: string,
-    visited: Set<string> = new Set()
+    visited: Set<string> = new Set(),
 ): Promise<InkFile[]> {
     const result: InkFile[] = [];
 
@@ -66,9 +66,7 @@ export async function loadInkFiles(
 export async function loadInkFolder(folderPath: string, rootFolder: string): Promise<InkFile[]> {
     const result: InkFile[] = [];
 
-    const resolvedFolder = path.isAbsolute(folderPath)
-        ? path.resolve(folderPath)
-        : path.resolve(rootFolder, folderPath);
+    const resolvedFolder = path.isAbsolute(folderPath) ? path.resolve(folderPath) : path.resolve(rootFolder, folderPath);
 
     async function scanDir(dir: string) {
         try {
@@ -216,7 +214,7 @@ export function suggestionsInclude(): CompletionItemProvider {
 
                 const item = new CompletionItem(
                     type === FileType.Directory ? name + "/" : name,
-                    type === FileType.Directory ? CompletionItemKind.Folder : CompletionItemKind.File
+                    type === FileType.Directory ? CompletionItemKind.Folder : CompletionItemKind.File,
                 );
                 item.insertText = type === FileType.Directory ? name + "/" : name;
                 item.range = range; // impostiamo il range corretto

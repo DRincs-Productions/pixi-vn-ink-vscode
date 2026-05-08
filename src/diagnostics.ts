@@ -32,8 +32,8 @@ export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) 
                     issue.type === ErrorType.Error
                         ? DiagnosticSeverity.Error
                         : issue.type === ErrorType.Warning
-                        ? DiagnosticSeverity.Warning
-                        : DiagnosticSeverity.Information,
+                          ? DiagnosticSeverity.Warning
+                          : DiagnosticSeverity.Information,
                 message: issue.message,
                 source: "ink",
                 range,
@@ -62,16 +62,16 @@ export function checkIncludes(document: TextDocument, diagnostics: Diagnostic[])
                     new Diagnostic(
                         new Range(lineIndex, 0, lineIndex, line.length),
                         `Included file "${relativePath}" does not exist (resolved from "${baseFolder}").`,
-                        DiagnosticSeverity.Error
-                    )
+                        DiagnosticSeverity.Error,
+                    ),
                 );
             } else if (path.extname(fullPath) !== ".ink") {
                 diagnostics.push(
                     new Diagnostic(
                         new Range(lineIndex, 0, lineIndex, line.length),
                         `Included file "${relativePath}" is not a .ink file.`,
-                        DiagnosticSeverity.Warning
-                    )
+                        DiagnosticSeverity.Warning,
+                    ),
                 );
             }
         }

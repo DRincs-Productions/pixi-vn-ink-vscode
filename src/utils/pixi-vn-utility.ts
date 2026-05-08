@@ -57,7 +57,7 @@ export function compilePixiVN(
     text: string,
     fileHandler: Partial<IFileHandler> = {},
     labelToRemove: string[] = [],
-    initialVarsToRemove: string[] = []
+    initialVarsToRemove: string[] = [],
 ) {
     const issues: { message: string; type: ErrorType; line: number }[] = [];
     const errors: string[] = [];

@@ -1,10 +1,10 @@
 {
-    "iconDefinitions": {
-        "_ink": {
-            "iconPath": "../resources/icon.png"
-        }
-    },
-    "fileExtensions": {
-        "ink": "_ink"
+  "iconDefinitions": {
+    "_ink": {
+      "iconPath": "../resources/icon.png"
     }
+  },
+  "fileExtensions": {
+    "ink": "_ink"
+  }
 }

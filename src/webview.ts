@@ -68,7 +68,7 @@ export async function openWebview(
         name: string;
         text: string;
         uri: Uri;
-    }
+    },
 ) {
     const { name, text, uri } = file;
 
@@ -154,13 +154,11 @@ export async function openWebview(
                 let updatedCompiled: string | void;
                 if (engine === "pixi-vn") {
                     updatedCompiled = compilePixiVN(newText, {
-                        LoadInkFileContents: (filename: string) =>
-                            loadInkFileContent(filename, rootFolderSetting) || "",
+                        LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
                     });
                 } else {
                     updatedCompiled = compile(newText, {
-                        LoadInkFileContents: (filename: string) =>
-                            loadInkFileContent(filename, rootFolderSetting) || "",
+                        LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
                     }).ToJson();
                 }
 

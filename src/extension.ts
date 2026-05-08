@@ -70,7 +70,7 @@ export function activate(context: ExtensionContext) {
     // Suggestions include
     const includeSuggestionsProvider = suggestionsInclude();
     context.subscriptions.push(
-        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, " ")
+        languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, " "),
     );
 
     context.subscriptions.push(
@@ -95,26 +95,26 @@ export function activate(context: ExtensionContext) {
                 // Hover for END / DONE
                 if (word === "END") {
                     return new Hover(
-                        "**END**: Ends the current story flow immediately. Use this when the story should stop completely."
+                        "**END**: Ends the current story flow immediately. Use this when the story should stop completely.",
                     );
                 }
                 if (word === "DONE") {
                     return new Hover(
-                        "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice."
+                        "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice.",
                     );
                 }
 
                 // Hover for divert arrow ->
                 if (word === "->") {
                     return new Hover(
-                        "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence."
+                        "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence.",
                     );
                 }
 
                 // Hover for glue <>
                 if (word === "<>") {
                     return new Hover(
-                        "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line."
+                        "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line.",
                     );
                 }
 
@@ -123,24 +123,24 @@ export function activate(context: ExtensionContext) {
                     if (word === "&" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```"
-                            )
+                                "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```",
+                            ),
                         );
                     }
 
                     if (word === "!" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```"
-                            )
+                                "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```",
+                            ),
                         );
                     }
 
                     if (word === "~" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```"
-                            )
+                                "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```",
+                            ),
                         );
                     }
                 }
@@ -149,8 +149,8 @@ export function activate(context: ExtensionContext) {
                 if (word === "|" && !isEscaped(line, position.character)) {
                     return new Hover(
                         new MarkdownString(
-                            "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`."
-                        )
+                            "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`.",
+                        ),
                     );
                 }
 
@@ -164,22 +164,22 @@ export function activate(context: ExtensionContext) {
                         if (char === "*") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Choice (`*`)**: Offers the player a one-time choice. Flows to the next line after selection."
-                                )
+                                    "**Choice (`*`)**: Offers the player a one-time choice. Flows to the next line after selection.",
+                                ),
                             );
                         }
                         if (char === "+") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Sticky Choice (`+`)**: Same as `*`, but reusable (remains available even after being chosen)."
-                                )
+                                    "**Sticky Choice (`+`)**: Same as `*`, but reusable (remains available even after being chosen).",
+                                ),
                             );
                         }
                         if (char === "-") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Gather (`-`)**: Collects multiple branches back into a single flow point."
-                                )
+                                    "**Gather (`-`)**: Collects multiple branches back into a single flow point.",
+                                ),
                             );
                         }
                     }
@@ -192,7 +192,7 @@ export function activate(context: ExtensionContext) {
 
                 return;
             },
-        })
+        }),
     );
 }
 
@@ -283,7 +283,7 @@ export function getKnotComment(document: TextDocument, word: string) {
                 .replace(/^\/\*\*?/, "")
                 .replace(/\*\/$/, "")
                 .replace(/^\s*\*\s?/, "")
-                .trim()
+                .trim(),
         )
         .filter(Boolean)
         .join("\n");
