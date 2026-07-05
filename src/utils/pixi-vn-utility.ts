@@ -1,5 +1,5 @@
 import { Compiler } from "inkjs/compiler/Compiler";
-import { IFileHandler } from "inkjs/compiler/IFileHandler";
+import type { IFileHandler } from "inkjs/compiler/IFileHandler";
 import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
 
 export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], initialVarsToRemove: string[] = []) {
@@ -9,7 +9,7 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
             errorHandler: (message: string, type: ErrorType) => {
                 const cleanedMsg = message.replace(/^[A-Z]+: line \d+: ?/, "");
                 const lineMatch = message.match(/line (\d+)/);
-                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1]) : -1 });
+                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1], 10) : -1 });
             },
             countAllVisits: true,
             fileHandler: null,
@@ -18,12 +18,12 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
         });
         compiler.Compile();
         return issues;
-    } catch (e) {
+    } catch (_e) {
         const error = issues.find((em) => em.type === ErrorType.Error);
         if (error) {
             if (error.message.includes("Divert target not found")) {
                 const match = error.message.match(/Divert target not found: '-> (\w+)'/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const label = match[1];
                     const textToAdd = `\n\n=== ${label} ===\n\n# run ${label}\n\n-> DONE`;
                     text = text.concat(textToAdd);
@@ -32,7 +32,7 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
             }
             if (error.message.includes("Unresolved variable")) {
                 const match = error.message.match(/Unresolved variable: (\w+)/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const varName = match[1];
                     const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
                     text = textToAdd.concat(text);
@@ -41,7 +41,7 @@ export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], init
             }
             if (error.message.includes("Variable could not be found to assign to")) {
                 const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const varName = match[1];
                     const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
                     text = textToAdd.concat(text);
@@ -67,7 +67,7 @@ export function compilePixiVN(
             errorHandler: (message: string, type: ErrorType) => {
                 const cleanedMsg = message.replace(/^[A-Z]+: line \d+: ?/, "");
                 const lineMatch = message.match(/line (\d+)/);
-                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1]) : -1 });
+                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1], 10) : -1 });
                 if (type === ErrorType.Error) {
                     errors.push(message);
                 } else {
@@ -96,7 +96,7 @@ export function compilePixiVN(
         if (error) {
             if (error.message.includes("Divert target not found")) {
                 const match = error.message.match(/Divert target not found: '-> (\w+)'/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const label = match[1];
                     const textToAdd = `\n\n=== ${label} ===\n\n# run ${label}\n\n-> DONE`;
                     text = text.concat(textToAdd);
@@ -105,7 +105,7 @@ export function compilePixiVN(
             }
             if (error.message.includes("Unresolved variable")) {
                 const match = error.message.match(/Unresolved variable: (\w+)/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const varName = match[1];
                     const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
                     text = textToAdd.concat(text);
@@ -114,7 +114,7 @@ export function compilePixiVN(
             }
             if (error.message.includes("Variable could not be found to assign to")) {
                 const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
-                if (match && match[1]) {
+                if (match?.[1]) {
                     const varName = match[1];
                     const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
                     text = textToAdd.concat(text);

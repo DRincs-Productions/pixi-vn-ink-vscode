@@ -1,7 +1,7 @@
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
 import { ErrorType } from "inkjs/engine/Error";
-import path from "path";
-import { Diagnostic, DiagnosticSeverity, Range, TextDocument, workspace } from "vscode";
+import path from "node:path";
+import { Diagnostic, DiagnosticSeverity, Range, type TextDocument, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors } from "./utils/ink-utility";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
@@ -11,7 +11,7 @@ export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) 
     const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
     const rootFolderSetting = getInkRootFolder(doc);
 
-    let errors;
+    let errors: { message: string; type: ErrorType; line: number }[];
 
     if (engine === "pixi-vn") {
         errors = getErrorsPixiVN(doc.getText());

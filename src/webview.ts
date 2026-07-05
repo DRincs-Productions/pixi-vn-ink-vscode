@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import * as path from "path";
-import { commands, ExtensionContext, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { commands, type ExtensionContext, type TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile } from "./utils/ink-utility";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
@@ -76,7 +76,7 @@ export async function openWebview(
     const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
     const markup = config.get<string | null>("markup", null);
 
-    let compiled: string | void;
+    let compiled: string | undefined;
     try {
         if (engine === "pixi-vn") {
             compiled = compilePixiVN(text, {
@@ -130,7 +130,7 @@ export async function openWebview(
                         characters = await res.text();
                         console.log("Fetched Pixi-VN characters:", characters);
                     }
-                } catch (err) {}
+                } catch (_err) {}
             }
             panel.webview.postMessage({
                 type: "compiled-story",
@@ -151,7 +151,7 @@ export async function openWebview(
             const newText = doc.getText();
             try {
                 const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
-                let updatedCompiled: string | void;
+                let updatedCompiled: string | undefined;
                 if (engine === "pixi-vn") {
                     updatedCompiled = compilePixiVN(newText, {
                         LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",

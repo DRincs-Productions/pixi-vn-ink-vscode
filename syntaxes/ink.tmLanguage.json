@@ -111,6 +111,9 @@
         {
           "begin": "^\\s*([-*+])(\\s*[-*+])*\\s*(?=\\()",
           "beginCaptures": {
+            "0": {
+              "name": "keyword.other.gather.ink"
+            },
             "1": {
               "name": "keyword.other.gather.ink"
             }
