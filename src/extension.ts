@@ -92,15 +92,10 @@ export function activate(context: ExtensionContext) {
 
                 if (!word) return;
 
-                // Hover for END / DONE — only in valid ink keyword contexts:
-                // after a divert arrow (-> END, ->DONE) or at the very start of the line
+                // Hover for END / DONE — only after a divert arrow.
                 if (word === "END" || word === "DONE") {
                     const wordStartChar = range ? range.start.character : position.character;
-                    const beforeWord = line.substring(0, wordStartChar);
-                    const isKeywordContext =
-                        /->\s*$/.test(beforeWord) || // immediately after a divert arrow
-                        /^\s*$/.test(beforeWord); // only whitespace before (standalone keyword)
-                    if (isKeywordContext) {
+                    if (isEndDoneHoverContext(line, wordStartChar)) {
                         if (word === "END") {
                             return new Hover(
                                 "**END**: Ends the current story flow immediately. Use this when the story should stop completely.",
@@ -218,6 +213,10 @@ export function activate(context: ExtensionContext) {
 
 function escapeRegExp(s: string) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function isEndDoneHoverContext(line: string, wordStartChar: number) {
+    return /->\s*$/.test(line.substring(0, wordStartChar));
 }
 
 /**
