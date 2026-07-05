@@ -92,16 +92,24 @@ export function activate(context: ExtensionContext) {
 
                 if (!word) return;
 
-                // Hover for END / DONE
-                if (word === "END") {
-                    return new Hover(
-                        "**END**: Ends the current story flow immediately. Use this when the story should stop completely.",
-                    );
-                }
-                if (word === "DONE") {
-                    return new Hover(
-                        "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice.",
-                    );
+                // Hover for END / DONE — only in valid ink keyword contexts:
+                // after a divert arrow (-> END, ->DONE) or at the very start of the line
+                if (word === "END" || word === "DONE") {
+                    const wordStartChar = range ? range.start.character : position.character;
+                    const beforeWord = line.substring(0, wordStartChar);
+                    const isKeywordContext =
+                        /->\s*$/.test(beforeWord) || // immediately after a divert arrow
+                        /^\s*$/.test(beforeWord); // only whitespace before (standalone keyword)
+                    if (isKeywordContext) {
+                        if (word === "END") {
+                            return new Hover(
+                                "**END**: Ends the current story flow immediately. Use this when the story should stop completely.",
+                            );
+                        }
+                        return new Hover(
+                            "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice.",
+                        );
+                    }
                 }
 
                 // Hover for divert arrow ->
