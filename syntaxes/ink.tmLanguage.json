@@ -273,7 +273,7 @@
       "patterns": [
         {
           "name": "keyword.other.glue.ink",
-          "match": "<>"
+          "match": "(?<!\\\\)<>"
         }
       ]
     },

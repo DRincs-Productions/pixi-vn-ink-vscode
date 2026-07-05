@@ -111,8 +111,8 @@ export function activate(context: ExtensionContext) {
                     );
                 }
 
-                // Hover for glue <>
-                if (word === "<>") {
+                // Hover for glue <> (but not escaped \<>)
+                if (word === "<>" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
                         "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line.",
                     );
