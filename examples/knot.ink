@@ -10,6 +10,7 @@ Hello world!END
 === knot1 === // This is a comment
 top_knot
 DONE
+* {top_knot} test
 ->DONE
 
 -> top_knot
