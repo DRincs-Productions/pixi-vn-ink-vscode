@@ -102,7 +102,7 @@
       "patterns": [
         {
           "name": "keyword.other.gather.ink",
-          "match": "^\\s*-(?!\\s*>)(\\s*-)*"
+          "match": "^\\s*-(?!\\s*>)(\\s*-(?!\\s*>))*"
         }
       ]
     },
