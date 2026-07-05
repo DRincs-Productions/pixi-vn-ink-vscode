@@ -192,7 +192,7 @@ export function activate(context: ExtensionContext) {
                 const beforeWord = line.substring(0, wordStartChar);
                 const isKnotReferenceContext =
                     /^\s*=/.test(line) || // knot/stitch definition line (=== name === or = stitch)
-                    /->/.test(beforeWord) || // preceded by a divert arrow
+                    /->\s*$/.test(beforeWord) || // immediately preceded by a divert arrow
                     isInsideVariableText(document, position); // inside { }
 
                 if (isKnotReferenceContext) {
