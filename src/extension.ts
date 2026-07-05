@@ -185,9 +185,21 @@ export function activate(context: ExtensionContext) {
                     }
                 }
 
-                const commentLines = getKnotComment(document, word);
-                if (commentLines) {
-                    return commentLines;
+                // Only show knot comment popup when the word is used as a knot reference:
+                // a divert (-> word), inside curly braces {word}, or on a knot/stitch definition line.
+                // Plain narrative text that happens to share a knot name should not trigger the popup.
+                const wordStartChar = range ? range.start.character : position.character;
+                const beforeWord = line.substring(0, wordStartChar);
+                const isKnotReferenceContext =
+                    /^\s*=/.test(line) || // knot/stitch definition line (=== name === or = stitch)
+                    /->\s*$/.test(beforeWord) || // immediately preceded by a divert arrow
+                    isInsideVariableText(document, position); // inside { }
+
+                if (isKnotReferenceContext) {
+                    const commentLines = getKnotComment(document, word);
+                    if (commentLines) {
+                        return commentLines;
+                    }
                 }
 
                 return;
