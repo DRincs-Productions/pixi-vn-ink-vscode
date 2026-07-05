@@ -157,6 +157,7 @@ export default function NarrationView() {
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls to bottom whenever history changes
     useEffect(() => {
         const el = scrollRef.current;
         if (el) {
@@ -220,7 +221,6 @@ export default function NarrationView() {
                         }
                         break;
                     }
-                    case "Inky":
                     default: {
                         const story = new Story(storyJson);
                         setStory(story);
@@ -257,7 +257,6 @@ export default function NarrationView() {
                 setHistory(newHistory);
                 break;
             }
-            case "Inky":
             default: {
                 if (!story) return;
                 let newHistory = [...history];
@@ -302,7 +301,6 @@ export default function NarrationView() {
                 setHistory(newHistory);
                 break;
             }
-            case "Inky":
             default: {
                 if (!story || history.length === 0) return;
 
@@ -330,7 +328,6 @@ export default function NarrationView() {
                 setOldChoices([]);
                 break;
             }
-            case "Inky":
             default: {
                 story?.ResetState();
                 const newHistory = nextChoices(story!);

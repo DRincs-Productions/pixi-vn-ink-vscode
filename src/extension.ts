@@ -1,12 +1,12 @@
 import {
-    Diagnostic,
-    ExtensionContext,
+    type Diagnostic,
+    type ExtensionContext,
     Hover,
     languages,
     MarkdownString,
-    Position,
+    type Position,
     Range,
-    TextDocument,
+    type TextDocument,
     window,
     workspace,
 } from "vscode";
@@ -266,7 +266,6 @@ export function getKnotComment(document: TextDocument, word: string) {
             if (text.startsWith("/**") || text.startsWith("*") || text.startsWith("*/")) {
                 comments.unshift(text);
             } else if (text === "") {
-                continue;
             } else {
                 break;
             }

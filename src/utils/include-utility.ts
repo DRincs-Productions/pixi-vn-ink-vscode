@@ -1,19 +1,19 @@
-import { existsSync, readFileSync } from "fs";
-import * as path from "path";
+import { existsSync, readFileSync } from "node:fs";
+import * as path from "node:path";
 import {
     CompletionItem,
     CompletionItemKind,
-    CompletionItemProvider,
-    DefinitionProvider,
+    type CompletionItemProvider,
+    type DefinitionProvider,
     FileType,
     Location,
     Position,
     Range,
-    TextDocument,
+    type TextDocument,
     Uri,
     workspace,
 } from "vscode";
-import InkFile from "../types/InkFile";
+import type InkFile from "../types/InkFile";
 
 /**
  * Recursively loads a file and all its included files.
@@ -126,7 +126,7 @@ export function getInkRootFolder(document: TextDocument): string {
 
 export function includeCtrlClick(): DefinitionProvider {
     const provider: DefinitionProvider = {
-        async provideDefinition(document, position, token) {
+        async provideDefinition(document, position, _token) {
             const line = document.lineAt(position.line).text;
             const match = line.match(/^\s*INCLUDE\s+(.+)$/);
             if (!match) return;
@@ -175,7 +175,7 @@ export function suggestionsInclude(): CompletionItemProvider {
             const includeMatch = beforeCursor.match(/^\s*INCLUDE\s+(.*)$/);
             if (!includeMatch) return undefined;
 
-            let typedPath = includeMatch[1].replace(/\\/g, "/");
+            const typedPath = includeMatch[1].replace(/\\/g, "/");
 
             const workspaceRoot = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath || "";
             const config = workspace.getConfiguration("ink");
@@ -213,10 +213,10 @@ export function suggestionsInclude(): CompletionItemProvider {
                 if (prefix && !name.startsWith(prefix)) continue;
 
                 const item = new CompletionItem(
-                    type === FileType.Directory ? name + "/" : name,
+                    type === FileType.Directory ? `${name}/` : name,
                     type === FileType.Directory ? CompletionItemKind.Folder : CompletionItemKind.File,
                 );
-                item.insertText = type === FileType.Directory ? name + "/" : name;
+                item.insertText = type === FileType.Directory ? `${name}/` : name;
                 item.range = range; // impostiamo il range corretto
                 completions.push(item);
             }
