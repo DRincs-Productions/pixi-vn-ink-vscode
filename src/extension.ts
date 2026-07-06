@@ -101,7 +101,7 @@ export function activate(context: ExtensionContext) {
                             i,
                             offset + localScanStart + range.end,
                         ),
-                        hoverMessage: new MarkdownString("`\\\\n`: inserts a line break."),
+                        hoverMessage: new MarkdownString("`\\n`: inserts a line break."),
                     });
                 }
             }

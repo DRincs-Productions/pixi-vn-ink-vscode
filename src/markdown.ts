@@ -26,8 +26,9 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
     const bold: MarkdownRange[] = [];
     const newlines: MarkdownRange[] = [];
 
-    for (let i = 0; i < text.length - 1; i++) {
-        if (text[i] === "\\" && text[i + 1] === "n" && !isEscaped(text, i)) {
+    for (let i = 0; i < text.length; i++) {
+        const nextChar = i + 1 < text.length ? text[i + 1] : "";
+        if (text[i] === "\\" && nextChar === "n" && !isEscaped(text, i)) {
             newlines.push({ start: i, end: i + 2 });
             i++;
         }
@@ -37,8 +38,9 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
         if (text[i] !== "*" || isEscaped(text, i)) continue;
 
         if (text[i + 1] === "*") {
-            for (let j = i + 2; j < text.length - 1; j++) {
-                if (text[j] === "*" && text[j + 1] === "*" && !isEscaped(text, j)) {
+            for (let j = i + 2; j < text.length; j++) {
+                const nextChar = j + 1 < text.length ? text[j + 1] : "";
+                if (text[j] === "*" && nextChar === "*" && !isEscaped(text, j)) {
                     if (hasVisibleContent(text.slice(i + 2, j))) {
                         bold.push({ start: i + 2, end: j });
                         i = j + 1;
