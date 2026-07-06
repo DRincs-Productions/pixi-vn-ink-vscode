@@ -1,11 +1,14 @@
 import {
     type Diagnostic,
+    EventEmitter,
     type ExtensionContext,
     Hover,
     languages,
     MarkdownString,
     type Position,
     Range,
+    SemanticTokensBuilder,
+    SemanticTokensLegend,
     type TextDocument,
     window,
     workspace,
@@ -14,11 +17,19 @@ import { checkIncludes, updateDiagnostics } from "./diagnostics";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { previewCommand, runProjectCommand } from "./webview";
 
+// Legend for the pixi-vn bracket semantic tokens (uses the built-in "keyword" type so it
+// shares the theme colour already used by choice brackets in the TextMate grammar).
+const bracketTokenLegend = new SemanticTokensLegend(["keyword"], []);
+
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
 
     context.subscriptions.push(previewCommand(context));
     context.subscriptions.push(runProjectCommand(context));
+
+    // Emitter used to tell VS Code to re-compute semantic tokens when the engine setting changes
+    const onDidChangeSemanticTokensEmitter = new EventEmitter<void>();
+    context.subscriptions.push(onDidChangeSemanticTokensEmitter);
 
     // Listen for configuration changes
 
@@ -26,6 +37,7 @@ export function activate(context: ExtensionContext) {
         if (event.affectsConfiguration("ink.engine")) {
             const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
             window.showInformationMessage(`Engine changed to ${newEngine}`);
+            onDidChangeSemanticTokensEmitter.fire();
         }
         if (event.affectsConfiguration("ink.markup")) {
             const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup", null);
@@ -213,6 +225,50 @@ export function activate(context: ExtensionContext) {
             },
         }),
     );
+
+    // Semantic token provider: color matched [ ] pairs in normal text when engine is pixi-vn
+    context.subscriptions.push(
+        languages.registerDocumentSemanticTokensProvider(
+            { language: "ink" },
+            {
+                onDidChangeSemanticTokens: onDidChangeSemanticTokensEmitter.event,
+                provideDocumentSemanticTokens(document) {
+                    const engine = workspace
+                        .getConfiguration("ink")
+                        .get<"Inky" | "pixi-vn">("engine", "Inky");
+                    const builder = new SemanticTokensBuilder(bracketTokenLegend);
+                    if (engine !== "pixi-vn") {
+                        return builder.build();
+                    }
+
+                    let inBlockComment = false;
+                    for (let i = 0; i < document.lineCount; i++) {
+                        const line = document.lineAt(i).text;
+
+                        // Track multi-line block comments
+                        if (inBlockComment) {
+                            if (line.includes("*/")) inBlockComment = false;
+                            continue;
+                        }
+                        if (line.includes("/*")) {
+                            // If the closing */ is not on the same line, enter block-comment mode
+                            if (!line.includes("*/")) inBlockComment = true;
+                            continue;
+                        }
+
+                        if (!isNormalTextLine(line)) continue;
+
+                        const positions = findMatchingBracketsInNormalText(line);
+                        for (const pos of positions) {
+                            builder.push(i, pos, 1, 0, 0);
+                        }
+                    }
+                    return builder.build();
+                },
+            },
+            bracketTokenLegend,
+        ),
+    );
 }
 
 function escapeRegExp(s: string) {
@@ -369,4 +425,54 @@ export function isVariableTextTypeSpecifier(line: string, position: number): boo
 function isEscaped(line: string, position: number): boolean {
     // true if the character at `position` is preceded by a backslash
     return position > 0 && line[position - 1] === "\\";
+}
+
+/**
+ * Returns true when `line` is a "normal text" line in ink — i.e. not a choice,
+ * knot declaration, logic line, comment, include, or variable declaration.
+ * Used by the pixi-vn semantic-token provider to decide which lines can contain
+ * coloured square brackets.
+ */
+export function isNormalTextLine(line: string): boolean {
+    const trimmed = line.trimStart();
+    if (trimmed === "") return false;
+    // Single-line comments
+    if (trimmed.startsWith("//")) return false;
+    // Block-comment openers (multi-line tracking is handled in the caller)
+    if (trimmed.startsWith("/*")) return false;
+    // Choice lines (* or +, possibly repeated with spaces)
+    if (/^[*+]/.test(trimmed)) return false;
+    // Knot / stitch declarations
+    if (trimmed.startsWith("=")) return false;
+    // Tilde logic
+    if (trimmed.startsWith("~")) return false;
+    // INCLUDE / VAR / CONST / LIST declarations
+    if (/^(INCLUDE|VAR|CONST|LIST)\b/.test(trimmed)) return false;
+    return true;
+}
+
+/**
+ * Returns the character positions of every `[` and `]` that form a matched
+ * pair on `line`, respecting nesting (innermost pairs resolved first).
+ * Escaped brackets (`\[`, `\]`) are ignored.
+ *
+ * Example: `"Hello [a [b] c]"` → [9, 11, 6, 14]
+ */
+export function findMatchingBracketsInNormalText(line: string): number[] {
+    const positions: number[] = [];
+    const stack: number[] = [];
+
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === "[" && !isEscaped(line, i)) {
+            stack.push(i);
+        } else if (line[i] === "]" && !isEscaped(line, i)) {
+            const open = stack.pop();
+            if (open !== undefined) {
+                positions.push(open);
+                positions.push(i);
+            }
+        }
+    }
+
+    return positions;
 }
