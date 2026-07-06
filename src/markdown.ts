@@ -68,8 +68,8 @@ function sortRanges(ranges: MarkdownRange[]) {
 }
 
 export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
-    const italic: MarkdownRange[] = [];
-    const bold: MarkdownRange[] = [];
+    let italic: MarkdownRange[] = [];
+    let bold: MarkdownRange[] = [];
     const newlines: MarkdownRange[] = [];
 
     for (let i = 0; i < text.length; i++) {
@@ -88,8 +88,8 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
         italic.push(...findDelimitedRanges(text, marker, 1));
     }
 
-    sortRanges(italic);
-    sortRanges(bold);
+    italic = sortRanges(italic);
+    bold = sortRanges(bold);
 
     return { italic, bold, newlines };
 }
