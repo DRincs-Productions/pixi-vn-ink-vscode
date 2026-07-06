@@ -104,7 +104,6 @@ Planned for future releases:
 - Enable CTRL+Click functionality for knots, functions, and variables
 - Allow folding/collapsing of knots and functions
 - Add a counter for knots and word count
-- Add a flag to enable syntax highlighting for Markdown
 - Add a flag to enable syntax highlighting for Pixi'VN
 
 ---
