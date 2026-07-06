@@ -1,5 +1,12 @@
 VAR x = 1
+/**
+ * test
+ */
 VAR y = 0
+/**
+ * test
+ */
+CONST sadsd = 0
 
 { - x > 0:
 	Text
