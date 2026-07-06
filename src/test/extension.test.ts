@@ -3,7 +3,7 @@ import * as assert from 'assert';
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
-import { isEndDoneHoverContext, isVariableTextTypeSpecifier, isNormalTextLine, findMatchingBracketsInNormalText } from '../extension';
+import { isEndDoneHoverContext, isVariableTextTypeSpecifier, isNormalTextLine, findMatchingBracketsInNormalText, collectCommentAbove } from '../extension';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -122,6 +122,91 @@ suite('Extension Test Suite', () => {
 			findMatchingBracketsInNormalText('[a] and [b]'),
 			[0, 2, 8, 10],
 			'two independent pairs'
+		);
+	});
+
+	test('collectCommentAbove: collects /** ... */ block comments above a knot', () => {
+		const lines = [
+			'/**',
+			' * Example comment',
+			' */',
+			'=== my_knot ===',
+		];
+		// The function trims each line before storing, so leading spaces are removed
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 3),
+			['/**', '* Example comment', '*/'],
+			'standard multi-line JSDoc block'
+		);
+	});
+
+	test('collectCommentAbove: does not collect ink choice lines starting with *', () => {
+		const lines = [
+			'*\t{ not visit_paris }\t[Go to Paris] -> visit_paris',
+			'+\t{ visit_paris }\t\t[Return to Paris] -> visit_paris',
+			'*\t{ not (visit_paris or visit_rome) && (visit_london || visit_new_york) } [ Wait. Go where? ] -> visit_someplace',
+			'',
+			'=== visit_paris ===',
+		];
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 4),
+			[],
+			'ink choice lines must not be treated as comments'
+		);
+	});
+
+	test('collectCommentAbove: collects single-line /** ... */ comment', () => {
+		const lines = [
+			'/** A quick description */',
+			'=== my_knot ===',
+		];
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 1),
+			['/** A quick description */'],
+			'single-line block comment'
+		);
+	});
+
+	test('collectCommentAbove: skips blank lines between comment and knot', () => {
+		const lines = [
+			'/**',
+			' * Comment with blank line below',
+			' */',
+			'',
+			'=== my_knot ===',
+		];
+		// The function trims each line before storing, so leading spaces are removed
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 4),
+			['/**', '* Comment with blank line below', '*/'],
+			'blank line between comment and knot is skipped'
+		);
+	});
+
+	test('collectCommentAbove: returns empty when no comment above', () => {
+		const lines = [
+			'=== another_knot ===',
+			'Some narrative text.',
+			'',
+			'=== my_knot ===',
+		];
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 3),
+			[],
+			'no comment means empty result'
+		);
+	});
+
+	test('collectCommentAbove: does not collect * line outside a /** block', () => {
+		// A lone `* text` line (ink choice) with no enclosing /** */ block
+		const lines = [
+			'* some choice text',
+			'=== my_knot ===',
+		];
+		assert.deepStrictEqual(
+			collectCommentAbove(lines, 1),
+			[],
+			'lone * line (ink choice) is not a comment'
 		);
 	});
 });
