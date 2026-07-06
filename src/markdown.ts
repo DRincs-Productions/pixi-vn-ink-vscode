@@ -63,6 +63,10 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
     return ranges;
 }
 
+function sortRanges(ranges: MarkdownRange[]) {
+    ranges.sort((left, right) => left.start - right.start || left.end - right.end);
+}
+
 export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
     const italic: MarkdownRange[] = [];
     const bold: MarkdownRange[] = [];
@@ -84,8 +88,8 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
         italic.push(...findDelimitedRanges(text, marker, 1));
     }
 
-    italic.sort((left, right) => left.start - right.start || left.end - right.end);
-    bold.sort((left, right) => left.start - right.start || left.end - right.end);
+    sortRanges(italic);
+    sortRanges(bold);
 
     return { italic, bold, newlines };
 }
