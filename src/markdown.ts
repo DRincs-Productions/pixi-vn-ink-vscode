@@ -21,6 +21,46 @@ function hasVisibleContent(text: string) {
     return /\S/.test(text);
 }
 
+function getMarkerRunLength(text: string, index: number, marker: string): number {
+    let length = 0;
+    while (text[index + length] === marker) {
+        length++;
+    }
+    return length;
+}
+
+function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1 | 2 | 3): MarkdownRange[] {
+    const ranges: MarkdownRange[] = [];
+
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] !== marker || isEscaped(text, i)) continue;
+
+        const openingLength = getMarkerRunLength(text, i, marker);
+        if (openingLength !== delimiterLength) {
+            i += openingLength - 1;
+            continue;
+        }
+
+        for (let j = i + delimiterLength; j < text.length; j++) {
+            if (text[j] !== marker || isEscaped(text, j)) continue;
+
+            const closingLength = getMarkerRunLength(text, j, marker);
+            if (closingLength !== delimiterLength) {
+                j += closingLength - 1;
+                continue;
+            }
+
+            if (hasVisibleContent(text.slice(i + delimiterLength, j))) {
+                ranges.push({ start: i + delimiterLength, end: j });
+                i = j + delimiterLength - 1;
+            }
+            break;
+        }
+    }
+
+    return ranges;
+}
+
 export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
     const italic: MarkdownRange[] = [];
     const bold: MarkdownRange[] = [];
@@ -34,35 +74,16 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
         }
     }
 
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] !== "*" || isEscaped(text, i)) continue;
-
-        if (text[i + 1] === "*") {
-            for (let j = i + 2; j < text.length; j++) {
-                const nextChar = j + 1 < text.length ? text[j + 1] : "";
-                if (text[j] === "*" && nextChar === "*" && !isEscaped(text, j)) {
-                    if (hasVisibleContent(text.slice(i + 2, j))) {
-                        bold.push({ start: i + 2, end: j });
-                        i = j + 1;
-                    }
-                    break;
-                }
-            }
-            continue;
-        }
-
-        for (let j = i + 1; j < text.length; j++) {
-            const previousChar = j > 0 ? text[j - 1] : "";
-            const nextChar = j + 1 < text.length ? text[j + 1] : "";
-            if (text[j] === "*" && !isEscaped(text, j) && previousChar !== "*" && nextChar !== "*") {
-                if (hasVisibleContent(text.slice(i + 1, j))) {
-                    italic.push({ start: i + 1, end: j });
-                    i = j;
-                }
-                break;
-            }
-        }
+    for (const marker of ["*", "_"] as const) {
+        const boldItalic = findDelimitedRanges(text, marker, 3);
+        italic.push(...boldItalic);
+        bold.push(...boldItalic);
+        bold.push(...findDelimitedRanges(text, marker, 2));
+        italic.push(...findDelimitedRanges(text, marker, 1));
     }
+
+    italic.sort((left, right) => left.start - right.start || left.end - right.end);
+    bold.sort((left, right) => left.start - right.start || left.end - right.end);
 
     return { italic, bold, newlines };
 }

@@ -32,4 +32,18 @@ suite("Markdown token parsing", () => {
         assert.deepStrictEqual(ranges.italic, []);
         assert.deepStrictEqual(ranges.bold, [{ start: 10, end: 14 }]);
     });
+
+    test("finds combined bold and italic ranges for triple markers", () => {
+        const ranges = findMarkdownTokenRanges("***test***");
+
+        assert.deepStrictEqual(ranges.italic, [{ start: 3, end: 7 }]);
+        assert.deepStrictEqual(ranges.bold, [{ start: 3, end: 7 }]);
+    });
+
+    test("finds underscore-delimited italic and bold ranges", () => {
+        const ranges = findMarkdownTokenRanges("_italic_ and __bold__");
+
+        assert.deepStrictEqual(ranges.italic, [{ start: 1, end: 7 }]);
+        assert.deepStrictEqual(ranges.bold, [{ start: 16, end: 20 }]);
+    });
 });
