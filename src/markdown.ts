@@ -34,6 +34,7 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
 
     for (let i = 0; i < text.length; i++) {
         if (text[i] !== marker || isEscaped(text, i)) continue;
+        if (i > 0 && text[i - 1] === marker) continue;
 
         const openingLength = getMarkerRunLength(text, i, marker);
         if (openingLength !== delimiterLength) {
@@ -43,6 +44,7 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
 
         for (let j = i + delimiterLength; j < text.length; j++) {
             if (text[j] !== marker || isEscaped(text, j)) continue;
+            if (j > 0 && text[j - 1] === marker) continue;
 
             const closingLength = getMarkerRunLength(text, j, marker);
             if (closingLength !== delimiterLength) {

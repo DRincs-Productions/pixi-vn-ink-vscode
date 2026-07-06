@@ -44,6 +44,6 @@ suite("Markdown token parsing", () => {
         const ranges = findMarkdownTokenRanges("_italic_ and __bold__");
 
         assert.deepStrictEqual(ranges.italic, [{ start: 1, end: 7 }]);
-        assert.deepStrictEqual(ranges.bold, [{ start: 16, end: 20 }]);
+        assert.deepStrictEqual(ranges.bold, [{ start: 15, end: 19 }]);
     });
 });
