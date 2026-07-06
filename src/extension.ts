@@ -1,4 +1,6 @@
 import {
+    DecorationRangeBehavior,
+    type DecorationOptions,
     type Diagnostic,
     EventEmitter,
     type ExtensionContext,
@@ -10,10 +12,13 @@ import {
     SemanticTokensBuilder,
     SemanticTokensLegend,
     type TextDocument,
+    type TextEditor,
+    ThemeColor,
     window,
     workspace,
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
+import { findMarkdownTokenRanges } from "./markdown";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { previewCommand, runProjectCommand } from "./webview";
 
@@ -30,6 +35,91 @@ export function activate(context: ExtensionContext) {
     // Emitter used to tell VS Code to re-compute semantic tokens when the engine setting changes
     const onDidChangeSemanticTokensEmitter = new EventEmitter<void>();
     context.subscriptions.push(onDidChangeSemanticTokensEmitter);
+    const markdownItalicDecoration = window.createTextEditorDecorationType({
+        fontStyle: "italic",
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+    const markdownBoldDecoration = window.createTextEditorDecorationType({
+        fontWeight: "bold",
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+    const markdownNewlineDecoration = window.createTextEditorDecorationType({
+        color: new ThemeColor("symbolIcon.constantForeground"),
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+    context.subscriptions.push(markdownItalicDecoration, markdownBoldDecoration, markdownNewlineDecoration);
+
+    const refreshMarkdownDecorations = (editor?: TextEditor) => {
+        if (editor?.document.languageId !== "ink") return;
+
+        const markup = workspace.getConfiguration("ink").get<string | null>("markup", null);
+        if (markup !== "Markdown") {
+            editor.setDecorations(markdownItalicDecoration, []);
+            editor.setDecorations(markdownBoldDecoration, []);
+            editor.setDecorations(markdownNewlineDecoration, []);
+            return;
+        }
+
+        const italicRanges: Range[] = [];
+        const boldRanges: Range[] = [];
+        const newlineRanges: DecorationOptions[] = [];
+        let inBlockComment = false;
+
+        for (let i = 0; i < editor.document.lineCount; i++) {
+            const line = editor.document.lineAt(i).text;
+            const { segments, inComment: newState } = getUncommentedSegments(line, inBlockComment);
+            inBlockComment = newState;
+
+            if (segments.length === 0) continue;
+
+            const firstSeg = segments[0];
+            // When text starts at column 0 the full line prefix determines whether it is
+            // narrative text or ink syntax. If the line began inside a block comment,
+            // only inspect the first visible segment after the comment closes.
+            const scanStart = getMarkdownScanStart(firstSeg.offset === 0 ? line : firstSeg.text);
+            if (scanStart === null) continue;
+
+            const absoluteScanStart = firstSeg.offset + scanStart;
+
+            for (const { text: segmentText, offset } of segments) {
+                const localScanStart = Math.max(0, absoluteScanStart - offset);
+                if (localScanStart >= segmentText.length) continue;
+
+                const markdownRanges = findMarkdownTokenRanges(segmentText.substring(localScanStart));
+                for (const range of markdownRanges.italic) {
+                    italicRanges.push(
+                        new Range(i, offset + localScanStart + range.start, i, offset + localScanStart + range.end),
+                    );
+                }
+                for (const range of markdownRanges.bold) {
+                    boldRanges.push(
+                        new Range(i, offset + localScanStart + range.start, i, offset + localScanStart + range.end),
+                    );
+                }
+                for (const range of markdownRanges.newlines) {
+                    newlineRanges.push({
+                        range: new Range(
+                            i,
+                            offset + localScanStart + range.start,
+                            i,
+                            offset + localScanStart + range.end,
+                        ),
+                        hoverMessage: new MarkdownString("`\\n`: inserts a line break."),
+                    });
+                }
+            }
+        }
+
+        editor.setDecorations(markdownItalicDecoration, italicRanges);
+        editor.setDecorations(markdownBoldDecoration, boldRanges);
+        editor.setDecorations(markdownNewlineDecoration, newlineRanges);
+    };
+
+    const refreshVisibleMarkdownDecorations = () => {
+        for (const editor of window.visibleTextEditors) {
+            refreshMarkdownDecorations(editor);
+        }
+    };
 
     // Listen for configuration changes
 
@@ -42,6 +132,7 @@ export function activate(context: ExtensionContext) {
         if (event.affectsConfiguration("ink.markup")) {
             const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup", null);
             window.showInformationMessage(`Markup changed to ${newMarkup ?? "none"}`);
+            refreshVisibleMarkdownDecorations();
         }
     });
 
@@ -65,12 +156,26 @@ export function activate(context: ExtensionContext) {
             updateDiagnostics(e.document, list);
             checkIncludes(e.document, list);
             diagnostics.set(e.document.uri, list);
+
+            for (const editor of window.visibleTextEditors) {
+                if (editor.document === e.document) {
+                    refreshMarkdownDecorations(editor);
+                }
+            }
         }
     });
 
     workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
     });
+    context.subscriptions.push(
+        window.onDidChangeActiveTextEditor((editor) => {
+            refreshMarkdownDecorations(editor);
+        }),
+        window.onDidChangeVisibleTextEditors(() => {
+            refreshVisibleMarkdownDecorations();
+        }),
+    );
 
     const diagnosticCollection = languages.createDiagnosticCollection("ink");
     context.subscriptions.push(diagnosticCollection);
@@ -273,6 +378,8 @@ export function activate(context: ExtensionContext) {
             bracketTokenLegend,
         ),
     );
+
+    refreshVisibleMarkdownDecorations();
 }
 
 function escapeRegExp(s: string) {
@@ -487,6 +594,23 @@ export function isNormalTextLine(line: string): boolean {
     // INCLUDE / VAR / CONST / LIST declarations
     if (/^(INCLUDE|VAR|CONST|LIST)\b/.test(trimmed)) return false;
     return true;
+}
+
+function getMarkdownScanStart(line: string): number | null {
+    const trimmed = line.trimStart();
+    if (trimmed === "") return null;
+    if (trimmed.startsWith("//")) return null;
+    if (trimmed.startsWith("/*")) return null;
+    if (trimmed.startsWith("=")) return null;
+    if (trimmed.startsWith("~")) return null;
+    if (/^(INCLUDE|VAR|CONST|LIST)\b/.test(trimmed)) return null;
+
+    const choiceMatch = line.match(/^(\s*(?:[*+]\s*)+)/);
+    if (choiceMatch) {
+        return choiceMatch[1].length;
+    }
+
+    return 0;
 }
 
 /**
