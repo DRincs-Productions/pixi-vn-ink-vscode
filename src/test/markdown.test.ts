@@ -47,26 +47,26 @@ suite("Markdown token parsing", () => {
         assert.deepStrictEqual(ranges.bold, [{ start: 15, end: 19 }]);
     });
 
-    test("finds bold range when opening markers are triple and closing are double", () => {
+    test("finds bold range when opening markers are triple and closing markers are double", () => {
         const ranges = findMarkdownTokenRanges("***nd**");
 
         assert.deepStrictEqual(ranges.bold, [{ start: 3, end: 5 }]);
     });
 
-    test("finds bold range when opening markers are double and closing are triple", () => {
+    test("finds bold range when opening markers are double and closing markers are triple", () => {
         const ranges = findMarkdownTokenRanges("**nd***");
 
         assert.deepStrictEqual(ranges.bold, [{ start: 2, end: 4 }]);
     });
 
-    test("finds italic range when opening markers are triple and closing are single", () => {
+    test("finds italic range when opening markers are triple and closing markers are single", () => {
         const ranges = findMarkdownTokenRanges("***nd*");
 
         assert.deepStrictEqual(ranges.italic, [{ start: 3, end: 5 }]);
         assert.deepStrictEqual(ranges.bold, []);
     });
 
-    test("finds italic range when opening markers are single and closing are triple", () => {
+    test("finds italic range when opening markers are single and closing markers are triple", () => {
         const ranges = findMarkdownTokenRanges("*nd***");
 
         assert.deepStrictEqual(ranges.italic, [{ start: 1, end: 3 }]);
