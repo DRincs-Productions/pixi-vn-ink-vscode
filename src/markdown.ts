@@ -32,6 +32,7 @@ function getMarkerRunLength(text: string, index: number, marker: string): number
 /**
  * Finds inline emphasis ranges delimited by a repeated markdown marker.
  * A delimiter length of 1 matches italic, 2 matches bold, and 3 matches bold+italic.
+ * Longer marker runs are skipped unless they exactly match the requested delimiter length.
  */
 function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1 | 2 | 3): MarkdownRange[] {
     const ranges: MarkdownRange[] = [];
@@ -67,6 +68,9 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
     return ranges;
 }
 
+/**
+ * Returns ranges ordered by start position, then by end position for equal starts.
+ */
 function sortRanges(ranges: MarkdownRange[]) {
     return [...ranges].sort((left, right) => left.start - right.start || left.end - right.end);
 }
