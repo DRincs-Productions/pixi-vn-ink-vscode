@@ -1,9 +1,19 @@
 import * as assert from 'assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
-import { isEndDoneHoverContext, isVariableTextTypeSpecifier, isNormalTextLine, findMatchingBracketsInNormalText, collectCommentAbove } from '../extension';
+import {
+	collectCommentAbove,
+	findDeclaredSymbol,
+	findMatchingBracketsInNormalText,
+	getDeclaredSymbolHoverText,
+	isEndDoneHoverContext,
+	isNormalTextLine,
+	isVariableTextTypeSpecifier,
+} from '../extension';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -208,5 +218,57 @@ suite('Extension Test Suite', () => {
 			[],
 			'lone * line (ink choice) is not a comment'
 		);
+	});
+
+	test('findDeclaredSymbol: finds VAR and CONST declarations', () => {
+		const lines = [
+			'VAR x = 1',
+			'CONST answer = 42',
+		];
+
+		assert.deepStrictEqual(findDeclaredSymbol(lines, 'x'), {
+			kind: 'VAR',
+			lineNumber: 0,
+		});
+		assert.deepStrictEqual(findDeclaredSymbol(lines, 'answer'), {
+			kind: 'CONST',
+			lineNumber: 1,
+		});
+		assert.strictEqual(findDeclaredSymbol(lines, 'missing'), undefined);
+	});
+
+	test('getDeclaredSymbolHoverText: returns declaration comments and CONST note', () => {
+		const lines = [
+			'/**',
+			' * Loop counter',
+			' */',
+			'VAR x = 1',
+			'/**',
+			' * Never changes',
+			' */',
+			'CONST answer = 42',
+		];
+
+		assert.strictEqual(getDeclaredSymbolHoverText(lines, 'x'), 'Loop counter');
+		assert.strictEqual(
+			getDeclaredSymbolHoverText(lines, 'answer'),
+			'Never changes\n\n_Declared as `CONST`: this value is constant._'
+		);
+	});
+
+	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {
+		const grammarPath = path.resolve(__dirname, '../../syntaxes/ink.tmLanguage.json');
+		const grammar = JSON.parse(fs.readFileSync(grammarPath, 'utf8'));
+		const logicVariablePattern = grammar.repository.logic.patterns.find(
+			(pattern: { name?: string; match?: string }) =>
+				pattern.match === '\\b[a-zA-Z_][a-zA-Z0-9_]*\\b'
+		);
+		const varDeclarationPattern = grammar.repository.declarations.patterns[0].patterns.find(
+			(pattern: { name?: string; match?: string }) =>
+				pattern.match === '(?<=VAR\\s+)[a-zA-Z_][a-zA-Z0-9_]*'
+		);
+
+		assert.strictEqual(logicVariablePattern?.name, 'variable.other.constant.ink');
+		assert.strictEqual(varDeclarationPattern?.name, 'variable.other.constant.ink');
 	});
 });
