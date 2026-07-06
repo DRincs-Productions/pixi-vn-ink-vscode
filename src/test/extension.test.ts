@@ -1,6 +1,4 @@
 import * as assert from 'assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
@@ -257,8 +255,8 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {
-		const grammarPath = path.resolve(__dirname, '../../syntaxes/ink.tmLanguage.json');
-		const grammar = JSON.parse(fs.readFileSync(grammarPath, 'utf8'));
+		// biome-ignore lint/performance/noBarrelFile: test reads the shipped grammar definition directly.
+		const grammar = require('../../syntaxes/ink.tmLanguage.json');
 		const logicVariablePattern = grammar.repository.logic.patterns.find(
 			(pattern: { name?: string; match?: string }) =>
 				pattern.match === '\\b[a-zA-Z_][a-zA-Z0-9_]*\\b'

@@ -402,8 +402,9 @@ export function isEndDoneHoverContext(line: string, wordStartChar: number) {
 export function getKnotComment(document: TextDocument, word: string) {
     // Split word in case of knot.stitch
     const parts = word.split(".");
-    const stitchName = parts[parts.length - 1] ?? word; // if present, stitch
-    const parentKnotName = parts.length > 1 ? parts[parts.length - 2] : undefined; // if present, parent knot
+    const stitchName = parts.at(-1);
+    if (!stitchName) return;
+    const parentKnotName = parts.at(-2);
 
     let targetLine = -1;
 
@@ -519,8 +520,8 @@ export function getDeclaredSymbolHover(document: TextDocument, word: string) {
  * Normalizes collected block-comment lines by removing the comment markers
  * and joining the remaining text into a markdown-friendly paragraph block.
  */
-function cleanCommentLines(commentLines: string[]): string {
-    return commentLines
+function cleanCommentLines(commentLines: string[]): string | undefined {
+    const cleaned = commentLines
         .map((l) =>
             l
                 .replace(/^\/\*\*?/, "")
@@ -530,6 +531,8 @@ function cleanCommentLines(commentLines: string[]): string {
         )
         .filter(Boolean)
         .join("\n");
+
+    return cleaned || undefined;
 }
 
 /**
