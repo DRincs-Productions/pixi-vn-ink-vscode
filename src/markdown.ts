@@ -32,7 +32,9 @@ function getMarkerRunLength(text: string, index: number, marker: string): number
 /**
  * Finds inline emphasis ranges delimited by a repeated markdown marker.
  * A delimiter length of 1 matches italic, 2 matches bold, and 3 matches bold+italic.
- * Longer marker runs are skipped unless they exactly match the requested delimiter length.
+ * Opening or closing runs longer than delimiterLength are accepted when at least one side
+ * is exactly delimiterLength (e.g. `***bold**` counts as bold). Runs shorter than
+ * delimiterLength are always skipped.
  */
 function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1 | 2 | 3): MarkdownRange[] {
     const ranges: MarkdownRange[] = [];
@@ -42,24 +44,32 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
         if (i > 0 && text[i - 1] === marker) continue;
 
         const openingLength = getMarkerRunLength(text, i, marker);
-        if (openingLength !== delimiterLength) {
+        if (openingLength < delimiterLength) {
             i += openingLength - 1;
             continue;
         }
+        // Content starts after all opening markers.
+        const contentStart = i + openingLength;
 
-        for (let j = i + delimiterLength; j < text.length; j++) {
+        for (let j = contentStart; j < text.length; j++) {
             if (text[j] !== marker || isEscaped(text, j)) continue;
             if (j > 0 && text[j - 1] === marker) continue;
 
             const closingLength = getMarkerRunLength(text, j, marker);
-            if (closingLength !== delimiterLength) {
+            if (closingLength < delimiterLength) {
+                j += closingLength - 1;
+                continue;
+            }
+            // Require at least one side to be exactly delimiterLength to prevent
+            // a longer run (e.g. `**`) from satisfying a shorter delimiter (e.g. d=1).
+            if (openingLength !== delimiterLength && closingLength !== delimiterLength) {
                 j += closingLength - 1;
                 continue;
             }
 
-            if (hasVisibleContent(text.slice(i + delimiterLength, j))) {
-                ranges.push({ start: i + delimiterLength, end: j });
-                i = j + delimiterLength - 1;
+            if (hasVisibleContent(text.slice(contentStart, j))) {
+                ranges.push({ start: contentStart, end: j });
+                i = j + closingLength - 1;
             }
             break;
         }
