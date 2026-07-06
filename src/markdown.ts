@@ -29,6 +29,10 @@ function getMarkerRunLength(text: string, index: number, marker: string): number
     return length;
 }
 
+/**
+ * Finds inline emphasis ranges delimited by a repeated markdown marker.
+ * A delimiter length of 1 matches italic, 2 matches bold, and 3 matches bold+italic.
+ */
 function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1 | 2 | 3): MarkdownRange[] {
     const ranges: MarkdownRange[] = [];
 
@@ -67,6 +71,10 @@ function sortRanges(ranges: MarkdownRange[]) {
     return [...ranges].sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
+/**
+ * Parses markdown-like inline tokens and returns the ranges of emphasized text and visible `\n` escapes.
+ * Escaped markers are ignored, and returned ranges cover only the inner content, not the delimiters.
+ */
 export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
     let italic: MarkdownRange[] = [];
     let bold: MarkdownRange[] = [];
