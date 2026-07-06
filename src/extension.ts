@@ -244,31 +244,27 @@ export function activate(context: ExtensionContext) {
                     let inBlockComment = false;
                     for (let i = 0; i < document.lineCount; i++) {
                         const line = document.lineAt(i).text;
+                        const { segments, inComment: newState } = getUncommentedSegments(
+                            line,
+                            inBlockComment,
+                        );
+                        inBlockComment = newState;
 
-                        // Track multi-line block comments
-                        if (inBlockComment) {
-                            const closeIdx = line.indexOf("*/");
-                            if (closeIdx >= 0) {
-                                inBlockComment = false;
-                                // Content after */ on the closing line is skipped for simplicity
+                        if (segments.length === 0) continue;
+
+                        // Determine the line type from the first processable text segment.
+                        // When the first segment starts at offset 0 the full-line prefix governs
+                        // the type (choice, knot declaration, etc.).  When offset > 0 the line
+                        // was starting inside a block comment, so inspect the segment text itself.
+                        const firstSeg = segments[0];
+                        const typeCheckText = firstSeg.offset === 0 ? line : firstSeg.text;
+                        if (!isNormalTextLine(typeCheckText)) continue;
+
+                        for (const { text: seg, offset } of segments) {
+                            const positions = findMatchingBracketsInNormalText(seg);
+                            for (const pos of positions) {
+                                builder.push(i, offset + pos, 1, 0, 0);
                             }
-                            continue;
-                        }
-
-                        // Strip any inline block comment (text before /* is still processable)
-                        const openIdx = line.indexOf("/*");
-                        let processLine = line;
-                        if (openIdx >= 0) {
-                            processLine = line.substring(0, openIdx);
-                            const closeIdx = line.indexOf("*/", openIdx + 2);
-                            if (closeIdx < 0) inBlockComment = true;
-                        }
-
-                        if (!isNormalTextLine(processLine)) continue;
-
-                        const positions = findMatchingBracketsInNormalText(processLine);
-                        for (const pos of positions) {
-                            builder.push(i, pos, 1, 0, 0);
                         }
                     }
                     return builder.build();
@@ -483,4 +479,41 @@ export function findMatchingBracketsInNormalText(line: string): number[] {
     }
 
     return positions;
+}
+
+/**
+ * Splits `line` into text segments that lie outside of block comments,
+ * carrying the original character offset of each segment so callers can map
+ * positions back to the original line.  `inBlockComment` is the state at the
+ * start of the line; the returned `inComment` reflects the state at the end.
+ */
+function getUncommentedSegments(
+    line: string,
+    inBlockComment: boolean,
+): { segments: { text: string; offset: number }[]; inComment: boolean } {
+    const segments: { text: string; offset: number }[] = [];
+    let i = 0;
+    let inCmnt = inBlockComment;
+
+    while (i < line.length) {
+        if (inCmnt) {
+            const closeIdx = line.indexOf("*/", i);
+            if (closeIdx < 0) break; // rest of line is inside the comment
+            inCmnt = false;
+            i = closeIdx + 2;
+        } else {
+            const openIdx = line.indexOf("/*", i);
+            if (openIdx < 0) {
+                segments.push({ text: line.substring(i), offset: i });
+                break;
+            }
+            if (openIdx > i) {
+                segments.push({ text: line.substring(i, openIdx), offset: i });
+            }
+            inCmnt = true;
+            i = openIdx + 2;
+        }
+    }
+
+    return { segments, inComment: inCmnt };
 }
