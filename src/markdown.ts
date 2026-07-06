@@ -64,7 +64,7 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
 }
 
 function sortRanges(ranges: MarkdownRange[]) {
-    return ranges.sort((left, right) => left.start - right.start || left.end - right.end);
+    return [...ranges].sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
 export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
