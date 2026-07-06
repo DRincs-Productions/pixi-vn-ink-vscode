@@ -260,8 +260,8 @@ export function activate(context: ExtensionContext) {
                         const typeCheckText = firstSeg.offset === 0 ? line : firstSeg.text;
                         if (!isNormalTextLine(typeCheckText)) continue;
 
-                        for (const { text: seg, offset } of segments) {
-                            const positions = findMatchingBracketsInNormalText(seg);
+                        for (const { text: segmentText, offset } of segments) {
+                            const positions = findMatchingBracketsInNormalText(segmentText);
                             for (const pos of positions) {
                                 builder.push(i, offset + pos, 1, 0, 0);
                             }
