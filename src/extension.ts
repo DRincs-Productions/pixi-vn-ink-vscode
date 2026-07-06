@@ -50,7 +50,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(markdownItalicDecoration, markdownBoldDecoration, markdownNewlineDecoration);
 
     const refreshMarkdownDecorations = (editor?: TextEditor) => {
-        if (!editor || editor.document.languageId !== "ink") return;
+        if (editor?.document.languageId !== "ink") return;
 
         const markup = workspace.getConfiguration("ink").get<string | null>("markup", null);
         if (markup !== "Markdown") {
@@ -165,12 +165,14 @@ export function activate(context: ExtensionContext) {
     workspace.onDidCloseTextDocument((doc) => {
         diagnostics.delete(doc.uri);
     });
-    window.onDidChangeActiveTextEditor((editor) => {
-        refreshMarkdownDecorations(editor);
-    });
-    window.onDidChangeVisibleTextEditors(() => {
-        refreshVisibleMarkdownDecorations();
-    });
+    context.subscriptions.push(
+        window.onDidChangeActiveTextEditor((editor) => {
+            refreshMarkdownDecorations(editor);
+        }),
+        window.onDidChangeVisibleTextEditors(() => {
+            refreshVisibleMarkdownDecorations();
+        }),
+    );
 
     const diagnosticCollection = languages.createDiagnosticCollection("ink");
     context.subscriptions.push(diagnosticCollection);
