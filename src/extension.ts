@@ -158,7 +158,7 @@ export function activate(context: ExtensionContext) {
             diagnostics.set(e.document.uri, list);
 
             for (const editor of window.visibleTextEditors) {
-                if (editor.document.uri.toString() === e.document.uri.toString()) {
+                if (editor.document === e.document) {
                     refreshMarkdownDecorations(editor);
                 }
             }

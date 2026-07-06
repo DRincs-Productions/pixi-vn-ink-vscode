@@ -52,8 +52,9 @@ export function findMarkdownTokenRanges(text: string): MarkdownTokenRanges {
         }
 
         for (let j = i + 1; j < text.length; j++) {
+            const previousChar = j > 0 ? text[j - 1] : "";
             const nextChar = j + 1 < text.length ? text[j + 1] : "";
-            if (text[j] === "*" && !isEscaped(text, j) && j > 0 && text[j - 1] !== "*" && nextChar !== "*") {
+            if (text[j] === "*" && !isEscaped(text, j) && previousChar !== "*" && nextChar !== "*") {
                 if (hasVisibleContent(text.slice(i + 1, j))) {
                     italic.push({ start: i + 1, end: j });
                     i = j;
