@@ -73,6 +73,9 @@ export function activate(context: ExtensionContext) {
             if (segments.length === 0) continue;
 
             const firstSeg = segments[0];
+            // When text starts at column 0 the full line prefix determines whether it is
+            // narrative text or ink syntax. If the line began inside a block comment,
+            // only inspect the first visible segment after the comment closes.
             const scanStart = getMarkdownScanStart(firstSeg.offset === 0 ? line : firstSeg.text);
             if (scanStart === null) continue;
 
