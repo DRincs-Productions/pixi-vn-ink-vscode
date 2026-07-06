@@ -255,7 +255,6 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {
-		// biome-ignore lint/performance/noBarrelFile: test reads the shipped grammar definition directly.
 		const grammar = require('../../syntaxes/ink.tmLanguage.json');
 		const logicVariablePattern = grammar.repository.logic.patterns.find(
 			(pattern: { name?: string; match?: string }) =>

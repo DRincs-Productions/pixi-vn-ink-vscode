@@ -403,7 +403,7 @@ export function getKnotComment(document: TextDocument, word: string) {
     // Split word in case of knot.stitch
     const parts = word.split(".");
     const stitchName = parts.at(-1);
-    if (!stitchName) return;
+    if (!stitchName?.length) return;
     const parentKnotName = parts.at(-2);
 
     let targetLine = -1;
