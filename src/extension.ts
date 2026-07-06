@@ -122,7 +122,11 @@ export function activate(context: ExtensionContext) {
                 }
 
                 // Hover for special symbols inside { }
-                if (isInsideVariableText(document, position)) {
+                // ~, & and ! are only type specifiers when they appear as the first
+                // non-whitespace character immediately after the opening { of a block.
+                // In cases like {TEST~|TEST&|TEST!} they are plain text and must not
+                // trigger a popup.
+                if (isInsideVariableText(document, position) && isVariableTextTypeSpecifier(line, position.character)) {
                     if (word === "&" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
@@ -326,6 +330,40 @@ function isInsideVariableText(document: TextDocument, position: Position): boole
     }
 
     return depth > 0; // true if we are inside a { ... }
+}
+
+/**
+ * Returns true when the character at `position` is the type-specifier of a
+ * variable-text block (`~` shuffle, `&` cycle, `!` once-only).  The specifier
+ * is valid only when it is the very first non-whitespace character after the
+ * innermost unescaped `{` that precedes `position`.
+ *
+ * Examples:
+ *   `{&Monday|…}`   → true  (& at pos 1)
+ *   `{ ~Heads|…}`   → true  (~ at pos 2, only whitespace between { and ~)
+ *   `{TEST~|TEST&|}` → false (~ and & are preceded by non-whitespace text)
+ */
+export function isVariableTextTypeSpecifier(line: string, position: number): boolean {
+    // Walk backwards to find the innermost unescaped { before position.
+    let depth = 0;
+    let innermostOpenBrace = -1;
+    for (let i = position - 1; i >= 0; i--) {
+        if (line[i] === "}" && (i === 0 || line[i - 1] !== "\\")) {
+            depth++;
+        } else if (line[i] === "{" && (i === 0 || line[i - 1] !== "\\")) {
+            if (depth === 0) {
+                innermostOpenBrace = i;
+                break;
+            }
+            depth--;
+        }
+    }
+
+    if (innermostOpenBrace < 0) return false;
+
+    // The specifier must be the first non-whitespace character after the {.
+    const between = line.substring(innermostOpenBrace + 1, position);
+    return /^\s*$/.test(between);
 }
 
 function isEscaped(line: string, position: number): boolean {
