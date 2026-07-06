@@ -383,10 +383,12 @@ export function collectCommentAbove(lines: string[], lineNumber: number): string
     for (let i = lineNumber - 1; i >= 0; i--) {
         const text = lines[i].trim();
         if (text.startsWith("/**") && text.endsWith("*/")) {
-            // Single-line block comment: /** … */
+            // Single-line block comment: /** … */ — note: `text.endsWith("*/")` is
+            // sufficient because a line like `/** comment */ extra` does NOT end with `*/`.
             comments.unshift(text);
             break;
-        } else if (text.startsWith("*/")) {
+        } else if (text.endsWith("*/")) {
+            // Closing tag of a multi-line block comment (e.g. trimmed ` */` → `*/`)
             inCommentBlock = true;
             comments.unshift(text);
         } else if (text.startsWith("/**")) {
