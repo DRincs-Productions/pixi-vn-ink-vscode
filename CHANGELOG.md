@@ -9,7 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Fixed
 
 - Square bracket syntax highlighting now only applies inside choices (lines starting with `*` or `+`)
-- Brackets are only highlighted when both an opening `[` and a closing `]` are present
+- An unclosed `[` on a choice line is still highlighted to indicate an error
 - Escaped brackets `\[` and `\]` are no longer highlighted
 
 ### Changed

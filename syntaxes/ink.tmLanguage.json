@@ -89,22 +89,40 @@
     "choices": {
       "patterns": [
         {
-          "name": "keyword.other.choice.ink",
-          "match": "^\\s*([\\*\\+]\\s*)+"
-        },
-        {
-          "begin": "(?<=^\\s*[*+][^\\n]*)(?<!\\\\)\\[(?=[^\\n]*(?<!\\\\)\\])",
+          "begin": "^\\s*((?:[*+]\\s*)+)",
           "beginCaptures": {
-            "0": {
-              "name": "keyword.other.brackets.choice.ink"
+            "1": {
+              "name": "keyword.other.choice.ink"
             }
           },
-          "end": "(?<!\\\\)\\]",
-          "endCaptures": {
-            "0": {
-              "name": "keyword.other.brackets.choice.ink"
+          "end": "$",
+          "patterns": [
+            {
+              "name": "keyword.other.brackets.choice.ink",
+              "match": "(?<!\\\\)[\\[\\]]"
+            },
+            {
+              "include": "#conditionalChoices"
+            },
+            {
+              "include": "#variableText"
+            },
+            {
+              "include": "#printingVariables"
+            },
+            {
+              "include": "#knots"
+            },
+            {
+              "include": "#glue"
+            },
+            {
+              "include": "#tags"
+            },
+            {
+              "include": "#comments"
             }
-          }
+          ]
         }
       ]
     },
