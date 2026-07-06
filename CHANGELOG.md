@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ## [Unreleased]
 
+### Fixed
+
+- Square bracket syntax highlighting now only applies inside choices (lines starting with `*` or `+`)
+- Brackets are only highlighted when both an opening `[` and a closing `]` are present
+- Escaped brackets `\[` and `\]` are no longer highlighted
+
 ### Changed
 
 - Update pixi-vn-ink

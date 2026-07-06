@@ -93,8 +93,18 @@
           "match": "^\\s*([\\*\\+]\\s*)+"
         },
         {
-          "name": "keyword.other.brackets.choice.ink",
-          "match": "(?<!\\\\)[\\[\\]]"
+          "begin": "(?<=^\\s*[*+][^\\n]*)(?<!\\\\)\\[(?=[^\\n]*(?<!\\\\)\\])",
+          "beginCaptures": {
+            "0": {
+              "name": "keyword.other.brackets.choice.ink"
+            }
+          },
+          "end": "(?<!\\\\)\\]",
+          "endCaptures": {
+            "0": {
+              "name": "keyword.other.brackets.choice.ink"
+            }
+          }
         }
       ]
     },
