@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-07
+
 ### Added
 
 - **pixi-vn engine only**: matched `[` and `]` pairs in normal narrative text are now coloured using the same keyword colour as choice brackets. Only properly paired brackets are highlighted (innermost pairs resolved first); escaped brackets (`\[`, `\]`) and unmatched brackets are left uncoloured. Coloring is applied instantly when the `ink.engine` setting is switched to or from `pixi-vn`.
