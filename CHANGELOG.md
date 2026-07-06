@@ -6,6 +6,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ## [Unreleased]
 
+### Added
+
+- **pixi-vn engine only**: matched `[` and `]` pairs in normal narrative text are now coloured using the same keyword colour as choice brackets. Only properly paired brackets are highlighted (innermost pairs resolved first); escaped brackets (`\[`, `\]`) and unmatched brackets are left uncoloured. Coloring is applied instantly when the `ink.engine` setting is switched to or from `pixi-vn`.
+
+### Fixed
+
+- Square bracket syntax highlighting now only applies inside choices (lines starting with `*` or `+`)
+- An unclosed `[` on a choice line is still highlighted to indicate an error
+- Escaped brackets `\[` and `\]` are no longer highlighted
+
 ### Changed
 
 - Update pixi-vn-ink
