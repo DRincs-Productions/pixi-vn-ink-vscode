@@ -25,6 +25,7 @@ import { previewCommand, runProjectCommand } from "./webview";
 // Legend for the pixi-vn bracket semantic tokens (uses the built-in "keyword" type so it
 // shares the theme colour already used by choice brackets in the TextMate grammar).
 const bracketTokenLegend = new SemanticTokensLegend(["keyword"], []);
+const declaredSymbolRegexCache = new Map<string, RegExp>();
 
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
@@ -400,6 +401,8 @@ export function isEndDoneHoverContext(line: string, wordStartChar: number) {
  * under the mouse cursor.
  */
 export function getKnotComment(document: TextDocument, word: string) {
+    if (!word.length) return;
+
     // Split word in case of knot.stitch
     const parts = word.split(".");
     const stitchName = parts.at(-1);
@@ -472,7 +475,9 @@ export function findDeclaredSymbol(
     lines: string[],
     word: string,
 ): { kind: DeclaredSymbolKind; lineNumber: number } | undefined {
-    const declarationRegex = new RegExp(`^\\s*(VAR|CONST)\\s+${escapeRegExp(word)}\\b`);
+    if (!word.length) return;
+
+    const declarationRegex = getDeclaredSymbolRegex(word);
 
     for (let i = 0; i < lines.length; i++) {
         const match = lines[i].match(declarationRegex);
@@ -482,6 +487,15 @@ export function findDeclaredSymbol(
                 lineNumber: i,
             };
         }
+    }
+
+    function getDeclaredSymbolRegex(word: string): RegExp {
+        const cached = declaredSymbolRegexCache.get(word);
+        if (cached) return cached;
+
+        const created = new RegExp(`^\\s*(VAR|CONST)\\s+${escapeRegExp(word)}\\b`);
+        declaredSymbolRegexCache.set(word, created);
+        return created;
     }
 }
 
