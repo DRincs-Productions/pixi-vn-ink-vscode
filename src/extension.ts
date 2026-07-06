@@ -247,18 +247,26 @@ export function activate(context: ExtensionContext) {
 
                         // Track multi-line block comments
                         if (inBlockComment) {
-                            if (line.includes("*/")) inBlockComment = false;
-                            continue;
-                        }
-                        if (line.includes("/*")) {
-                            // If the closing */ is not on the same line, enter block-comment mode
-                            if (!line.includes("*/")) inBlockComment = true;
+                            const closeIdx = line.indexOf("*/");
+                            if (closeIdx >= 0) {
+                                inBlockComment = false;
+                                // Content after */ on the closing line is skipped for simplicity
+                            }
                             continue;
                         }
 
-                        if (!isNormalTextLine(line)) continue;
+                        // Strip any inline block comment (text before /* is still processable)
+                        const openIdx = line.indexOf("/*");
+                        let processLine = line;
+                        if (openIdx >= 0) {
+                            processLine = line.substring(0, openIdx);
+                            const closeIdx = line.indexOf("*/", openIdx + 2);
+                            if (closeIdx < 0) inBlockComment = true;
+                        }
 
-                        const positions = findMatchingBracketsInNormalText(line);
+                        if (!isNormalTextLine(processLine)) continue;
+
+                        const positions = findMatchingBracketsInNormalText(processLine);
                         for (const pos of positions) {
                             builder.push(i, pos, 1, 0, 0);
                         }
