@@ -25,6 +25,7 @@ import { previewCommand, runProjectCommand } from "./webview";
 // Legend for the pixi-vn bracket semantic tokens (uses the built-in "keyword" type so it
 // shares the theme colour already used by choice brackets in the TextMate grammar).
 const bracketTokenLegend = new SemanticTokensLegend(["keyword"], []);
+const declaredSymbolRegexCache = new Map<string, RegExp>();
 
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
@@ -309,6 +310,11 @@ export function activate(context: ExtensionContext) {
                     }
                 }
 
+                const declarationHover = getDeclaredSymbolHover(document, word);
+                if (declarationHover && range && isDeclaredSymbolHoverContext(document, position, line)) {
+                    return declarationHover;
+                }
+
                 // Only show knot comment popup when the word is used as a knot reference:
                 // a divert (-> word), inside curly braces {word}, or on a knot/stitch definition line.
                 // Plain narrative text that happens to share a knot name should not trigger the popup.
@@ -395,10 +401,13 @@ export function isEndDoneHoverContext(line: string, wordStartChar: number) {
  * under the mouse cursor.
  */
 export function getKnotComment(document: TextDocument, word: string) {
+    if (!word.length) return;
+
     // Split word in case of knot.stitch
     const parts = word.split(".");
-    const stitchName = parts.pop()!; // if present, stitch
-    const parentKnotName = parts.pop(); // if present, parent knot
+    const stitchName = parts.at(-1);
+    if (!stitchName?.length) return;
+    const parentKnotName = parts.at(-2);
 
     let targetLine = -1;
 
@@ -453,8 +462,79 @@ export function getKnotComment(document: TextDocument, word: string) {
         lines.push(document.lineAt(i).text);
     }
     const commentLines = collectCommentAbove(lines, targetLine);
-    if (!commentLines.length) return;
+    const cleaned = cleanCommentLines(commentLines);
 
+    if (!cleaned) return;
+
+    return new Hover(new MarkdownString(cleaned));
+}
+
+type DeclaredSymbolKind = "VAR" | "CONST";
+
+export function findDeclaredSymbol(
+    lines: string[],
+    word: string,
+): { kind: DeclaredSymbolKind; lineNumber: number } | undefined {
+    if (!word.length) return;
+
+    const declarationRegex = getDeclaredSymbolRegex(word);
+
+    for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(declarationRegex);
+        if (match?.[1] === "VAR" || match?.[1] === "CONST") {
+            return {
+                kind: match[1],
+                lineNumber: i,
+            };
+        }
+    }
+
+    function getDeclaredSymbolRegex(word: string): RegExp {
+        const cached = declaredSymbolRegexCache.get(word);
+        if (cached) return cached;
+
+        const created = new RegExp(`^\\s*(VAR|CONST)\\s+${escapeRegExp(word)}\\b`);
+        declaredSymbolRegexCache.set(word, created);
+        return created;
+    }
+}
+
+export function getDeclaredSymbolHoverText(lines: string[], word: string): string | undefined {
+    const declaration = findDeclaredSymbol(lines, word);
+    if (!declaration) return;
+
+    const sections: string[] = [];
+    const cleanedComment = cleanCommentLines(collectCommentAbove(lines, declaration.lineNumber));
+
+    if (cleanedComment) {
+        sections.push(cleanedComment);
+    }
+    if (declaration.kind === "CONST") {
+        sections.push("_Declared as `CONST`: this value is constant._");
+    }
+
+    if (!sections.length) return;
+
+    return sections.join("\n\n");
+}
+
+export function getDeclaredSymbolHover(document: TextDocument, word: string) {
+    const lines: string[] = [];
+    for (let i = 0; i < document.lineCount; i++) {
+        lines.push(document.lineAt(i).text);
+    }
+
+    const text = getDeclaredSymbolHoverText(lines, word);
+    if (!text) return;
+
+    return new Hover(new MarkdownString(text));
+}
+
+/**
+ * Normalizes collected block-comment lines by removing the comment markers
+ * and joining the remaining text into a markdown-friendly paragraph block.
+ */
+function cleanCommentLines(commentLines: string[]): string | undefined {
     const cleaned = commentLines
         .map((l) =>
             l
@@ -466,9 +546,7 @@ export function getKnotComment(document: TextDocument, word: string) {
         .filter(Boolean)
         .join("\n");
 
-    if (!cleaned) return;
-
-    return new Hover(new MarkdownString(cleaned));
+    return cleaned || undefined;
 }
 
 /**
@@ -565,6 +643,15 @@ export function isVariableTextTypeSpecifier(line: string, position: number): boo
     // The specifier must be the first non-whitespace character after the {.
     const between = line.substring(innermostOpenBrace + 1, position);
     return /^\s*$/.test(between);
+}
+
+export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {
+    const trimmed = line.trimStart();
+    if (/^(VAR|CONST)\b/.test(trimmed)) return true;
+    if (trimmed.startsWith("~")) return true;
+    if (isInsideVariableText(document, position)) return true;
+
+    return /(==|!=|<=|>=|<|>|=|\+|-|\*|\/|%|\bmod\b|\bnot\b|\bor\b|\band\b)/.test(line);
 }
 
 function isEscaped(line: string, position: number): boolean {
