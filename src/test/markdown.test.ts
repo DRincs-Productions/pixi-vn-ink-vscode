@@ -47,6 +47,21 @@ suite("Markdown token parsing", () => {
         assert.deepStrictEqual(ranges.bold, [{ start: 15, end: 19 }]);
     });
 
+    test("does not treat snake_case identifiers as underscore emphasis", () => {
+        // Regression test: two ink identifiers with underscores on the same line
+        // (e.g. `visit_paris`) must not be mistaken for an _..._ italic span.
+        const ranges = findMarkdownTokenRanges("{ not visit_paris } \t[Go to Paris] -> visit_paris");
+
+        assert.deepStrictEqual(ranges.italic, []);
+        assert.deepStrictEqual(ranges.bold, []);
+    });
+
+    test("still recognizes real underscore emphasis alongside intraword underscores", () => {
+        const ranges = findMarkdownTokenRanges("some_var and another_var and _real italic_ text");
+
+        assert.deepStrictEqual(ranges.italic, [{ start: 30, end: 41 }]);
+    });
+
     test("finds bold range when opening markers are triple and closing markers are double", () => {
         const ranges = findMarkdownTokenRanges("***nd**");
 

@@ -29,6 +29,14 @@ import { previewCommand, runProjectCommand } from "./webview";
 const bracketTokenLegend = new SemanticTokensLegend(["keyword"], []);
 const declaredSymbolRegexCache = new Map<string, RegExp>();
 
+// Hover text for the VAR / CONST / LIST declaration keywords, documented in
+// https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+export const DECLARATION_KEYWORD_DOCS: Record<string, string> = {
+    VAR: '**VAR**: Declares a global variable, accessible and modifiable from anywhere in the story. It must be given an initial value — an integer, float, string, boolean, or divert target — which determines its type.\n\nExample:\n```ink\nVAR knowledge_of_the_cure = false\nVAR players_name = "Emilia"\n```',
+    CONST: "**CONST**: Declares a global constant: a named value that can never be changed at runtime. Useful for giving readable names to values used in comparisons and lookups.\n\nExample:\n```ink\nCONST MAX_HEALTH = 100\n```",
+    LIST: "**LIST**: Declares a list — an enumeration of named values that double as on/off flags (a *set*). List variables can be tested, combined, and compared much like mathematical sets, and can also be used as simple state machines.\n\nExample:\n```ink\nLIST DoctorsInSurgery = Adams, Bernard, (Cartwright)\n```",
+};
+
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
 
@@ -221,7 +229,7 @@ export function activate(context: ExtensionContext) {
 
                 // Handle single special characters separately
                 const char = line[position.character];
-                if ("&!~|".includes(char) && !isEscaped(line, position.character)) {
+                if ("&!~|[]".includes(char) && !isEscaped(line, position.character)) {
                     word = char;
                     range = new Range(position, position.translate(0, 1));
                 } else if (range) {
@@ -236,11 +244,15 @@ export function activate(context: ExtensionContext) {
                     if (isEndDoneHoverContext(line, wordStartChar)) {
                         if (word === "END") {
                             return new Hover(
-                                "**END**: Ends the current story flow immediately. Use this when the story should stop completely.",
+                                new MarkdownString(
+                                    '**END (`-> END`)**: Ends the story flow immediately and completely — no further choices or content, nothing to resume. Use it when a storyline (or the whole game) is genuinely over; diverting here without it produces an "out of content" warning.\n\nExample:\n```ink\n=== top_knot ===\nHello world!\n-> END\n```',
+                                ),
                             );
                         }
                         return new Hover(
-                            "**DONE**: Marks the current knot as finished. The story flow can continue to the next knot or choice.",
+                            new MarkdownString(
+                                '**DONE (`-> DONE`)**: Marks the current thread or weave as intentionally finished, without stopping the whole story — the engine falls back to any other running thread instead of raising an "out of content" warning. At the top level (outside a thread), it behaves the same as `-> END`.\n\nExample:\n```ink\n== conversation ==\n"Hello!" I said.\n-> DONE\n```',
+                            ),
                         );
                     }
                 }
@@ -248,14 +260,54 @@ export function activate(context: ExtensionContext) {
                 // Hover for divert arrow ->
                 if (word === "->") {
                     return new Hover(
-                        "**Divert (`->`)**: Moves the story immediately to another knot. This happens without any user input and can even occur mid-sentence.",
+                        new MarkdownString(
+                            '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
+                        ),
                     );
                 }
 
                 // Hover for glue <> (but not escaped \<>)
                 if (word === "<>" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
-                        "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line.",
+                        new MarkdownString(
+                            '**Glue (`<>`)**: Suppresses the automatic line-break that would otherwise be inserted before this content, joining it to whatever text came right before. You can\'t "un-stick" a line once glued, and stacking multiple glues has no extra effect.\n\nExample:\n```ink\nWe hurried home <>\n-> to_savile_row\n\n=== to_savile_row ===\nto Savile Row.\n```',
+                        ),
+                    );
+                }
+
+                // Hover for the VAR / CONST / LIST declaration keywords, only when the
+                // word actually opens the declaration line (not a coincidental match).
+                if (word in DECLARATION_KEYWORD_DOCS && range && isDeclarationKeywordContext(line, range.start.character)) {
+                    return new Hover(new MarkdownString(DECLARATION_KEYWORD_DOCS[word]));
+                }
+
+                // Hover for the logic tilde (~) at the start of a logic line, e.g. `~ x = 1`.
+                // Distinct from the shuffle `~` type-specifier inside `{ }`, handled below.
+                if (
+                    word === "~" &&
+                    range &&
+                    !isEscaped(line, range.start.character) &&
+                    !isInsideVariableText(document, position) &&
+                    isTildeLogicContext(line, range.start.character)
+                ) {
+                    return new Hover(
+                        new MarkdownString(
+                            "**Logic (`~`)**: Marks the line as pure logic — an assignment, function call, or other statement — rather than story text. The line itself is never printed.\n\nExample:\n```ink\n~ x = 5\n~ myFunction()\n```",
+                        ),
+                    );
+                }
+
+                // Hover for choice brackets [ ] (only inside a choice line's option text).
+                if (
+                    (word === "[" || word === "]") &&
+                    range &&
+                    !isEscaped(line, range.start.character) &&
+                    isChoiceBracketContext(line)
+                ) {
+                    return new Hover(
+                        new MarkdownString(
+                            "**Choice brackets (`[` `]`)**: Divide an option's text into three parts. Text *before* the brackets is shown both as the choice and in the resulting output; text *inside* the brackets is shown only in the choice; text *after* the brackets is shown only in the output.\n\nExample:\n```ink\n*\tHello [back!] right back to you!\n\tNice to hear from you!\n```\nChoosing this produces the choice `Hello back!`, then the output `Hello right back to you! Nice to hear from you!`.\n\nIf the option has *only* bracketed text, it disappears from the output once chosen:\n```ink\n*\t[Hello back!]\n\tNice to hear from you!\n```",
+                        ),
                     );
                 }
 
@@ -315,21 +367,21 @@ export function activate(context: ExtensionContext) {
                         if (char === "*") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Choice (`*`)**: Offers the player a one-time choice. Flows to the next line after selection.",
+                                    "**Choice (`*`)**: Offers the player a one-time option. Once chosen it's used up and won't be offered again on a later visit; by default its text is echoed into the output, then the flow continues into whatever follows.\n\nExample:\n```ink\nHello world!\n*\tHello back!\n\tNice to hear from you!\n```",
                                 ),
                             );
                         }
                         if (char === "+") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Sticky Choice (`+`)**: Same as `*`, but reusable (remains available even after being chosen).",
+                                    "**Sticky Choice (`+`)**: Like `*`, but never gets used up — it stays available even after being picked, which makes it useful for loops and repeatable actions.\n\nExample:\n```ink\n=== homers_couch ===\n+\t[Eat another donut]\n\tYou eat another donut. -> homers_couch\n*\t[Get off the couch]\n\t-> END\n```",
                                 ),
                             );
                         }
                         if (char === "-") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Gather (`-`)**: Collects multiple branches back into a single flow point.",
+                                    '**Gather (`-`)**: Collects the different branches of a set of choices back into a single point, so the story continues on a shared path no matter which option was picked. Can be labelled (e.g. `- (top)`) so it can be diverted to or tested later.\n\nExample:\n```ink\n*\t"Murder!"\n*\t"Suicide!"\n-\tMrs Christie lowered her manuscript a moment.\n```',
                                 ),
                             );
                         }
@@ -669,6 +721,33 @@ export function isVariableTextTypeSpecifier(line: string, position: number): boo
     // The specifier must be the first non-whitespace character after the {.
     const between = line.substring(innermostOpenBrace + 1, position);
     return /^\s*$/.test(between);
+}
+
+/**
+ * Returns true when `wordStartChar` is where a VAR/CONST/LIST declaration
+ * keyword begins the line (only whitespace precedes it), as opposed to the
+ * keyword appearing elsewhere (e.g. matched incidentally further down the line).
+ */
+export function isDeclarationKeywordContext(line: string, wordStartChar: number): boolean {
+    return /^\s*$/.test(line.substring(0, wordStartChar));
+}
+
+/**
+ * Returns true when the `~` at `charPos` marks a logic line (e.g. `~ x = 1`),
+ * i.e. it's the first non-whitespace character on the line. Distinct from the
+ * shuffle `~` type-specifier, which only appears right after an opening `{`.
+ */
+export function isTildeLogicContext(line: string, charPos: number): boolean {
+    return /^\s*$/.test(line.substring(0, charPos));
+}
+
+/**
+ * Returns true when `line` is a choice line (starts with one or more `*`/`+`
+ * bullets, possibly nested), i.e. the context where `[` `]` divide choice text
+ * from output text. Mirrors the `choices` rule in ink.tmLanguage.json.
+ */
+export function isChoiceBracketContext(line: string): boolean {
+    return /^\s*(?:[*+]\s*)+/.test(line);
 }
 
 export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {

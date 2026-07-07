@@ -29,6 +29,21 @@ function getMarkerRunLength(text: string, index: number, marker: string): number
     return length;
 }
 
+function isWordChar(ch: string | undefined): boolean {
+    return !!ch && /[A-Za-z0-9_]/.test(ch);
+}
+
+/**
+ * Like CommonMark, a run of `_` markers cannot open or close emphasis when it sits
+ * between two word characters (e.g. the `_` in `visit_paris`). Without this check,
+ * every snake_case identifier would be mistaken for an emphasis delimiter — and two
+ * of them on the same line would italicize everything in between. `*` has no such
+ * restriction, since it isn't used inside ink identifiers.
+ */
+function isIntrawordUnderscoreRun(text: string, index: number, length: number): boolean {
+    return isWordChar(text[index - 1]) && isWordChar(text[index + length]);
+}
+
 /**
  * Finds inline emphasis ranges delimited by a repeated markdown marker.
  * A delimiter length of 1 matches italic, 2 matches bold, and 3 matches bold+italic.
@@ -48,6 +63,10 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
             i += openingLength - 1;
             continue;
         }
+        if (marker === "_" && isIntrawordUnderscoreRun(text, i, openingLength)) {
+            i += openingLength - 1;
+            continue;
+        }
         // Content starts after all opening markers.
         const contentStart = i + openingLength;
 
@@ -57,6 +76,10 @@ function findDelimitedRanges(text: string, marker: "*" | "_", delimiterLength: 1
 
             const closingLength = getMarkerRunLength(text, j, marker);
             if (closingLength < delimiterLength) {
+                j += closingLength - 1;
+                continue;
+            }
+            if (marker === "_" && isIntrawordUnderscoreRun(text, j, closingLength)) {
                 j += closingLength - 1;
                 continue;
             }

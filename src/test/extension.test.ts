@@ -5,11 +5,15 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
 	collectCommentAbove,
+	DECLARATION_KEYWORD_DOCS,
 	findDeclaredSymbol,
 	findMatchingBracketsInNormalText,
 	getDeclaredSymbolHoverText,
+	isChoiceBracketContext,
+	isDeclarationKeywordContext,
 	isEndDoneHoverContext,
 	isNormalTextLine,
+	isTildeLogicContext,
 	isVariableTextTypeSpecifier,
 } from '../extension';
 import { computeInkFoldingRanges } from '../folding';
@@ -258,6 +262,34 @@ suite('Extension Test Suite', () => {
 			getDeclaredSymbolHoverText(lines, 'answer'),
 			'Never changes\n\n_Declared as `CONST`: this value is constant._'
 		);
+	});
+
+	test('DECLARATION_KEYWORD_DOCS: documents VAR, CONST, and LIST', () => {
+		for (const name of ['VAR', 'CONST', 'LIST']) {
+			assert.ok(DECLARATION_KEYWORD_DOCS[name]?.length, `missing hover text for ${name}`);
+			assert.ok(DECLARATION_KEYWORD_DOCS[name].includes(name), `hover text for ${name} should mention its own name`);
+		}
+	});
+
+	test('isDeclarationKeywordContext: true only when the keyword opens the line', () => {
+		assert.strictEqual(isDeclarationKeywordContext('VAR x = 1', 0), true, 'VAR at start of line');
+		assert.strictEqual(isDeclarationKeywordContext('  CONST y = 1', 2), true, 'CONST after leading whitespace');
+		assert.strictEqual(isDeclarationKeywordContext('\tLIST items = a, b', 1), true, 'LIST after a tab');
+		assert.strictEqual(isDeclarationKeywordContext('~ x = VAR', '~ x = '.length), false, 'VAR used later on the line');
+	});
+
+	test('isTildeLogicContext: true only when ~ is the first non-whitespace character', () => {
+		assert.strictEqual(isTildeLogicContext('~ x = 1', 0), true, 'tilde at start of line');
+		assert.strictEqual(isTildeLogicContext('  ~ x = 1', 2), true, 'tilde after leading whitespace');
+		assert.strictEqual(isTildeLogicContext('{~Heads|Tails}', 1), false, 'shuffle tilde inside braces is preceded by {');
+	});
+
+	test('isChoiceBracketContext: true only for choice lines (* or + bullets)', () => {
+		assert.strictEqual(isChoiceBracketContext('*\t[Hello back!]'), true, 'simple choice');
+		assert.strictEqual(isChoiceBracketContext('+\t[Eat another donut]'), true, 'sticky choice');
+		assert.strictEqual(isChoiceBracketContext('\t* * \t[Nested choice]'), true, 'nested choice');
+		assert.strictEqual(isChoiceBracketContext('- (top) [Not a choice]'), false, 'gather line');
+		assert.strictEqual(isChoiceBracketContext('Hello [world]!'), false, 'plain narrative text');
 	});
 
 	test('isBuiltinFunctionCallContext: true only when the word is immediately followed by (', () => {
