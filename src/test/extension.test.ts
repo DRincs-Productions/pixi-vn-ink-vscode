@@ -12,6 +12,7 @@ import {
 	isNormalTextLine,
 	isVariableTextTypeSpecifier,
 } from '../extension';
+import { computeInkFoldingRanges } from '../folding';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -252,6 +253,95 @@ suite('Extension Test Suite', () => {
 			getDeclaredSymbolHoverText(lines, 'answer'),
 			'Never changes\n\n_Declared as `CONST`: this value is constant._'
 		);
+	});
+
+	test('computeInkFoldingRanges: folds knot bodies but keeps a trailing top-level divert visible', () => {
+		// This mirrors examples/knot.ink line for line.
+		const lines = [
+			'TEST =',
+			'',
+			'/**',
+			' * Example Ink file',
+			' */',
+			'=== top_knot ===',
+			'Hello world!END',
+			'-> END',
+			'',
+			'=== knot1 === // This is a comment',
+			'top_knot',
+			'DONE',
+			'* {top_knot} test',
+			'->DONE',
+			'',
+			'-> top_knot',
+			'',
+			' === hurry_home ===',
+			'We hurried home to Savile Row ->as_fast_as_we_could',
+			'',
+			'/**',
+			' * Another comment',
+			' */',
+			'=== as_fast_as_we_could',
+			'as fast as we could.',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [
+			{ start: 5, end: 6 },   // === top_knot === → folds "Hello world!END", keeps "-> END"
+			{ start: 9, end: 12 },  // === knot1 === → folds body, keeps "->DONE"
+			{ start: 17, end: 18 }, // === hurry_home === → no top-level divert, folds whole body
+			{ start: 23, end: 24 }, // === as_fast_as_we_could → no top-level divert, folds whole body
+		]);
+	});
+
+	test('computeInkFoldingRanges: knot with no divert exit folds its entire body', () => {
+		const lines = [
+			'=== top_knot ===',
+			'Hello world!END',
+			'',
+			'=== knot1 === // This is a comment',
+			'top_knot',
+			'DONE',
+			'* {top_knot} test',
+			'->DONE',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [
+			{ start: 0, end: 1 },
+			{ start: 3, end: 6 },
+		]);
+	});
+
+	test('computeInkFoldingRanges: a divert exit reached after a blank-separated paragraph still stays visible', () => {
+		const lines = ['=== top_knot ===', 'Hello world!END', '', '-> END'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 2 }]);
+	});
+
+	test('computeInkFoldingRanges: ignores decorative === separators without an identifier', () => {
+		const lines = ['===', '==', 'Some text', '=== knot ===', 'Body line', '-> DONE'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 3, end: 4 }]);
+	});
+
+	test('computeInkFoldingRanges: does not fold a header whose only body line is the exit divert', () => {
+		const lines = ['=== knot ===', '-> DONE'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), []);
+	});
+
+	test('computeInkFoldingRanges: does not treat a mid-sentence divert as an exit line', () => {
+		const lines = ['=== hurry_home ===', 'We hurried home to Savile Row ->as_fast_as_we_could'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 1 }]);
+	});
+
+	test('computeInkFoldingRanges: stitches (single =) fold independently from their parent knot', () => {
+		const lines = ['=== knot ===', 'Some text', '= stitch1', 'Inner text', '-> DONE'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [
+			{ start: 0, end: 1 },
+			{ start: 2, end: 3 },
+		]);
 	});
 
 	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {

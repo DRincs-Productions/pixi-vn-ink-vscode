@@ -4,13 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
-## [Unreleased]
-
 ## [0.5.6] - 2026-07-07
 
 ### Added
 
 - **pixi-vn engine only**: matched `[` and `]` pairs in normal narrative text are now coloured using the same keyword colour as choice brackets. Only properly paired brackets are highlighted (innermost pairs resolved first); escaped brackets (`\[`, `\]`) and unmatched brackets are left uncoloured. Coloring is applied instantly when the `ink.engine` setting is switched to or from `pixi-vn`.
+- Code folding for knots, stitches, and functions (any header starting with one or more `=`). Folding a header collapses its body down to a single line; if the body ends with a top-level divert (e.g. `-> DONE`, `-> END`, `-> some_knot`), that divert stays visible after the header even when collapsed, similar to seeing a function's return statement while its body is folded.
 
 ### Fixed
 

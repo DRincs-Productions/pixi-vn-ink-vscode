@@ -18,6 +18,7 @@ import {
     workspace,
 } from "vscode";
 import { checkIncludes, updateDiagnostics } from "./diagnostics";
+import { inkFoldingRangeProvider } from "./folding";
 import { findMarkdownTokenRanges } from "./markdown";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { previewCommand, runProjectCommand } from "./webview";
@@ -184,6 +185,11 @@ export function activate(context: ExtensionContext) {
     // CTRL+CLICK support for INCLUDE statements
     const includeProvider = includeCtrlClick();
     context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, includeProvider));
+
+    // Folding for knot/stitch/function headers, keeping trailing exit diverts visible
+    context.subscriptions.push(
+        languages.registerFoldingRangeProvider({ language: "ink" }, inkFoldingRangeProvider()),
+    );
 
     // Suggestions include
     const includeSuggestionsProvider = suggestionsInclude();
