@@ -27,6 +27,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on snake_case identifiers containing an underscore (e.g. two `visit_paris` on the same line no longer italicizes everything in between); a single `_` is only treated as emphasis when it isn't sandwiched between two word characters, matching CommonMark's rule for intraword underscores.
 - Choice brackets `[` `]` are now coloured even when the choice has a label before them (e.g. `*\t(rock) [Throw rock at guard] -> throw`) — previously the label caused the rest of the line, including the brackets, to be left uncoloured. The label itself is now also coloured with the same scope as a regular choice bullet instead of a gather.
 - An escaped divert/thread arrow (`\->`, `\<-`) is no longer coloured or treated as a real divert/thread — it's literal text, so it no longer shows the Divert/END/DONE hover popup or the knot-comment popup for the word after it.
+- Code folding no longer reveals a divert that's only the action of one specific choice (e.g. `-> fight_guard` nested under `*\t(get_out) [Shove him aside]`) as if it were the whole knot's exit point — it's now only kept visible when it sits at the same indentation as its own paragraph, matching a statement every path through the knot could actually reach.
+- Folding a knot/stitch with no such exit divert now collapses its *entire* body instead of only its first paragraph — previously, any paragraphs after the first stayed fully expanded even when collapsed. A trailing `/** ... */` comment that documents the *next* knot is still left visible rather than folded away with the previous one.
 
 ## [0.5.6] - 2026-07-07
 

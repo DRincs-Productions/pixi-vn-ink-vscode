@@ -468,6 +468,72 @@ suite('Extension Test Suite', () => {
 		]);
 	});
 
+	test('computeInkFoldingRanges: a divert nested inside one choice is not mistaken for the whole knot\'s exit', () => {
+		// Mirrors examples/labelled_gathers.ink's meet_guard knot: "-> fight_guard" is only
+		// reached via one specific choice, and a gather still follows it, so it must not be
+		// revealed as if every path through the knot ended there.
+		const lines = [
+			'=== meet_guard ===',
+			'The guard frowns at you.',
+			'',
+			'*\t(get_out) [Shove him aside]',
+			'\tYou shove him sharply.',
+			'\t-> fight_guard',
+			'',
+			"-\t'Mff,' the guard replies.",
+			'',
+			'=== knot ===',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 7 }]);
+	});
+
+	test('computeInkFoldingRanges: a divert at the same indentation as its paragraph still counts as an exit', () => {
+		const lines = ['=== knot ===', 'Some text', '-> END'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 1 }]);
+	});
+
+	test('computeInkFoldingRanges: a multi-paragraph body with no divert at all folds entirely', () => {
+		// Mirrors examples/global_constants.ink's report_progress knot.
+		const lines = [
+			'=== report_progress ===',
+			'{',
+			'    -  a == b:',
+			'\tThe secret agent grabs the suitcase!',
+			'',
+			'-  a < b:',
+			'\tThe secret agent moves forward.',
+			'}',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 7 }]);
+	});
+
+	test('computeInkFoldingRanges: a doc-comment for the next knot is not swallowed into this one\'s fold', () => {
+		// Mirrors examples/global_variables.ink's the_train knot, followed by an unrelated VAR
+		// line and then another knot documented with a /** */ comment.
+		const lines = [
+			'=== the_train ===',
+			'\tThe train jolted and rattled.',
+			'\t*\t{ not knows_about_wager } "Why are we travelling?"',
+			'\t* \t{ knows_about_wager } Would it be possible?',
+			'',
+			'VAR current_epilogue = -> everybody_dies',
+			'',
+			'/**',
+			' * Documents the next knot.',
+			' */',
+			'=== continue_or_quit ===',
+			'Give up now?',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [
+			{ start: 0, end: 5 },
+			{ start: 10, end: 11 },
+		]);
+	});
+
 	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {
 		const grammar = require('../../syntaxes/ink.tmLanguage.json');
 		const logicVariablePattern = grammar.repository.logic.patterns.find(

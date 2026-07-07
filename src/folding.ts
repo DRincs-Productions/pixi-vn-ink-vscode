@@ -5,6 +5,7 @@ import {
     type FoldingRangeProvider,
     type TextDocument,
 } from "vscode";
+import { findCommentBlockAbove } from "./utils/comments";
 
 export interface InkFoldingRange {
     start: number;
@@ -21,6 +22,10 @@ const HEADER_REGEX = /^\s*=+\s*(?:function\s+)?[A-Za-z_]/;
 // Diverts embedded mid-sentence (e.g. `text ->knot`) do not match, since the
 // arrow must be the first non-whitespace content on the line.
 const DIVERT_ONLY_REGEX = /^\s*->\s*\S/;
+
+function leadingWhitespaceLength(line: string): number {
+    return line.length - line.trimStart().length;
+}
 
 /**
  * Splits `lines[from..to]` (inclusive) into maximal runs of consecutive
@@ -56,7 +61,17 @@ function splitIntoBlocks(lines: string[], from: number, to: number): InkFoldingR
  * even when collapsed — similar to seeing a function's return statement
  * while its body is folded — folding away everything from the header up to
  * that divert, including any earlier non-exiting paragraphs and blank lines.
- * If no paragraph ends with a divert, only the first paragraph is folded.
+ *
+ * A divert only counts as an "exit point" when it sits at the same
+ * indentation as its own paragraph's opening line. A divert indented deeper
+ * than that is the action of one specific choice (e.g. nested under `* ...`),
+ * not a statement that every path through the knot actually reaches, so it
+ * would be misleading to reveal it as if it were the knot's overall exit.
+ *
+ * If no paragraph ends with a qualifying divert, the whole body is folded —
+ * except for a trailing `/** ... *\/` comment that documents the *next*
+ * knot/stitch (the same comment `getKnotComment` would resolve to that next
+ * declaration), which is left visible rather than folded away with this one.
  */
 export function computeInkFoldingRanges(lines: string[]): InkFoldingRange[] {
     const ranges: InkFoldingRange[] = [];
@@ -74,14 +89,31 @@ export function computeInkFoldingRanges(lines: string[]): InkFoldingRange[] {
         const blocks = splitIntoBlocks(lines, i + 1, bodyEnd);
         if (blocks.length === 0) continue;
 
-        const exitBlock = blocks.find((block) => DIVERT_ONLY_REGEX.test(lines[block.end]));
+        const exitBlock = blocks.find((block) => {
+            if (!DIVERT_ONLY_REGEX.test(lines[block.end])) return false;
+            const paragraphIndent = leadingWhitespaceLength(lines[block.start]);
+            const divertIndent = leadingWhitespaceLength(lines[block.end]);
+            return divertIndent <= paragraphIndent;
+        });
 
         if (exitBlock) {
             if (exitBlock.end - 1 > i) {
                 ranges.push({ start: i, end: exitBlock.end - 1 });
             }
-        } else if (blocks[0].end > i) {
-            ranges.push({ start: i, end: blocks[0].end });
+            continue;
+        }
+
+        let lastRealBlock: InkFoldingRange | undefined = blocks[blocks.length - 1];
+        const nextHeaderLine = bodyEnd + 1;
+        if (nextHeaderLine < lines.length) {
+            const commentStart = findCommentBlockAbove(lines, nextHeaderLine);
+            if (commentStart !== undefined) {
+                lastRealBlock = [...blocks].reverse().find((block) => block.end < commentStart);
+            }
+        }
+
+        if (lastRealBlock && lastRealBlock.end > i) {
+            ranges.push({ start: i, end: lastRealBlock.end });
         }
     }
 
