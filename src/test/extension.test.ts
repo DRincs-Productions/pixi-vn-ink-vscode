@@ -4,17 +4,20 @@ import * as assert from 'assert';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import {
-	BUILTIN_FUNCTIONS,
 	collectCommentAbove,
 	findDeclaredSymbol,
 	findMatchingBracketsInNormalText,
 	getDeclaredSymbolHoverText,
-	isBuiltinFunctionCallContext,
 	isEndDoneHoverContext,
 	isNormalTextLine,
 	isVariableTextTypeSpecifier,
 } from '../extension';
 import { computeInkFoldingRanges } from '../folding';
+import {
+	BUILTIN_FUNCTIONS,
+	findPixiVnUnimplementedFunctionCalls,
+	isBuiltinFunctionCallContext,
+} from '../utils/builtin-functions';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -273,6 +276,26 @@ suite('Extension Test Suite', () => {
 			assert.ok(BUILTIN_FUNCTIONS[name]?.length, `missing hover text for ${name}`);
 			assert.ok(BUILTIN_FUNCTIONS[name].includes(name), `hover text for ${name} should mention its own name`);
 		}
+	});
+
+	test('findPixiVnUnimplementedFunctionCalls: locates calls to functions pixi-vn does not implement yet', () => {
+		assert.deepStrictEqual(
+			findPixiVnUnimplementedFunctionCalls('~ SEED_RANDOM(235)'),
+			[{ name: 'SEED_RANDOM', start: 2, end: 13 }],
+		);
+		assert.deepStrictEqual(
+			findPixiVnUnimplementedFunctionCalls('{LIST_COUNT(DoctorsInSurgery)}'),
+			[{ name: 'LIST_COUNT', start: 1, end: 11 }],
+		);
+
+		// Implemented functions (RANDOM, POW, ...) never show up
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('~ temp x = RANDOM(1, 6)'), []);
+
+		// Not a call (no parenthesis) — no match
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('~ temp x = TURNS'), []);
+
+		// Commented-out lines are ignored
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('// ~ SEED_RANDOM(235)'), []);
 	});
 
 	test('computeInkFoldingRanges: folds knot bodies but keeps a trailing top-level divert visible', () => {
