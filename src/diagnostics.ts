@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "node:path";
 import { Diagnostic, DiagnosticSeverity, Range, type TextDocument, workspace } from "vscode";
+import { findPixiVnUnimplementedFunctionCalls, PIXI_VN_ISSUES_URL } from "./utils/builtin-functions";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors } from "./utils/ink-utility";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
@@ -38,6 +39,24 @@ export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) 
                 source: "ink",
                 range,
             });
+        }
+    }
+}
+
+export function checkPixiVnUnimplementedFunctions(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    for (let i = 0; i < document.lineCount; i++) {
+        const line = document.lineAt(i).text;
+        for (const { name, start, end } of findPixiVnUnimplementedFunctionCalls(line)) {
+            diagnostics.push(
+                new Diagnostic(
+                    new Range(i, start, i, end),
+                    `${name}() is not implemented yet in the pixi-vn engine. Contact the developers to request it: ${PIXI_VN_ISSUES_URL}`,
+                    DiagnosticSeverity.Warning,
+                ),
+            );
         }
     }
 }

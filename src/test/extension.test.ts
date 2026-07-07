@@ -13,6 +13,11 @@ import {
 	isVariableTextTypeSpecifier,
 } from '../extension';
 import { computeInkFoldingRanges } from '../folding';
+import {
+	BUILTIN_FUNCTIONS,
+	findPixiVnUnimplementedFunctionCalls,
+	isBuiltinFunctionCallContext,
+} from '../utils/builtin-functions';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -253,6 +258,44 @@ suite('Extension Test Suite', () => {
 			getDeclaredSymbolHoverText(lines, 'answer'),
 			'Never changes\n\n_Declared as `CONST`: this value is constant._'
 		);
+	});
+
+	test('isBuiltinFunctionCallContext: true only when the word is immediately followed by (', () => {
+		assert.strictEqual(isBuiltinFunctionCallContext('~ SEED_RANDOM(235)', '~ SEED_RANDOM'.length), true);
+		assert.strictEqual(isBuiltinFunctionCallContext('{RANDOM (1, 6)}', '{RANDOM'.length), true, 'whitespace before ( is allowed');
+		assert.strictEqual(isBuiltinFunctionCallContext('~ temp x = RANDOM', '~ temp x = RANDOM'.length), false);
+		assert.strictEqual(isBuiltinFunctionCallContext('TURNS is a knot name', 'TURNS'.length), false);
+	});
+
+	test('BUILTIN_FUNCTIONS: documents every ink built-in game query/function', () => {
+		for (const name of [
+			'CHOICE_COUNT', 'TURNS', 'TURNS_SINCE', 'SEED_RANDOM', 'RANDOM',
+			'INT', 'FLOOR', 'FLOAT', 'POW',
+			'LIST_VALUE', 'LIST_COUNT', 'LIST_MIN', 'LIST_MAX', 'LIST_RANDOM', 'LIST_ALL', 'LIST_RANGE', 'LIST_INVERT',
+		]) {
+			assert.ok(BUILTIN_FUNCTIONS[name]?.length, `missing hover text for ${name}`);
+			assert.ok(BUILTIN_FUNCTIONS[name].includes(name), `hover text for ${name} should mention its own name`);
+		}
+	});
+
+	test('findPixiVnUnimplementedFunctionCalls: locates calls to functions pixi-vn does not implement yet', () => {
+		assert.deepStrictEqual(
+			findPixiVnUnimplementedFunctionCalls('~ SEED_RANDOM(235)'),
+			[{ name: 'SEED_RANDOM', start: 2, end: 13 }],
+		);
+		assert.deepStrictEqual(
+			findPixiVnUnimplementedFunctionCalls('{LIST_COUNT(DoctorsInSurgery)}'),
+			[{ name: 'LIST_COUNT', start: 1, end: 11 }],
+		);
+
+		// Implemented functions (RANDOM, POW, ...) never show up
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('~ temp x = RANDOM(1, 6)'), []);
+
+		// Not a call (no parenthesis) — no match
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('~ temp x = TURNS'), []);
+
+		// Commented-out lines are ignored
+		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('// ~ SEED_RANDOM(235)'), []);
 	});
 
 	test('computeInkFoldingRanges: folds knot bodies but keeps a trailing top-level divert visible', () => {

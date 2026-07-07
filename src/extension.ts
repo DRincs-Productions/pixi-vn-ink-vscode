@@ -17,9 +17,10 @@ import {
     window,
     workspace,
 } from "vscode";
-import { checkIncludes, updateDiagnostics } from "./diagnostics";
+import { checkIncludes, checkPixiVnUnimplementedFunctions, updateDiagnostics } from "./diagnostics";
 import { inkFoldingRangeProvider } from "./folding";
 import { findMarkdownTokenRanges } from "./markdown";
+import { BUILTIN_FUNCTIONS, isBuiltinFunctionCallContext } from "./utils/builtin-functions";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { previewCommand, runProjectCommand } from "./webview";
 
@@ -123,6 +124,25 @@ export function activate(context: ExtensionContext) {
         }
     };
 
+    // Initial diagnostics for all open ink files
+
+    const diagnostics = languages.createDiagnosticCollection("ink");
+    context.subscriptions.push(diagnostics);
+
+    const refreshDiagnostics = (doc: TextDocument) => {
+        const list: Diagnostic[] = [];
+        updateDiagnostics(doc, list);
+        checkIncludes(doc, list);
+        checkPixiVnUnimplementedFunctions(doc, list);
+        diagnostics.set(doc.uri, list);
+    };
+
+    for (const doc of workspace.textDocuments) {
+        if (doc.languageId === "ink") {
+            refreshDiagnostics(doc);
+        }
+    }
+
     // Listen for configuration changes
 
     workspace.onDidChangeConfiguration((event) => {
@@ -130,6 +150,11 @@ export function activate(context: ExtensionContext) {
             const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
             window.showInformationMessage(`Engine changed to ${newEngine}`);
             onDidChangeSemanticTokensEmitter.fire();
+            for (const doc of workspace.textDocuments) {
+                if (doc.languageId === "ink") {
+                    refreshDiagnostics(doc);
+                }
+            }
         }
         if (event.affectsConfiguration("ink.markup")) {
             const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup", null);
@@ -138,26 +163,15 @@ export function activate(context: ExtensionContext) {
         }
     });
 
-    // Initial diagnostics for all open ink files
-
-    const diagnostics = languages.createDiagnosticCollection("ink");
-    context.subscriptions.push(diagnostics);
-
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
-            const list: Diagnostic[] = [];
-            updateDiagnostics(doc, list);
-            checkIncludes(doc, list);
-            diagnostics.set(doc.uri, list);
+            refreshDiagnostics(doc);
         }
     });
 
     workspace.onDidChangeTextDocument((e) => {
         if (e.document.languageId === "ink") {
-            const list: Diagnostic[] = [];
-            updateDiagnostics(e.document, list);
-            checkIncludes(e.document, list);
-            diagnostics.set(e.document.uri, list);
+            refreshDiagnostics(e.document);
 
             for (const editor of window.visibleTextEditors) {
                 if (editor.document === e.document) {
@@ -243,6 +257,12 @@ export function activate(context: ExtensionContext) {
                     return new Hover(
                         "**Glue (`<>`)**: Prevents a line-break before this content. Use it when you want consecutive content to stick together on the same line.",
                     );
+                }
+
+                // Hover for built-in ink functions (RANDOM, SEED_RANDOM, LIST_COUNT, etc.),
+                // only when the word is actually being called as a function.
+                if (word in BUILTIN_FUNCTIONS && range && isBuiltinFunctionCallContext(line, range.end.character)) {
+                    return new Hover(new MarkdownString(BUILTIN_FUNCTIONS[word]));
                 }
 
                 // Hover for special symbols inside { }

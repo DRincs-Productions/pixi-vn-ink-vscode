@@ -4,6 +4,14 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Hover documentation for ink's built-in "game query" functions: `CHOICE_COUNT()`, `TURNS()`, `TURNS_SINCE()`, `SEED_RANDOM()`, `RANDOM()`, `INT()`, `FLOOR()`, `FLOAT()`, `POW()`, `LIST_VALUE()`, `LIST_COUNT()`, `LIST_MIN()`, `LIST_MAX()`, `LIST_RANDOM()`, `LIST_ALL()`, `LIST_RANGE()`, and `LIST_INVERT()`. Hovering over a call to one of these functions (e.g. `~ SEED_RANDOM(235)` or `{RANDOM(1, 6)}`) shows a short description and an example, taken from the [official ink documentation](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md).
+- New example `examples/game_queries_and_functions.ink` showing all of the above functions in use.
+- When the `pixi-vn` engine is selected, calls to `CHOICE_COUNT()`, `TURNS()`, `TURNS_SINCE()`, `SEED_RANDOM()`, `LIST_RANDOM()`, `LIST_COUNT()`, `LIST_INVERT()`, `LIST_ALL()`, `LIST_RANGE()`, `LIST_MIN()`, `LIST_MAX()`, and `LIST_VALUE()` are now underlined with a yellow warning (like any other diagnostic), explaining that the function isn't implemented by `pixi-vn` yet, with a link to request it. Switching the `ink.engine` setting updates the warnings immediately on all open files. The hover popup for these functions is unaffected by the engine setting.
+
 ## [0.5.6] - 2026-07-07
 
 ### Added
