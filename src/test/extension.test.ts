@@ -15,6 +15,7 @@ import {
 	isEndDoneHoverContext,
 	isInsideCurlyBraceBlockAtLines,
 	isNormalTextLine,
+	isPrecededByUnescapedDivert,
 	isTildeLogicContext,
 	isVariableTextTypeSpecifier,
 } from '../extension';
@@ -42,6 +43,22 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(isEndDoneHoverContext('  DONE', 2), false);
 		assert.strictEqual(isEndDoneHoverContext('top_knot', 0), false);
 		assert.strictEqual(isEndDoneHoverContext('Hello world!END', 12), false);
+		assert.strictEqual(isEndDoneHoverContext('\\-> END', 4), false, 'escaped \\-> is literal text, not a divert');
+	});
+
+	test('isPrecededByUnescapedDivert: false for an escaped \\-> (literal text, not a real divert)', () => {
+		assert.strictEqual(isPrecededByUnescapedDivert('-> as_fast_as_we_could', '-> '), true);
+		assert.strictEqual(
+			isPrecededByUnescapedDivert('We hurried home -> as_fast_as_we_could', 'We hurried home -> '),
+			true,
+			'mid-sentence divert',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedDivert('\\-> as_fast_as_we_could', '\\-> '),
+			false,
+			'escaped arrow is literal text',
+		);
+		assert.strictEqual(isPrecededByUnescapedDivert('Hello world', 'Hello world'), false, 'no arrow at all');
 	});
 
 	test('isVariableTextTypeSpecifier: returns true only for the first non-whitespace char after {', () => {

@@ -25,6 +25,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 - The `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `- else:`, `- 0: zero`) no longer shows the unrelated "Gather" hover popup, and no longer shows nothing at all when written right after the opening brace (e.g. `{ - x > 0:`).
 - Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on snake_case identifiers containing an underscore (e.g. two `visit_paris` on the same line no longer italicizes everything in between); a single `_` is only treated as emphasis when it isn't sandwiched between two word characters, matching CommonMark's rule for intraword underscores.
+- Choice brackets `[` `]` are now coloured even when the choice has a label before them (e.g. `*\t(rock) [Throw rock at guard] -> throw`) — previously the label caused the rest of the line, including the brackets, to be left uncoloured. The label itself is now also coloured with the same scope as a regular choice bullet instead of a gather.
+- An escaped divert/thread arrow (`\->`, `\<-`) is no longer coloured or treated as a real divert/thread — it's literal text, so it no longer shows the Divert/END/DONE hover popup or the knot-comment popup for the word after it.
 
 ## [0.5.6] - 2026-07-07
 

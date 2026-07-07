@@ -257,8 +257,8 @@ export function activate(context: ExtensionContext) {
                     }
                 }
 
-                // Hover for divert arrow ->
-                if (word === "->") {
+                // Hover for divert arrow -> (but not an escaped \->, which is literal text)
+                if (word === "->" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
                         new MarkdownString(
                             '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
@@ -417,7 +417,7 @@ export function activate(context: ExtensionContext) {
                 const beforeWord = line.substring(0, wordStartChar);
                 const isKnotReferenceContext =
                     /^\s*=/.test(line) || // knot/stitch definition line (=== name === or = stitch)
-                    /->\s*$/.test(beforeWord) || // immediately preceded by a divert arrow
+                    isPrecededByUnescapedDivert(line, beforeWord) || // immediately preceded by a real divert arrow
                     isInsideVariableText(document, position); // inside { }
 
                 if (isKnotReferenceContext) {
@@ -488,7 +488,18 @@ function escapeRegExp(s: string) {
 }
 
 export function isEndDoneHoverContext(line: string, wordStartChar: number) {
-    return /->\s*$/.test(line.substring(0, wordStartChar));
+    return isPrecededByUnescapedDivert(line, line.substring(0, wordStartChar));
+}
+
+/**
+ * Returns true when `before` (a prefix of `line` ending right where a word
+ * starts) ends with a real, unescaped divert arrow (optionally followed by
+ * whitespace), e.g. `-> ` or `->`. An escaped arrow (`\->`) doesn't count —
+ * it's literal text, not a real divert, so it shouldn't be treated as one.
+ */
+export function isPrecededByUnescapedDivert(line: string, before: string): boolean {
+    const match = before.match(/->\s*$/);
+    return !!match && match.index !== undefined && !isEscaped(line, match.index);
 }
 
 /**

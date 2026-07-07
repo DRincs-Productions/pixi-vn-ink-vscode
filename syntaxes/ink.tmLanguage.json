@@ -137,11 +137,8 @@
     "labelledGathersChoices": {
       "patterns": [
         {
-          "begin": "^\\s*([-*+])(\\s*[-*+])*\\s*(?=\\()",
+          "begin": "^\\s*(-(?:\\s*-)*)\\s*(?=\\()",
           "beginCaptures": {
-            "0": {
-              "name": "keyword.other.gather.ink"
-            },
             "1": {
               "name": "keyword.other.gather.ink"
             }
@@ -160,6 +157,53 @@
               ]
             }
           ]
+        },
+        {
+          "begin": "^\\s*((?:[*+]\\s*)+)(?=\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.choice.ink"
+            }
+          },
+          "end": "$",
+          "patterns": [
+            {
+              "name": "entity.name.function.ink",
+              "begin": "\\(",
+              "end": "\\)",
+              "patterns": [
+                {
+                  "name": "entity.name.function.ink",
+                  "match": "[^()]+"
+                }
+              ]
+            },
+            {
+              "name": "keyword.other.brackets.choice.ink",
+              "match": "(?<!\\\\)[\\[\\]]"
+            },
+            {
+              "include": "#conditionalChoices"
+            },
+            {
+              "include": "#variableText"
+            },
+            {
+              "include": "#printingVariables"
+            },
+            {
+              "include": "#knots"
+            },
+            {
+              "include": "#glue"
+            },
+            {
+              "include": "#tags"
+            },
+            {
+              "include": "#comments"
+            }
+          ]
         }
       ]
     },
@@ -167,27 +211,27 @@
       "patterns": [
         {
           "name": "keyword.control.return.ink",
-          "match": "(?<=->\\s*)(END|DONE)"
+          "match": "(?<=(?:^|[^\\\\])->\\s*)(END|DONE)"
         },
         {
           "name": "keyword.other.divert.ink",
-          "match": "->"
+          "match": "(?<!\\\\)->"
         },
         {
           "name": "entity.name.function.divert.ink",
-          "match": "(?<=->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
+          "match": "(?<=(?:^|[^\\\\])->\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
         },
         {
           "name": "keyword.other.thread.ink",
-          "match": "<-"
+          "match": "(?<!\\\\)<-"
         },
         {
           "name": "entity.name.function.thread.ink",
-          "match": "(?<=<-\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
+          "match": "(?<=(?:^|[^\\\\])<-\\s*)[a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)?"
         },
         {
           "name": "meta.function.divert.call.ink",
-          "begin": "(?<=->\\s*[a-zA-Z0-9_]+)\\s*\\(",
+          "begin": "(?<=(?:^|[^\\\\])->\\s*[a-zA-Z0-9_]+)\\s*\\(",
           "end": "\\)",
           "patterns": [
             {
@@ -200,7 +244,7 @@
         },
         {
           "name": "meta.function.thread.call.ink",
-          "begin": "(?<=<-\\s*[a-zA-Z0-9_]+)\\s*\\(",
+          "begin": "(?<=(?:^|[^\\\\])<-\\s*[a-zA-Z0-9_]+)\\s*\\(",
           "end": "\\)",
           "patterns": [
             {
