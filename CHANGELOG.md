@@ -4,6 +4,13 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Hover documentation for ink's built-in "game query" functions: `CHOICE_COUNT()`, `TURNS()`, `TURNS_SINCE()`, `SEED_RANDOM()`, `RANDOM()`, `INT()`, `FLOOR()`, `FLOAT()`, `POW()`, `LIST_VALUE()`, `LIST_COUNT()`, `LIST_MIN()`, `LIST_MAX()`, `LIST_RANDOM()`, `LIST_ALL()`, `LIST_RANGE()`, and `LIST_INVERT()`. Hovering over a call to one of these functions (e.g. `~ SEED_RANDOM(235)` or `{RANDOM(1, 6)}`) shows a short description and an example, taken from the [official ink documentation](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md).
+- New example `examples/game_queries_and_functions.ink` showing all of the above functions in use.
+
 ## [0.5.6] - 2026-07-07
 
 ### Added

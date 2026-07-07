@@ -4,10 +4,12 @@ import * as assert from 'assert';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import {
+	BUILTIN_FUNCTIONS,
 	collectCommentAbove,
 	findDeclaredSymbol,
 	findMatchingBracketsInNormalText,
 	getDeclaredSymbolHoverText,
+	isBuiltinFunctionCallContext,
 	isEndDoneHoverContext,
 	isNormalTextLine,
 	isVariableTextTypeSpecifier,
@@ -253,6 +255,24 @@ suite('Extension Test Suite', () => {
 			getDeclaredSymbolHoverText(lines, 'answer'),
 			'Never changes\n\n_Declared as `CONST`: this value is constant._'
 		);
+	});
+
+	test('isBuiltinFunctionCallContext: true only when the word is immediately followed by (', () => {
+		assert.strictEqual(isBuiltinFunctionCallContext('~ SEED_RANDOM(235)', '~ SEED_RANDOM'.length), true);
+		assert.strictEqual(isBuiltinFunctionCallContext('{RANDOM (1, 6)}', '{RANDOM'.length), true, 'whitespace before ( is allowed');
+		assert.strictEqual(isBuiltinFunctionCallContext('~ temp x = RANDOM', '~ temp x = RANDOM'.length), false);
+		assert.strictEqual(isBuiltinFunctionCallContext('TURNS is a knot name', 'TURNS'.length), false);
+	});
+
+	test('BUILTIN_FUNCTIONS: documents every ink built-in game query/function', () => {
+		for (const name of [
+			'CHOICE_COUNT', 'TURNS', 'TURNS_SINCE', 'SEED_RANDOM', 'RANDOM',
+			'INT', 'FLOOR', 'FLOAT', 'POW',
+			'LIST_VALUE', 'LIST_COUNT', 'LIST_MIN', 'LIST_MAX', 'LIST_RANDOM', 'LIST_ALL', 'LIST_RANGE', 'LIST_INVERT',
+		]) {
+			assert.ok(BUILTIN_FUNCTIONS[name]?.length, `missing hover text for ${name}`);
+			assert.ok(BUILTIN_FUNCTIONS[name].includes(name), `hover text for ${name} should mention its own name`);
+		}
 	});
 
 	test('computeInkFoldingRanges: folds knot bodies but keeps a trailing top-level divert visible', () => {
