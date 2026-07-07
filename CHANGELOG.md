@@ -15,6 +15,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Hover documentation for the logic `~` (e.g. `~ x = 1`), distinct from the existing shuffle `~` type-specifier popup shown inside `{ }` alternatives.
 - Hover documentation for the choice brackets `[` `]` (e.g. `* Hello [back!] right back to you!`), explaining how they split an option's text into choice-only, output-only, and shared parts. Only shown inside choice lines (`*`/`+`).
 - New examples: `examples/sticky_and_fallback_choices.ink`, `examples/alternatives.ink`, `examples/basic_lists.ink`, `examples/multivalued_lists.ink`, `examples/nicer_list_printing.ink`, `examples/full_list.ink`, `examples/tower_of_hanoi.ink`, `examples/advanced_list_operations.ink`, and `examples/multi_list_lists.ink`, covering topics from the official ink documentation not previously represented in the `examples/` folder.
+- Hover documentation for the `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `{ - x > 0:`, or `- else:` inside a multi-clause block), distinct from the weave Gather popup.
+
+### Changed
+
+- Expanded the `-> END`, `-> DONE`, `->` (divert), `<>` (glue), `*` (choice), `+` (sticky choice), and `-` (gather) hover popups with fuller explanations and runnable examples, matching the level of detail already used for the other hover popups.
+
+### Fixed
+
+- The `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `- else:`, `- 0: zero`) no longer shows the unrelated "Gather" hover popup, and no longer shows nothing at all when written right after the opening brace (e.g. `{ - x > 0:`).
+- Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on snake_case identifiers containing an underscore (e.g. two `visit_paris` on the same line no longer italicizes everything in between); a single `_` is only treated as emphasis when it isn't sandwiched between two word characters, matching CommonMark's rule for intraword underscores.
 
 ## [0.5.6] - 2026-07-07
 

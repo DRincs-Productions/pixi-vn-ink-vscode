@@ -357,6 +357,23 @@ export function activate(context: ExtensionContext) {
                     );
                 }
 
+                // Hover for the `-` that introduces a branch of a conditional/switch
+                // block inside `{ }` (e.g. `- x > 0:` or `- else:`). Visually identical
+                // to a weave gather, but semantically different — checked first so it
+                // takes priority over the plain Gather hover below.
+                if (
+                    char === "-" &&
+                    !isEscaped(line, position.character) &&
+                    isConditionalBranchDash(line, position.character) &&
+                    isInsideCurlyBraceBlock(document, position)
+                ) {
+                    return new Hover(
+                        new MarkdownString(
+                            "**Conditional branch (`-`)**: Introduces one branch of a multi-clause `{ }` conditional or switch block. Branches are tried in order, and only the first one whose condition matches runs; `- else:` catches anything not matched above.\n\nExample:\n```ink\n{ x:\n- 0: zero\n- 1: one\n- else: lots\n}\n```",
+                        ),
+                    );
+                }
+
                 const match = line.match(/^(\s*[-*+\s]+)/);
                 if (match) {
                     const seq = match[1];
@@ -748,6 +765,83 @@ export function isTildeLogicContext(line: string, charPos: number): boolean {
  */
 export function isChoiceBracketContext(line: string): boolean {
     return /^\s*(?:[*+]\s*)+/.test(line);
+}
+
+/**
+ * Returns true when the `-` at `dashChar` on `line` looks like it introduces a
+ * branch of a `{ }` conditional/switch block (e.g. `- x > 0:`, `- else:`, or
+ * `- 0: zero`), rather than a weave gather. Mirrors the two dash rules in the
+ * `conditionalBlocks` grammar: either right after an opening `{` (only
+ * whitespace in between), or at the very start of a line — and, either way,
+ * followed later on the same line by the `:` that ends the branch condition.
+ * Callers must additionally confirm the position is actually inside a `{ }`
+ * block (see `isInsideCurlyBraceBlock`), since a weave gather can coincidentally
+ * satisfy this shape too (e.g. `- "Well," she said: "go on."`).
+ */
+export function isConditionalBranchDash(line: string, dashChar: number): boolean {
+    const before = line.substring(0, dashChar);
+    const afterOpenBrace = /\{[ \t]*$/.test(before);
+    const atLineStart = /^[ \t]*$/.test(before);
+    if (!afterOpenBrace && !atLineStart) return false;
+
+    // Not a divert arrow.
+    if (line.substring(dashChar, dashChar + 2) === "->") return false;
+
+    return line.indexOf(":", dashChar + 1) !== -1;
+}
+
+function countUnescapedBraceDelta(text: string): number {
+    let delta = 0;
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === "{" && (i === 0 || text[i - 1] !== "\\")) {
+            delta++;
+        } else if (text[i] === "}" && (i === 0 || text[i - 1] !== "\\")) {
+            delta--;
+        }
+    }
+    return delta;
+}
+
+function stripLineComment(text: string): string {
+    const idx = text.indexOf("//");
+    return idx === -1 ? text : text.substring(0, idx);
+}
+
+/**
+ * Returns true when `character` on `lines[lineNumber]` sits inside a `{ }`
+ * block that may have opened on an earlier line (e.g. a multi-line conditional
+ * or switch block), by tracking unescaped brace depth from the start of the
+ * document. Unlike `isInsideVariableText`, this looks across lines. Block
+ * comments and `//` line comments are stripped before counting, so braces
+ * mentioned in comments don't throw off the depth.
+ */
+export function isInsideCurlyBraceBlockAtLines(lines: string[], lineNumber: number, character: number): boolean {
+    let depth = 0;
+    let inBlockComment = false;
+    for (let i = 0; i < lineNumber; i++) {
+        const { segments, inComment } = getUncommentedSegments(lines[i], inBlockComment);
+        inBlockComment = inComment;
+        for (const { text } of segments) {
+            depth += countUnescapedBraceDelta(stripLineComment(text));
+        }
+    }
+
+    const { segments } = getUncommentedSegments(lines[lineNumber], inBlockComment);
+    for (const { text, offset } of segments) {
+        if (offset >= character) continue;
+        const localEnd = Math.min(text.length, character - offset);
+        depth += countUnescapedBraceDelta(stripLineComment(text.substring(0, localEnd)));
+    }
+
+    return depth > 0;
+}
+
+function isInsideCurlyBraceBlock(document: TextDocument, position: Position): boolean {
+    const lines: string[] = [];
+    for (let i = 0; i <= position.line; i++) {
+        lines.push(document.lineAt(i).text);
+    }
+    return isInsideCurlyBraceBlockAtLines(lines, position.line, position.character);
 }
 
 export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {

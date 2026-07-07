@@ -10,8 +10,10 @@ import {
 	findMatchingBracketsInNormalText,
 	getDeclaredSymbolHoverText,
 	isChoiceBracketContext,
+	isConditionalBranchDash,
 	isDeclarationKeywordContext,
 	isEndDoneHoverContext,
+	isInsideCurlyBraceBlockAtLines,
 	isNormalTextLine,
 	isTildeLogicContext,
 	isVariableTextTypeSpecifier,
@@ -290,6 +292,36 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(isChoiceBracketContext('\t* * \t[Nested choice]'), true, 'nested choice');
 		assert.strictEqual(isChoiceBracketContext('- (top) [Not a choice]'), false, 'gather line');
 		assert.strictEqual(isChoiceBracketContext('Hello [world]!'), false, 'plain narrative text');
+	});
+
+	test('isConditionalBranchDash: true for { }-block branch markers, false for weave gathers', () => {
+		assert.strictEqual(isConditionalBranchDash('{ - x > 0:', 2), true, 'dash right after the opening {');
+		assert.strictEqual(isConditionalBranchDash('- else:', 0), true, 'dash at the very start of the line');
+		assert.strictEqual(isConditionalBranchDash('\t- x > 0:', 1), true, 'indented branch dash');
+		assert.strictEqual(isConditionalBranchDash('- 0: \tzero', 0), true, 'switch-style branch with a value');
+		assert.strictEqual(isConditionalBranchDash('- Gathered text', 0), false, 'no colon on the line: not a branch');
+		assert.strictEqual(isConditionalBranchDash('-> knot', 0), false, 'divert arrow is not a branch dash');
+		assert.strictEqual(isConditionalBranchDash('Hello - world: yes', 6), false, 'dash mid-line is not a branch');
+	});
+
+	test('isInsideCurlyBraceBlockAtLines: tracks { } depth across multiple lines', () => {
+		const lines = [
+			'{',
+			'\t- x > 0:',
+			'\t\tText',
+			'\t- else:',
+			'\t\tText',
+			'}',
+			'-  Gathered text',
+		];
+		assert.strictEqual(isInsideCurlyBraceBlockAtLines(lines, 1, 1), true, 'branch dash inside a multi-line block');
+		assert.strictEqual(isInsideCurlyBraceBlockAtLines(lines, 3, 1), true, 'else branch further down the same block');
+		assert.strictEqual(isInsideCurlyBraceBlockAtLines(lines, 6, 0), false, 'a real gather after the block has closed');
+	});
+
+	test('isInsideCurlyBraceBlockAtLines: ignores braces mentioned in comments', () => {
+		const lines = ['// a comment mentioning a { brace', '-  Gathered text'];
+		assert.strictEqual(isInsideCurlyBraceBlockAtLines(lines, 1, 0), false);
 	});
 
 	test('isBuiltinFunctionCallContext: true only when the word is immediately followed by (', () => {
