@@ -18,10 +18,16 @@ export interface InkFoldingRange {
 // separator lines such as `===` or `==`.
 const HEADER_REGEX = /^\s*=+\s*(?:function\s+)?[A-Za-z_]/;
 
+// A header declared with the `function` keyword specifically.
+const FUNCTION_HEADER_REGEX = /^\s*=+\s*function\s+[A-Za-z_]/;
+
 // A line that is nothing but a divert (e.g. `-> DONE`, `->END`, `-> knot_name`).
 // Diverts embedded mid-sentence (e.g. `text ->knot`) do not match, since the
 // arrow must be the first non-whitespace content on the line.
 const DIVERT_ONLY_REGEX = /^\s*->\s*\S/;
+
+// A divert whose sole target is DONE or END.
+const DONE_OR_END_DIVERT_REGEX = /^\s*->\s*(?:DONE|END)\s*$/;
 
 function leadingWhitespaceLength(line: string): number {
     return line.length - line.trimStart().length;
@@ -58,15 +64,21 @@ function splitIntoBlocks(lines: string[], from: number, to: number): InkFoldingR
  * A header's body (up to the next header or end of file) is split into
  * paragraphs separated by blank lines. The first paragraph that ends with a
  * top-level divert (its "exit point") is used to keep that divert visible
- * even when collapsed — similar to seeing a function's return statement
- * while its body is folded — folding away everything from the header up to
- * that divert, including any earlier non-exiting paragraphs and blank lines.
+ * even when collapsed, folding away everything from the header up to that
+ * divert, including any earlier non-exiting paragraphs and blank lines.
  *
  * A divert only counts as an "exit point" when it sits at the same
  * indentation as its own paragraph's opening line. A divert indented deeper
  * than that is the action of one specific choice (e.g. nested under `* ...`),
  * not a statement that every path through the knot actually reaches, so it
  * would be misleading to reveal it as if it were the knot's overall exit.
+ *
+ * Functions never get this "reveal the exit" treatment for `-> DONE` and
+ * `-> END`: those don't describe how a function actually exits (that's what
+ * `~ return` is for, and a `~ return` is never treated as an exit point
+ * either), so they are folded away like any other body content instead of
+ * being kept visible. A function that diverts to a knot/stitch still gets
+ * that divert revealed, same as a knot would.
  *
  * If no paragraph ends with a qualifying divert, the whole body is folded —
  * except for a trailing `/** ... *\/` comment that documents the *next*
@@ -89,8 +101,11 @@ export function computeInkFoldingRanges(lines: string[]): InkFoldingRange[] {
         const blocks = splitIntoBlocks(lines, i + 1, bodyEnd);
         if (blocks.length === 0) continue;
 
+        const isFunction = FUNCTION_HEADER_REGEX.test(lines[i]);
+
         const exitBlock = blocks.find((block) => {
             if (!DIVERT_ONLY_REGEX.test(lines[block.end])) return false;
+            if (isFunction && DONE_OR_END_DIVERT_REGEX.test(lines[block.end])) return false;
             const paragraphIndent = leadingWhitespaceLength(lines[block.start]);
             const divertIndent = leadingWhitespaceLength(lines[block.end]);
             return divertIndent <= paragraphIndent;

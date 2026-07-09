@@ -12,6 +12,7 @@ Test(test)
 
 === function say_no_to_nothing ===
 	~ return say_yes_to_everything()
+test
 
 === function harm(x) ===
 	{ stamina < x:

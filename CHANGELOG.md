@@ -16,6 +16,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Hover documentation for the choice brackets `[` `]` (e.g. `* Hello [back!] right back to you!`), explaining how they split an option's text into choice-only, output-only, and shared parts. Only shown inside choice lines (`*`/`+`).
 - New examples: `examples/sticky_and_fallback_choices.ink`, `examples/alternatives.ink`, `examples/basic_lists.ink`, `examples/multivalued_lists.ink`, `examples/nicer_list_printing.ink`, `examples/full_list.ink`, `examples/tower_of_hanoi.ink`, `examples/advanced_list_operations.ink`, and `examples/multi_list_lists.ink`, covering topics from the official ink documentation not previously represented in the `examples/` folder.
 - Hover documentation for the `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `{ - x > 0:`, or `- else:` inside a multi-clause block), distinct from the weave Gather popup.
+- Hover documentation for the thread `<-` (e.g. `<- conversation`), explaining how it weaves in another knot/stitch's content and choices without leaving the current flow, unlike a divert. Hovering the knot/stitch name right after `<-` (including the stitch half of a dotted `<- knot.stitch`) now also shows its knot-comment popup, matching how `->` already behaves.
 
 ### Changed
 
@@ -29,6 +30,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - An escaped divert/thread arrow (`\->`, `\<-`) is no longer coloured or treated as a real divert/thread — it's literal text, so it no longer shows the Divert/END/DONE hover popup or the knot-comment popup for the word after it.
 - Code folding no longer reveals a divert that's only the action of one specific choice (e.g. `-> fight_guard` nested under `*\t(get_out) [Shove him aside]`) as if it were the whole knot's exit point — it's now only kept visible when it sits at the same indentation as its own paragraph, matching a statement every path through the knot could actually reach.
 - Folding a knot/stitch with no such exit divert now collapses its *entire* body instead of only its first paragraph — previously, any paragraphs after the first stayed fully expanded even when collapsed. A trailing `/** ... */` comment that documents the *next* knot is still left visible rather than folded away with the previous one.
+- Folding a `function` no longer reveals a trailing `-> DONE` or `-> END` as if it were the function's exit point — those don't describe how a function actually returns (that's what `~ return` is for), so they're now folded away with the rest of the body, all the way to the next knot/stitch/function. A function diverting to a knot/stitch still gets that divert revealed, same as a knot would.
+- Hovering the stitch half of a dotted divert target (e.g. `in_first_class` in `-> the_orient_express.in_first_class`) now shows its knot-comment popup — previously only hovering the knot half (`the_orient_express`) worked.
+- A divert or thread written inside conditional text (e.g. `{ x: <- seen_light }` or `{ x: -> knot }`) is now coloured and gets its hover popup like anywhere else — previously it was left as plain, unrecognized text because that context's grammar rule didn't include the divert/thread patterns at all.
 
 ## [0.5.6] - 2026-07-07
 

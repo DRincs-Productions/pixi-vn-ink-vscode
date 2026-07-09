@@ -16,6 +16,9 @@ import {
 	isInsideCurlyBraceBlockAtLines,
 	isNormalTextLine,
 	isPrecededByUnescapedDivert,
+	isPrecededByUnescapedDivertToKnot,
+	isPrecededByUnescapedThread,
+	isPrecededByUnescapedThreadToKnot,
 	isTildeLogicContext,
 	isVariableTextTypeSpecifier,
 } from '../extension';
@@ -59,6 +62,64 @@ suite('Extension Test Suite', () => {
 			'escaped arrow is literal text',
 		);
 		assert.strictEqual(isPrecededByUnescapedDivert('Hello world', 'Hello world'), false, 'no arrow at all');
+	});
+
+	test('isPrecededByUnescapedDivertToKnot: true when hovering the stitch half of -> knot.stitch', () => {
+		const line = '\t-> the_orient_express.in_first_class';
+		assert.strictEqual(
+			isPrecededByUnescapedDivertToKnot(line, '\t-> the_orient_express.'),
+			true,
+			'stitch part right after "knot."',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedDivertToKnot(line, '\t-> the_orient_express'),
+			false,
+			'no dot yet: still hovering the knot part, handled by isPrecededByUnescapedDivert instead',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedDivertToKnot('\\-> the_orient_express.in_first_class', '\\-> the_orient_express.'),
+			false,
+			'escaped arrow is literal text',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedDivertToKnot('Hello world.class', 'Hello world.'),
+			false,
+			'no divert arrow at all',
+		);
+	});
+
+	test('isPrecededByUnescapedThread: true for a real <- (but not an escaped \\<-)', () => {
+		assert.strictEqual(isPrecededByUnescapedThread('<- conversation', '<- '), true);
+		assert.strictEqual(
+			isPrecededByUnescapedThread('I had a headache. <- conversation', 'I had a headache. <- '),
+			true,
+			'mid-sentence thread',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedThread('\\<- conversation', '\\<- '),
+			false,
+			'escaped arrow is literal text',
+		);
+		assert.strictEqual(isPrecededByUnescapedThread('Hello world', 'Hello world'), false, 'no arrow at all');
+	});
+
+	test('isPrecededByUnescapedThreadToKnot: true when hovering the stitch half of <- knot.stitch', () => {
+		const line = '<- the_orient_express.in_first_class';
+		assert.strictEqual(
+			isPrecededByUnescapedThreadToKnot(line, '<- the_orient_express.'),
+			true,
+			'stitch part right after "knot."',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedThreadToKnot(line, '<- the_orient_express'),
+			false,
+			'no dot yet: still hovering the knot part, handled by isPrecededByUnescapedThread instead',
+		);
+		assert.strictEqual(
+			isPrecededByUnescapedThreadToKnot('\\<- the_orient_express.in_first_class', '\\<- the_orient_express.'),
+			false,
+			'escaped arrow is literal text',
+		);
 	});
 
 	test('isVariableTextTypeSpecifier: returns true only for the first non-whitespace char after {', () => {
@@ -534,6 +595,28 @@ suite('Extension Test Suite', () => {
 		]);
 	});
 
+	test('computeInkFoldingRanges: a function folds its entire body, never revealing its `~ return`', () => {
+		const lines = [
+			'=== function say_no_to_nothing ===',
+			'\t~ return say_yes_to_everything()',
+			'test',
+		];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 2 }]);
+	});
+
+	test('computeInkFoldingRanges: a function ignores -> DONE / -> END as exit points, unlike a knot', () => {
+		const lines = ['=== function say_no_to_nothing ===', 'Some setup', '-> DONE'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 2 }]);
+	});
+
+	test('computeInkFoldingRanges: a function diverting to a knot still reveals that divert', () => {
+		const lines = ['=== function foo ===', 'Some setup', '-> some_knot'];
+
+		assert.deepStrictEqual(computeInkFoldingRanges(lines), [{ start: 0, end: 1 }]);
+	});
+
 	test('syntax grammar: VAR declarations and logic identifiers share constant scope', () => {
 		const grammar = require('../../syntaxes/ink.tmLanguage.json');
 		const logicVariablePattern = grammar.repository.logic.patterns.find(
@@ -547,5 +630,17 @@ suite('Extension Test Suite', () => {
 
 		assert.strictEqual(logicVariablePattern?.name, 'variable.other.constant.ink');
 		assert.strictEqual(varDeclarationPattern?.name, 'variable.other.constant.ink');
+	});
+
+	test('syntax grammar: a divert/thread inside conditional text (e.g. `{ x: <- knot }`) is still tokenized as one', () => {
+		const grammar = require('../../syntaxes/ink.tmLanguage.json');
+		const conditionalTextBody = grammar.repository.conditionalText.patterns[0].patterns.find(
+			(pattern: { name?: string }) => pattern.name === 'meta.conditional.text.ink'
+		);
+
+		assert.ok(
+			conditionalTextBody?.patterns.some((pattern: { include?: string }) => pattern.include === '#knots'),
+			'meta.conditional.text.ink should include #knots so -> and <- are recognized, not just plain text',
+		);
 	});
 });

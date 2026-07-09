@@ -228,7 +228,7 @@ export function activate(context: ExtensionContext) {
                 // Normal word/symbol detection (END, DONE, ->, <>, identifiers)
                 const line = document.lineAt(position.line).text;
                 let word: string | undefined;
-                let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|\*|\+|-/);
+                let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|<-|\*|\+|-/);
 
                 // Handle single special characters separately
                 const char = line[position.character];
@@ -274,6 +274,15 @@ export function activate(context: ExtensionContext) {
                     return new Hover(
                         new MarkdownString(
                             '**Glue (`<>`)**: Suppresses the automatic line-break that would otherwise be inserted before this content, joining it to whatever text came right before. You can\'t "un-stick" a line once glued, and stacking multiple glues has no extra effect.\n\nExample:\n```ink\nWe hurried home <>\n-> to_savile_row\n\n=== to_savile_row ===\nto Savile Row.\n```',
+                        ),
+                    );
+                }
+
+                // Hover for thread <- (but not escaped \<-)
+                if (word === "<-" && range && !isEscaped(line, range.start.character)) {
+                    return new Hover(
+                        new MarkdownString(
+                            '**Thread (`<-`)**: Pulls the content and choices of another knot/stitch into the current flow, as if written right here, without leaving the current flow the way a divert does. Useful for weaving choices gathered from several different knots into one combined list.\n\nExample:\n```ink\n=== welcome ===\nI had a headache; threading is hard to get your head around.\n<- conversation\n<- walking\n\n= conversation\n*\t"What did you have for lunch?"\n\t"Spam and eggs," he replied.\n-\t-> house\n\n= walking\n*\t[Continue walking]\n\t-> house\n\n= house\nBefore long, we arrived at his house.\n-> END\n```',
                         ),
                     );
                 }
@@ -414,13 +423,17 @@ export function activate(context: ExtensionContext) {
                 }
 
                 // Only show knot comment popup when the word is used as a knot reference:
-                // a divert (-> word), inside curly braces {word}, or on a knot/stitch definition line.
-                // Plain narrative text that happens to share a knot name should not trigger the popup.
+                // a divert or thread (-> word / <- word), inside curly braces {word}, or on a
+                // knot/stitch definition line. Plain narrative text that happens to share a knot
+                // name should not trigger the popup.
                 const wordStartChar = range ? range.start.character : position.character;
                 const beforeWord = line.substring(0, wordStartChar);
                 const isKnotReferenceContext =
                     /^\s*=/.test(line) || // knot/stitch definition line (=== name === or = stitch)
                     isPrecededByUnescapedDivert(line, beforeWord) || // immediately preceded by a real divert arrow
+                    isPrecededByUnescapedDivertToKnot(line, beforeWord) || // -> knot.stitch, hovering the stitch part
+                    isPrecededByUnescapedThread(line, beforeWord) || // immediately preceded by a real thread arrow
+                    isPrecededByUnescapedThreadToKnot(line, beforeWord) || // <- knot.stitch, hovering the stitch part
                     isInsideVariableText(document, position); // inside { }
 
                 if (isKnotReferenceContext) {
@@ -502,6 +515,37 @@ export function isEndDoneHoverContext(line: string, wordStartChar: number) {
  */
 export function isPrecededByUnescapedDivert(line: string, before: string): boolean {
     const match = before.match(/->\s*$/);
+    return !!match && match.index !== undefined && !isEscaped(line, match.index);
+}
+
+/**
+ * Returns true when `before` ends with a real, unescaped divert arrow
+ * followed by a knot name and a dot, e.g. `-> the_orient_express.` right
+ * before the stitch part of a dotted `-> knot.stitch` divert target. This is
+ * what makes hovering the *stitch* half of such a divert (not just the knot
+ * half right after the arrow) still trigger the knot-comment popup.
+ */
+export function isPrecededByUnescapedDivertToKnot(line: string, before: string): boolean {
+    const match = before.match(/->\s*[A-Za-z_][A-Za-z0-9_]*\.\s*$/);
+    return !!match && match.index !== undefined && !isEscaped(line, match.index);
+}
+
+/**
+ * Same as {@link isPrecededByUnescapedDivert}, but for a thread arrow (`<-`)
+ * instead of a divert arrow (`->`).
+ */
+export function isPrecededByUnescapedThread(line: string, before: string): boolean {
+    const match = before.match(/<-\s*$/);
+    return !!match && match.index !== undefined && !isEscaped(line, match.index);
+}
+
+/**
+ * Same as {@link isPrecededByUnescapedDivertToKnot}, but for a thread arrow
+ * (`<-`) instead of a divert arrow (`->`), e.g. `<- knot.` right before the
+ * stitch part of a dotted `<- knot.stitch` thread target.
+ */
+export function isPrecededByUnescapedThreadToKnot(line: string, before: string): boolean {
+    const match = before.match(/<-\s*[A-Za-z_][A-Za-z0-9_]*\.\s*$/);
     return !!match && match.index !== undefined && !isEscaped(line, match.index);
 }
 
