@@ -40,6 +40,141 @@ export const DECLARATION_KEYWORD_DOCS: Record<string, string> = {
     LIST: "**LIST**: Declares a list — an enumeration of named values that double as on/off flags (a *set*). List variables can be tested, combined, and compared much like mathematical sets, and can also be used as simple state machines.\n\nExample:\n```ink\nLIST DoctorsInSurgery = Adams, Bernard, (Cartwright)\n```",
 };
 
+// Hover text for the `->` divert arrow (and its `->->` tunnel-return form), keyed by
+// the role a specific arrow plays — see getDivertArrowHoverKind. Documented in
+// https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+export const DIVERT_ARROW_DOCS: Record<string, string> = {
+    divert: '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
+    tunnelCall:
+        '**Tunnel call (`-> knot ->`)**: Diverts into `knot` as a *tunnel* rather than a plain divert — it remembers where it came from, so a `->->` reached inside `knot` returns control right back here instead of leaving for good.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
+    tunnelReturnPoint:
+        '**Tunnel return point (the second `->` in `-> knot ->`)**: Marks this as a tunnel call rather than a plain divert — once `knot` reaches a `->->`, the flow resumes right after this arrow instead of stopping inside `knot`.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n```',
+    tunnelOnward:
+        '**Tunnel onward (`-> knot -> next`)**: Calls `knot` as a tunnel, but once it returns with a `->->`, continues at `next` instead of resuming right after this line.\n\nExample:\n```ink\n-> crossing_the_date_line -> check_foggs_health\n```',
+    tunnelReturn:
+        '**Tunnel return (`->->`)**: Returns from the tunnel that was called to reach here, resuming the flow right after the `-> knot ->` that invoked it — like a function return, unlike a plain divert, which never comes back.\n\nExample:\n```ink\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
+    tunnelReturnElsewhere:
+        '**Tunnel return, elsewhere (`->-> destination`)**: Leaves the tunnel entirely — instead of resuming right after the `-> knot ->` that called it, the flow jumps straight to `destination`. Use sparingly; it\'s easy to lose track of where control actually ends up.\n\nExample:\n```ink\n=== fall_down_cliff ===\n-> hurt(5) ->\nYou\'re still alive! You pick yourself up and walk on.\n\n=== hurt(x) ===\n~ stamina -= x\n{ stamina <= 0:\n\t->-> youre_dead\n}\n\n=== youre_dead ===\nSuddenly, there is a white light all around you.\n```',
+    divertTargetValue:
+        '**Divert target (as a value)**: Here `-> name` isn\'t an immediate jump — it\'s a *divert target*, a storable value naming a location, being passed as an argument, assigned to a variable, or compared. The receiving parameter/variable must be explicitly typed as a divert target, so it isn\'t confused with a read count.\n\nExample:\n```ink\nVAR current_epilogue = -> everybody_dies\n\n=== sleeping_in_hut ===\nYou lie down and close your eyes.\n-> generic_sleep(-> waking_in_the_hut)\n\n=== generic_sleep(-> waking)\nYou sleep, perchance to dream...\n-> waking\n```',
+};
+
+// A `->` immediately adjacent (no space) to another `->` is one half of a `->->`
+// tunnel-return statement, not a plain divert arrow.
+export function isTunnelReturnArrow(line: string, arrowStart: number): boolean {
+    return (
+        line.substring(arrowStart, arrowStart + 4) === "->->" ||
+        (arrowStart >= 2 && line.substring(arrowStart - 2, arrowStart) === "->")
+    );
+}
+
+// Given that `arrowStart` is one half of a `->->` pair (isTunnelReturnArrow is true),
+// returns the destination name written right after it, e.g. `youre_dead` in
+// `->-> youre_dead` — this is a *different* statement from a bare `->->`: it leaves
+// the tunnel for that destination instead of resuming at the original call site.
+export function getTunnelReturnDestination(line: string, arrowStart: number): string | undefined {
+    const pairEnd = line.substring(arrowStart, arrowStart + 4) === "->->" ? arrowStart + 4 : arrowStart + 2;
+    return line.substring(pairEnd).match(/^\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?)/)?.[1];
+}
+
+// A `->` is used as a value rather than executed when it's a function/knot argument
+// (preceded by `(` or `,`) or the right-hand side of an assignment/comparison
+// (preceded by `=`), e.g. `Foo(-> knot)` or `VAR x = -> knot`.
+export function isDivertTargetValueContext(beforeArrow: string): boolean {
+    return /[(,=]\s*$/.test(beforeArrow);
+}
+
+// A tunnel call written on one line: `-> knot ->` or `-> knot -> destination`,
+// optionally with a parameter list and/or a trailing comment.
+const TUNNEL_CALL_LINE_REGEX =
+    /^\s*->\s*[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?\s*(?:\([^()]*\))?\s*->\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?)?\s*(?:\/\/.*)?$/;
+
+export function getTunnelCallLineDestination(line: string): { isTunnelCallLine: boolean; destination?: string } {
+    const match = line.match(TUNNEL_CALL_LINE_REGEX);
+    if (!match) return { isTunnelCallLine: false };
+    return { isTunnelCallLine: true, destination: match[1] };
+}
+
+/**
+ * Classifies the `->` at `arrowStart` on `line` into a key of DIVERT_ARROW_DOCS,
+ * so the hover popup explains the specific role this arrow plays: a plain jump,
+ * a tunnel call/return, or a divert target used as a value rather than executed.
+ */
+export function getDivertArrowHoverKind(line: string, arrowStart: number): keyof typeof DIVERT_ARROW_DOCS {
+    if (isTunnelReturnArrow(line, arrowStart)) {
+        return getTunnelReturnDestination(line, arrowStart) ? "tunnelReturnElsewhere" : "tunnelReturn";
+    }
+
+    if (isDivertTargetValueContext(line.substring(0, arrowStart))) return "divertTargetValue";
+
+    const tunnelLine = getTunnelCallLineDestination(line);
+    if (tunnelLine.isTunnelCallLine) {
+        const firstArrowStart = line.indexOf("->");
+        if (arrowStart !== firstArrowStart) {
+            return tunnelLine.destination ? "tunnelOnward" : "tunnelReturnPoint";
+        }
+        return "tunnelCall";
+    }
+
+    return "divert";
+}
+
+// Hover text for the word-form type keywords of a multiline `{ keyword: - a - b }`
+// alternatives block, keyed by the exact phrase (see getMultilineBlockTypeKeywordAt).
+// These are the written-out equivalents of the `&`/`!`/`~` shorthand symbols, plus
+// the two combined shuffle forms. Documented in
+// https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+export const MULTILINE_BLOCK_TYPE_DOCS: Record<string, string> = {
+    stopping:
+        "**Sequence (`{ stopping: ...}`)**: Shows the next alternative each time this point is reached, moving through them in order, then keeps repeating the last one once they've all been shown. This is also what a plain `{A|B|C}` sequence with no type keyword does.\n\nExample:\n```ink\n{ stopping:\n-\tI entered the casino.\n-\tI entered the casino again.\n-\tOnce more, I went inside.\n}\n```",
+    cycle: "**Cycle (`{ cycle: ...}`)**: Shows the next alternative each time this point is reached, moving through them in order, then loops back to the first one once they've all been shown — same as the `&` shorthand.\n\nExample:\n```ink\n{ cycle:\n-\tI held my breath.\n-\tI waited impatiently.\n-\tI paused.\n}\n```",
+    once: "**Once-only (`{ once: ...}`)**: Shows each alternative once, in order, then shows nothing once they've all been used up — same as the `!` shorthand.\n\nExample:\n```ink\n{ once:\n-\tWould my luck hold?\n-\tCould I win the hand?\n}\n```",
+    shuffle:
+        "**Shuffle (`{ shuffle: ...}`)**: Shows one alternative at random each time this point is reached, and can repeat entries — same as the `~` shorthand.\n\nExample:\n```ink\n{ shuffle:\n-\tAce of Hearts.\n-\tKing of Spades.\n-\t2 of Diamonds.\n}\n```",
+    "shuffle once":
+        "**Shuffle once (`{ shuffle once: ...}`)**: Shuffles the alternatives, plays through all of them exactly once with no repeats, then shows nothing once they run out.\n\nExample:\n```ink\n{ shuffle once:\n-\tThe sun was hot.\n-\tIt was a hot day.\n}\n```",
+    "shuffle stopping":
+        "**Shuffle stopping (`{ shuffle stopping: ...}`)**: Shuffles all but the last alternative and plays through them, then sticks on that last entry for good once the shuffled ones run out.\n\nExample:\n```ink\n{ shuffle stopping:\n-\tA silver BMW roars past.\n-\tA bright yellow Mustang takes the turn.\n-\tThere are like, cars, here.\n}\n```",
+};
+
+const MULTILINE_BLOCK_TYPE_REGEX = /^(stopping|shuffle(?:\s+(?:once|stopping))?|cycle|once)\s*:/;
+
+/**
+ * Returns the multiline-block type keyword phrase (a key of MULTILINE_BLOCK_TYPE_DOCS)
+ * that `position` falls inside of, e.g. the `shuffle once` in `{ shuffle once: ... }`.
+ * Only matches when the phrase is the first thing after an unescaped `{` (with only
+ * whitespace in between) and is followed by `:` — narrative text that happens to
+ * contain one of these words doesn't count.
+ */
+export function getMultilineBlockTypeKeywordAt(line: string, position: number): string | undefined {
+    let depth = 0;
+    let innermostOpenBrace = -1;
+    for (let i = position - 1; i >= 0; i--) {
+        if (line[i] === "}" && (i === 0 || line[i - 1] !== "\\")) {
+            depth++;
+        } else if (line[i] === "{" && (i === 0 || line[i - 1] !== "\\")) {
+            if (depth === 0) {
+                innermostOpenBrace = i;
+                break;
+            }
+            depth--;
+        }
+    }
+
+    if (innermostOpenBrace < 0) return undefined;
+
+    const afterBrace = line.substring(innermostOpenBrace + 1);
+    const leadingWhitespace = afterBrace.match(/^\s*/)?.[0].length ?? 0;
+    const match = afterBrace.substring(leadingWhitespace).match(MULTILINE_BLOCK_TYPE_REGEX);
+    if (!match) return undefined;
+
+    const phraseStart = innermostOpenBrace + 1 + leadingWhitespace;
+    const phraseEnd = phraseStart + match[1].length;
+    if (position < phraseStart || position >= phraseEnd) return undefined;
+
+    return match[1];
+}
+
 export function activate(context: ExtensionContext) {
     // Register the command to open the Ink Preview webview
 
@@ -260,12 +395,12 @@ export function activate(context: ExtensionContext) {
                     }
                 }
 
-                // Hover for divert arrow -> (but not an escaped \->, which is literal text)
+                // Hover for divert arrow -> (but not an escaped \->, which is literal text).
+                // What it means varies by context: a plain jump, a tunnel call/return, or a
+                // divert target used as a value — see getDivertArrowHoverKind.
                 if (word === "->" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
-                        new MarkdownString(
-                            '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
-                        ),
+                        new MarkdownString(DIVERT_ARROW_DOCS[getDivertArrowHoverKind(line, range.start.character)]),
                     );
                 }
 
@@ -327,6 +462,16 @@ export function activate(context: ExtensionContext) {
                 // only when the word is actually being called as a function.
                 if (word in BUILTIN_FUNCTIONS && range && isBuiltinFunctionCallContext(line, range.end.character)) {
                     return new Hover(new MarkdownString(BUILTIN_FUNCTIONS[word]));
+                }
+
+                // Hover for the word-form type keywords of a multiline alternatives block
+                // (e.g. `{ stopping:`, `{ shuffle once:`) — the written-out equivalents of
+                // the ~/&/! shorthand symbols handled below.
+                if (["stopping", "shuffle", "cycle", "once"].includes(word) && range) {
+                    const multilineKeyword = getMultilineBlockTypeKeywordAt(line, range.start.character);
+                    if (multilineKeyword) {
+                        return new Hover(new MarkdownString(MULTILINE_BLOCK_TYPE_DOCS[multilineKeyword]));
+                    }
                 }
 
                 // Hover for special symbols inside { }

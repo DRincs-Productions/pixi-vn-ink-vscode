@@ -17,10 +17,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - New examples: `examples/sticky_and_fallback_choices.ink`, `examples/alternatives.ink`, `examples/basic_lists.ink`, `examples/multivalued_lists.ink`, `examples/nicer_list_printing.ink`, `examples/full_list.ink`, `examples/tower_of_hanoi.ink`, `examples/advanced_list_operations.ink`, and `examples/multi_list_lists.ink`, covering topics from the official ink documentation not previously represented in the `examples/` folder.
 - Hover documentation for the `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `{ - x > 0:`, or `- else:` inside a multi-clause block), distinct from the weave Gather popup.
 - Hover documentation for the thread `<-` (e.g. `<- conversation`), explaining how it weaves in another knot/stitch's content and choices without leaving the current flow, unlike a divert. Hovering the knot/stitch name right after `<-` (including the stitch half of a dotted `<- knot.stitch`) now also shows its knot-comment popup, matching how `->` already behaves.
+- Hover documentation for the word-form type keywords of a multiline alternatives block — `stopping`, `cycle`, `once`, `shuffle`, `shuffle once`, and `shuffle stopping` (e.g. `{ shuffle once: - The sun was hot. - It was a hot day. }`) — the written-out equivalents of the `~`/`&`/`!` shorthand symbols. Only shown when the word is the type keyword right after the block's opening `{`, not when it coincidentally appears elsewhere as narrative text.
 
 ### Changed
 
 - Expanded the `-> END`, `-> DONE`, `->` (divert), `<>` (glue), `*` (choice), `+` (sticky choice), and `-` (gather) hover popups with fuller explanations and runnable examples, matching the level of detail already used for the other hover popups.
+- The `->` hover popup now depends on how the arrow is actually used, instead of always showing the plain "Divert" explanation: a tunnel call (`-> knot ->`), the return point of that same call, tunnel-onward (`-> knot -> next`), a tunnel return (`->->`), a tunnel return to a different destination (`->-> destination`, e.g. `->-> youre_dead`), and a divert target used as a value (a function/knot argument, e.g. `FunctionA(-> deskstate)`, or the right-hand side of `VAR x = -> knot`) each get their own explanation and example.
 
 ### Fixed
 
@@ -33,6 +35,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Folding a `function` no longer reveals a trailing `-> DONE` or `-> END` as if it were the function's exit point — those don't describe how a function actually returns (that's what `~ return` is for), so they're now folded away with the rest of the body, all the way to the next knot/stitch/function. A function diverting to a knot/stitch still gets that divert revealed, same as a knot would.
 - Hovering the stitch half of a dotted divert target (e.g. `in_first_class` in `-> the_orient_express.in_first_class`) now shows its knot-comment popup — previously only hovering the knot half (`the_orient_express`) worked.
 - A divert or thread written inside conditional text (e.g. `{ x: <- seen_light }` or `{ x: -> knot }`) is now coloured and gets its hover popup like anywhere else — previously it was left as plain, unrecognized text because that context's grammar rule didn't include the divert/thread patterns at all.
+- A multiline `{ stopping: ... }` / `{ cycle: ... }` / `{ once: ... }` / `{ shuffle: ... }` block whose closing `}` is indented on its own line (the common style) no longer leaves the block "stuck open" — previously the closing brace was swallowed as plain text instead of ending the block, miscolouring every line after it (e.g. splitting a following `-> knot` divert into a stray `-` and `>`) until something else happened to reset the parser. A nested type-keyword block (e.g. a `{cycle: ...}` inside one bullet of a `{stopping: ...}`) is now also recognized as its own block, so its closing `}` doesn't get mistaken for its parent's.
 
 ## [0.5.6] - 2026-07-07
 

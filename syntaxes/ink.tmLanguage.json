@@ -597,6 +597,9 @@
           },
           "patterns": [
             {
+              "include": "#multilineBlocks"
+            },
+            {
               "name": "meta.multiline.line.ink",
               "begin": "^\\s*-\\s*",
               "beginCaptures": {
@@ -606,6 +609,9 @@
               },
               "end": "$",
               "patterns": [
+                {
+                  "include": "#multilineBlocks"
+                },
                 {
                   "include": "#tildeLogic"
                 },
@@ -627,7 +633,7 @@
               ]
             },
             {
-              "match": ".+",
+              "match": "[^}]+",
               "name": "text.plain.ink",
               "patterns": [
                 {

@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
@@ -9,9 +10,14 @@ import {
 	findDeclaredSymbol,
 	findMatchingBracketsInNormalText,
 	getDeclaredSymbolHoverText,
+	getDivertArrowHoverKind,
+	getMultilineBlockTypeKeywordAt,
+	getTunnelCallLineDestination,
+	getTunnelReturnDestination,
 	isChoiceBracketContext,
 	isConditionalBranchDash,
 	isDeclarationKeywordContext,
+	isDivertTargetValueContext,
 	isEndDoneHoverContext,
 	isInsideCurlyBraceBlockAtLines,
 	isNormalTextLine,
@@ -20,6 +26,7 @@ import {
 	isPrecededByUnescapedThread,
 	isPrecededByUnescapedThreadToKnot,
 	isTildeLogicContext,
+	isTunnelReturnArrow,
 	isVariableTextTypeSpecifier,
 } from '../extension';
 import { computeInkFoldingRanges } from '../folding';
@@ -120,6 +127,119 @@ suite('Extension Test Suite', () => {
 			false,
 			'escaped arrow is literal text',
 		);
+	});
+
+	test('getDivertArrowHoverKind: a plain divert, even with a call argument', () => {
+		assert.strictEqual(getDivertArrowHoverKind('-> top', 0), 'divert');
+		assert.strictEqual(getDivertArrowHoverKind('-> accuse("Hastings")', 0), 'divert');
+	});
+
+	test('getDivertArrowHoverKind: a divert target used as a value (function argument, VAR, knot parameter)', () => {
+		const callLine = 'FunctionA(-> deskstate)';
+		assert.strictEqual(getDivertArrowHoverKind(callLine, callLine.indexOf('->')), 'divertTargetValue');
+
+		const varLine = 'VAR current_epilogue = -> everybody_dies';
+		assert.strictEqual(getDivertArrowHoverKind(varLine, varLine.indexOf('->')), 'divertTargetValue');
+
+		const knotParamLine = '=== generic_sleep (-> waking)';
+		assert.strictEqual(getDivertArrowHoverKind(knotParamLine, knotParamLine.indexOf('->')), 'divertTargetValue');
+	});
+
+	test('getDivertArrowHoverKind: a tunnel call, its return point, and tunnel-onward', () => {
+		const bareTunnel = '-> see_prints_on_glass ->';
+		assert.strictEqual(getDivertArrowHoverKind(bareTunnel, bareTunnel.indexOf('->')), 'tunnelCall');
+		assert.strictEqual(getDivertArrowHoverKind(bareTunnel, bareTunnel.lastIndexOf('->')), 'tunnelReturnPoint');
+
+		const onwardTunnel = '-> see_prints_on_glass -> window_opts';
+		assert.strictEqual(getDivertArrowHoverKind(onwardTunnel, onwardTunnel.indexOf('->')), 'tunnelCall');
+		assert.strictEqual(getDivertArrowHoverKind(onwardTunnel, onwardTunnel.lastIndexOf('->')), 'tunnelOnward');
+	});
+
+	test('getDivertArrowHoverKind: ->-> is a tunnel return, for either half', () => {
+		assert.strictEqual(getDivertArrowHoverKind('->->', 0), 'tunnelReturn');
+		assert.strictEqual(getDivertArrowHoverKind('->->', 2), 'tunnelReturn');
+	});
+
+	test('getDivertArrowHoverKind: ->-> destination leaves the tunnel elsewhere, distinct from a bare ->->', () => {
+		const line = '\t\t->-> youre_dead';
+		const arrowStart = line.indexOf('->');
+		assert.strictEqual(getDivertArrowHoverKind(line, arrowStart), 'tunnelReturnElsewhere');
+		assert.strictEqual(getDivertArrowHoverKind(line, arrowStart + 2), 'tunnelReturnElsewhere');
+
+		// still followed only by whitespace/end-of-content: a plain tunnel return
+		assert.strictEqual(getDivertArrowHoverKind('->->', 0), 'tunnelReturn');
+
+		const inConditional = '{ shield_generators : ->-> argue }';
+		assert.strictEqual(getDivertArrowHoverKind(inConditional, inConditional.indexOf('->->')), 'tunnelReturnElsewhere');
+	});
+
+	test('isTunnelReturnArrow: true for either half of a ->-> pair', () => {
+		assert.strictEqual(isTunnelReturnArrow('->->', 0), true);
+		assert.strictEqual(isTunnelReturnArrow('->->', 2), true);
+		assert.strictEqual(isTunnelReturnArrow('-> knot', 0), false);
+	});
+
+	test('getTunnelReturnDestination: captures the name after ->->, undefined when there is none', () => {
+		assert.strictEqual(getTunnelReturnDestination('->-> youre_dead', 0), 'youre_dead');
+		assert.strictEqual(getTunnelReturnDestination('->-> youre_dead', 2), 'youre_dead');
+		assert.strictEqual(getTunnelReturnDestination('->->', 0), undefined);
+		assert.strictEqual(getTunnelReturnDestination('->-> // a comment, not a destination', 0), undefined);
+	});
+
+	test('isDivertTargetValueContext: true right after ( , or =, not after a bare divert', () => {
+		assert.strictEqual(isDivertTargetValueContext('FunctionA('), true);
+		assert.strictEqual(isDivertTargetValueContext('Foo(x, '), true);
+		assert.strictEqual(isDivertTargetValueContext('VAR x = '), true);
+		assert.strictEqual(isDivertTargetValueContext(''), false);
+	});
+
+	test('getTunnelCallLineDestination: recognizes -> knot -> and -> knot -> destination, not a plain divert', () => {
+		assert.deepStrictEqual(getTunnelCallLineDestination('-> see_prints_on_glass ->'), {
+			isTunnelCallLine: true,
+			destination: undefined,
+		});
+		assert.deepStrictEqual(getTunnelCallLineDestination('-> see_prints_on_glass -> window_opts'), {
+			isTunnelCallLine: true,
+			destination: 'window_opts',
+		});
+		assert.deepStrictEqual(getTunnelCallLineDestination('-> accuse("Hastings")'), { isTunnelCallLine: false });
+	});
+
+	test('getMultilineBlockTypeKeywordAt: recognizes each of the four single-word type keywords', () => {
+		assert.strictEqual(getMultilineBlockTypeKeywordAt('{ stopping:', '{ stopping:'.indexOf('stopping')), 'stopping');
+		assert.strictEqual(getMultilineBlockTypeKeywordAt('{ cycle:', '{ cycle:'.indexOf('cycle')), 'cycle');
+		assert.strictEqual(getMultilineBlockTypeKeywordAt('{ once:', '{ once:'.indexOf('once')), 'once');
+		assert.strictEqual(getMultilineBlockTypeKeywordAt('{ shuffle:', '{ shuffle:'.indexOf('shuffle')), 'shuffle');
+	});
+
+	test('getMultilineBlockTypeKeywordAt: "shuffle once" / "shuffle stopping" are recognized from either word', () => {
+		const shuffleOnce = '{ shuffle once:';
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(shuffleOnce, shuffleOnce.indexOf('shuffle')), 'shuffle once');
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(shuffleOnce, shuffleOnce.indexOf('once')), 'shuffle once');
+
+		const shuffleStopping = '{ shuffle stopping:';
+		assert.strictEqual(
+			getMultilineBlockTypeKeywordAt(shuffleStopping, shuffleStopping.indexOf('shuffle')),
+			'shuffle stopping',
+		);
+		assert.strictEqual(
+			getMultilineBlockTypeKeywordAt(shuffleStopping, shuffleStopping.indexOf('stopping')),
+			'shuffle stopping',
+		);
+	});
+
+	test('getMultilineBlockTypeKeywordAt: undefined for plain narrative text or a keyword not actually typing a block', () => {
+		const narrative = 'I visited once before';
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(narrative, narrative.indexOf('once')), undefined);
+
+		const conditionalText = '{ x: once told me }';
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(conditionalText, conditionalText.indexOf('once')), undefined);
+
+		const noColon = '{once I saw stars}';
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(noColon, noColon.indexOf('once')), undefined);
+
+		const escapedBrace = '\\{ stopping: }';
+		assert.strictEqual(getMultilineBlockTypeKeywordAt(escapedBrace, escapedBrace.indexOf('stopping')), undefined);
 	});
 
 	test('isVariableTextTypeSpecifier: returns true only for the first non-whitespace char after {', () => {
@@ -641,6 +761,91 @@ suite('Extension Test Suite', () => {
 		assert.ok(
 			conditionalTextBody?.patterns.some((pattern: { include?: string }) => pattern.include === '#knots'),
 			'meta.conditional.text.ink should include #knots so -> and <- are recognized, not just plain text',
+		);
+	});
+
+	// The structural grammar tests above only inspect the JSON, which can't catch bugs that
+	// only show up across multiple lines of *stateful* tokenization (a block that never
+	// closes, leaking its scope into everything after it). These tests run the real
+	// TextMate tokenizer, one line at a time, carrying the rule stack forward exactly like
+	// VS Code does, so they can actually observe that kind of regression.
+	async function createInkGrammar() {
+		const oniguruma = require('vscode-oniguruma');
+		const vsctm = require('vscode-textmate');
+		const wasmBin = fs.readFileSync(require.resolve('vscode-oniguruma/release/onig.wasm')).buffer;
+		await oniguruma.loadWASM(wasmBin);
+		const onigLib = Promise.resolve({
+			createOnigScanner: (patterns: string[]) => new oniguruma.OnigScanner(patterns),
+			createOnigString: (value: string) => new oniguruma.OnigString(value),
+		});
+		const grammarSrc = require('../../syntaxes/ink.tmLanguage.json');
+		const registry = new vsctm.Registry({
+			onigLib,
+			loadGrammar: (scopeName: string) =>
+				scopeName === 'source.ink' ? Promise.resolve(grammarSrc) : Promise.resolve(null),
+		});
+		return registry.loadGrammar('source.ink');
+	}
+
+	function tokenizeInkLines(grammar: any, lines: string[]) {
+		const vsctm = require('vscode-textmate');
+		let ruleStack = vsctm.INITIAL;
+		return lines.map((line) => {
+			const result = grammar.tokenizeLine(line, ruleStack);
+			ruleStack = result.ruleStack;
+			return result.tokens.map((token: { startIndex: number; endIndex: number; scopes: string[] }) => ({
+				text: line.substring(token.startIndex, token.endIndex),
+				scopes: token.scopes,
+			}));
+		});
+	}
+
+	test('syntax grammar: an indented closing } of a multiline block ({ stopping: ... }) actually closes it', async () => {
+		const grammar = await createInkGrammar();
+		const lines = ['{ stopping:', '-\tFirst.', '-\tSecond.', '    }', '-> top'];
+		const tokens = tokenizeInkLines(grammar, lines);
+
+		const divertLineTokens = tokens[4];
+		assert.ok(
+			divertLineTokens.some((t) => t.text === '->' && t.scopes.includes('keyword.other.divert.ink')),
+			'-> after the block should be one token, not split into "-" and ">" by a still-open block',
+		);
+		assert.ok(
+			!divertLineTokens.some((t) => t.scopes.includes('meta.multiline.block.ink')),
+			'the multiline block should have closed at the indented }, not leaked into the following line',
+		);
+	});
+
+	test('syntax grammar: a nested { cycle: ... } inside a bulleted line closes independently of its parent block', async () => {
+		const grammar = await createInkGrammar();
+		// Mirrors examples/tower_of_hanoi.ink's move_post stitch.
+		const lines = [
+			'{ stopping:',
+			'-\tFirst.',
+			'-\tSecond.',
+			'-\t{cycle:',
+			'\t- Third.',
+			'\t- Fourth.',
+			'\t}',
+			'}',
+			'-> top',
+		];
+		const tokens = tokenizeInkLines(grammar, lines);
+
+		const cycleCloseTokens = tokens[6];
+		assert.ok(
+			cycleCloseTokens.some((t) => t.text === '}' && t.scopes.includes('keyword.other.brackets.conditional.ink')),
+			'the cycle block\'s own } should close it, not be swallowed as plain text',
+		);
+
+		const divertLineTokens = tokens[8];
+		assert.ok(
+			divertLineTokens.some((t) => t.text === '->' && t.scopes.includes('keyword.other.divert.ink')),
+			'-> after both blocks should be one token, not split apart by a still-open block',
+		);
+		assert.ok(
+			!divertLineTokens.some((t) => t.scopes.includes('meta.multiline.block.ink')),
+			'both the cycle block and its parent stopping block should have closed by this point',
 		);
 	});
 });
