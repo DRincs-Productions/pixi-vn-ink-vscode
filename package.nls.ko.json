@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "ink 언어",
+  "ink.description": "Visual Studio Code용 Inkle의 ink 스크립팅 언어 지원",
+  "ink.configuration.title": "Ink 확장 설정",
+  "ink.engine.description": "Ink 프로젝트 개발에 사용할 엔진을 선택하세요.",
+  "ink.markup.description": "프로젝트의 마크업 형식을 선택하세요. 기본값은 none입니다.",
+  "ink.mainFile.description": "기본 .ink 파일의 경로입니다(예: main.ink). 비어 있으면 기본 파일이 지정되지 않습니다.",
+  "ink.rootFolder.description": "로드할 .ink 파일들이 있는 루트 폴더입니다. 비어 있으면 루트 폴더가 지정되지 않습니다.",
+  "ink.port.description": "엔진이 localhost 연결에 사용하는 포트입니다.",
+  "ink.preview.title": "현재 파일 미리보기",
+  "ink.runProject.title": "ink 프로젝트 실행"
+}

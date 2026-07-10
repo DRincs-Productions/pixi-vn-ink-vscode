@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "ink 语言",
+  "ink.description": "面向 Visual Studio Code 的 Inkle ink 脚本语言支持",
+  "ink.configuration.title": "Ink 扩展设置",
+  "ink.engine.description": "选择用于开发 Ink 项目的引擎。",
+  "ink.markup.description": "选择项目使用的标记格式。默认值为 none。",
+  "ink.mainFile.description": "主 .ink 文件的路径（例如 main.ink）。留空则表示未定义主文件。",
+  "ink.rootFolder.description": "包含待加载 .ink 文件的根文件夹。留空则表示未定义根文件夹。",
+  "ink.port.description": "引擎用于 localhost 连接的端口。",
+  "ink.preview.title": "当前文件的预览",
+  "ink.runProject.title": "运行 ink 项目"
+}

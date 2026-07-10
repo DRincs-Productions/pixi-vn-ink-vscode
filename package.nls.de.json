@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "ink language",
+  "ink.description": "Unterstützung für Inkles Ink-Skriptsprache in Visual Studio Code",
+  "ink.configuration.title": "Ink-Erweiterungseinstellungen",
+  "ink.engine.description": "Wähle die Engine aus, die für die Entwicklung des Ink-Projekts verwendet wird.",
+  "ink.markup.description": "Wähle das Markup-Format für das Projekt aus. Standardmäßig ist keines festgelegt.",
+  "ink.mainFile.description": "Pfad zur Haupt-.ink-Datei (z. B. main.ink). Wenn leer, ist keine Hauptdatei definiert.",
+  "ink.rootFolder.description": "Stammordner, der die zu ladenden .ink-Dateien enthält. Wenn leer, ist kein Stammordner definiert.",
+  "ink.port.description": "Port, den die Engine für localhost-Verbindungen verwendet.",
+  "ink.preview.title": "Vorschau der aktuellen Datei",
+  "ink.runProject.title": "Ink-Projekt ausführen"
+}

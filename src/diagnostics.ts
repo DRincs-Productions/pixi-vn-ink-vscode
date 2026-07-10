@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "node:path";
-import { Diagnostic, DiagnosticSeverity, Range, type TextDocument, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, workspace } from "vscode";
 import { findPixiVnUnimplementedFunctionCalls, PIXI_VN_ISSUES_URL } from "./utils/builtin-functions";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors } from "./utils/ink-utility";
@@ -53,7 +53,11 @@ export function checkPixiVnUnimplementedFunctions(document: TextDocument, diagno
             diagnostics.push(
                 new Diagnostic(
                     new Range(i, start, i, end),
-                    `${name}() is not implemented yet in the pixi-vn engine. Contact the developers to request it: ${PIXI_VN_ISSUES_URL}`,
+                    l10n.t(
+                        "{0}() is not implemented yet in the pixi-vn engine. Contact the developers to request it: {1}",
+                        name,
+                        PIXI_VN_ISSUES_URL,
+                    ),
                     DiagnosticSeverity.Warning,
                 ),
             );
@@ -80,7 +84,7 @@ export function checkIncludes(document: TextDocument, diagnostics: Diagnostic[])
                 diagnostics.push(
                     new Diagnostic(
                         new Range(lineIndex, 0, lineIndex, line.length),
-                        `Included file "${relativePath}" does not exist (resolved from "${baseFolder}").`,
+                        l10n.t('Included file "{0}" does not exist (resolved from "{1}").', relativePath, baseFolder),
                         DiagnosticSeverity.Error,
                     ),
                 );
@@ -88,7 +92,7 @@ export function checkIncludes(document: TextDocument, diagnostics: Diagnostic[])
                 diagnostics.push(
                     new Diagnostic(
                         new Range(lineIndex, 0, lineIndex, line.length),
-                        `Included file "${relativePath}" is not a .ink file.`,
+                        l10n.t('Included file "{0}" is not a .ink file.', relativePath),
                         DiagnosticSeverity.Warning,
                     ),
                 );

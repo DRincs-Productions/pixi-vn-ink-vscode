@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "lenguaje ink",
+  "ink.description": "Compatibilidad con el lenguaje de scripting ink de Inkle para Visual Studio Code",
+  "ink.configuration.title": "Configuración de la extensión Ink",
+  "ink.engine.description": "Selecciona el motor usado para desarrollar el proyecto Ink.",
+  "ink.markup.description": "Selecciona el formato de marcado del proyecto. Por defecto es ninguno.",
+  "ink.mainFile.description": "Ruta al archivo .ink principal (por ejemplo, main.ink). Si está vacío, no se define ningún archivo principal.",
+  "ink.rootFolder.description": "Carpeta raíz que contiene los archivos .ink que se van a cargar. Si está vacía, no se define ninguna carpeta raíz.",
+  "ink.port.description": "Puerto usado por el motor para las conexiones a localhost.",
+  "ink.preview.title": "Vista previa del archivo actual",
+  "ink.runProject.title": "Ejecutar el proyecto ink"
+}

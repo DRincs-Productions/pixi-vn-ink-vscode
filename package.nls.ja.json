@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "ink 言語",
+  "ink.description": "Visual Studio Code 向け Inkle の ink スクリプト言語サポート",
+  "ink.configuration.title": "Ink 拡張機能の設定",
+  "ink.engine.description": "Ink プロジェクトの開発に使用するエンジンを選択します。",
+  "ink.markup.description": "プロジェクトのマークアップ形式を選択します。デフォルトは「なし」です。",
+  "ink.mainFile.description": "メインの .ink ファイルへのパス(例: main.ink)。空の場合、メインファイルは定義されません。",
+  "ink.rootFolder.description": "読み込む .ink ファイルを含むルートフォルダ。空の場合、ルートフォルダは定義されません。",
+  "ink.port.description": "エンジンが localhost 接続に使用するポート。",
+  "ink.preview.title": "現在のファイルのプレビュー",
+  "ink.runProject.title": "ink プロジェクトを実行"
+}

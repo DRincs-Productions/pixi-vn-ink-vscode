@@ -5,6 +5,7 @@ import {
     EventEmitter,
     type ExtensionContext,
     Hover,
+    l10n,
     languages,
     MarkdownString,
     type Position,
@@ -35,29 +36,81 @@ const declaredSymbolRegexCache = new Map<string, RegExp>();
 // Hover text for the VAR / CONST / LIST declaration keywords, documented in
 // https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
 export const DECLARATION_KEYWORD_DOCS: Record<string, string> = {
-    VAR: '**VAR**: Declares a global variable, accessible and modifiable from anywhere in the story. It must be given an initial value — an integer, float, string, boolean, or divert target — which determines its type.\n\nExample:\n```ink\nVAR knowledge_of_the_cure = false\nVAR players_name = "Emilia"\n```',
-    CONST: "**CONST**: Declares a global constant: a named value that can never be changed at runtime. Useful for giving readable names to values used in comparisons and lookups.\n\nExample:\n```ink\nCONST MAX_HEALTH = 100\n```",
-    LIST: "**LIST**: Declares a list — an enumeration of named values that double as on/off flags (a *set*). List variables can be tested, combined, and compared much like mathematical sets, and can also be used as simple state machines.\n\nExample:\n```ink\nLIST DoctorsInSurgery = Adams, Bernard, (Cartwright)\n```",
+    VAR: l10n.t(
+        '**VAR**: Declares a global variable, accessible and modifiable from anywhere in the story. It must be given an initial value — an integer, float, string, boolean, or divert target — which determines its type.\n\nExample:\n```ink\nVAR knowledge_of_the_cure = false\nVAR players_name = "Emilia"\n```',
+    ),
+    CONST: l10n.t(
+        "**CONST**: Declares a global constant: a named value that can never be changed at runtime. Useful for giving readable names to values used in comparisons and lookups.\n\nExample:\n```ink\nCONST MAX_HEALTH = 100\n```",
+    ),
+    LIST: l10n.t(
+        "**LIST**: Declares a list — an enumeration of named values that double as on/off flags (a *set*). List variables can be tested, combined, and compared much like mathematical sets, and can also be used as simple state machines.\n\nExample:\n```ink\nLIST DoctorsInSurgery = Adams, Bernard, (Cartwright)\n```",
+    ),
 };
 
 // Hover text for the `->` divert arrow (and its `->->` tunnel-return form), keyed by
 // the role a specific arrow plays — see getDivertArrowHoverKind. Documented in
 // https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
 export const DIVERT_ARROW_DOCS: Record<string, string> = {
-    divert: '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
-    tunnelCall:
+    divert: l10n.t(
+        '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
+    ),
+    tunnelCall: l10n.t(
         '**Tunnel call (`-> knot ->`)**: Diverts into `knot` as a *tunnel* rather than a plain divert — it remembers where it came from, so a `->->` reached inside `knot` returns control right back here instead of leaving for good.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
-    tunnelReturnPoint:
+    ),
+    tunnelReturnPoint: l10n.t(
         '**Tunnel return point (the second `->` in `-> knot ->`)**: Marks this as a tunnel call rather than a plain divert — once `knot` reaches a `->->`, the flow resumes right after this arrow instead of stopping inside `knot`.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n```',
-    tunnelOnward:
+    ),
+    tunnelOnward: l10n.t(
         '**Tunnel onward (`-> knot -> next`)**: Calls `knot` as a tunnel, but once it returns with a `->->`, continues at `next` instead of resuming right after this line.\n\nExample:\n```ink\n-> crossing_the_date_line -> check_foggs_health\n```',
-    tunnelReturn:
+    ),
+    tunnelReturn: l10n.t(
         '**Tunnel return (`->->`)**: Returns from the tunnel that was called to reach here, resuming the flow right after the `-> knot ->` that invoked it — like a function return, unlike a plain divert, which never comes back.\n\nExample:\n```ink\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
-    tunnelReturnElsewhere:
+    ),
+    tunnelReturnElsewhere: l10n.t(
         '**Tunnel return, elsewhere (`->-> destination`)**: Leaves the tunnel entirely — instead of resuming right after the `-> knot ->` that called it, the flow jumps straight to `destination`. Use sparingly; it\'s easy to lose track of where control actually ends up.\n\nExample:\n```ink\n=== fall_down_cliff ===\n-> hurt(5) ->\nYou\'re still alive! You pick yourself up and walk on.\n\n=== hurt(x) ===\n~ stamina -= x\n{ stamina <= 0:\n\t->-> youre_dead\n}\n\n=== youre_dead ===\nSuddenly, there is a white light all around you.\n```',
-    divertTargetValue:
+    ),
+    divertTargetValue: l10n.t(
         '**Divert target (as a value)**: Here `-> name` isn\'t an immediate jump — it\'s a *divert target*, a storable value naming a location, being passed as an argument, assigned to a variable, or compared. The receiving parameter/variable must be explicitly typed as a divert target, so it isn\'t confused with a read count.\n\nExample:\n```ink\nVAR current_epilogue = -> everybody_dies\n\n=== sleeping_in_hut ===\nYou lie down and close your eyes.\n-> generic_sleep(-> waking_in_the_hut)\n\n=== generic_sleep(-> waking)\nYou sleep, perchance to dream...\n-> waking\n```',
+    ),
 };
+
+// Extra note appended to the pixi-vn engine's divert-arrow hover text, explaining how the
+// construct maps onto Pixi'VN's own runtime primitives (it has no native "divert"/"tunnel"/
+// "thread" concepts of its own — see PIXI_VN_THREAD_DOC below for the `<-` case).
+const PIXI_VN_DIVERT_NOTE = () =>
+    l10n.t("In the **pixi-vn** engine, this corresponds to performing a **jump** to a `label`.");
+const PIXI_VN_TUNNEL_CALL_NOTE = () =>
+    l10n.t("In the **pixi-vn** engine, this corresponds to performing a **call** to a `label`.");
+
+/**
+ * Returns the hover text for a `->` of the given kind (see getDivertArrowHoverKind),
+ * appending a pixi-vn-specific note for the kinds whose Pixi'VN runtime behaviour is
+ * worth calling out explicitly: a plain divert maps to a "jump", and either arrow of a
+ * tunnel call (`-> knot ->`) maps to a "call". Other kinds are unaffected by engine.
+ */
+export function getDivertArrowDoc(kind: keyof typeof DIVERT_ARROW_DOCS, engine: "Inky" | "pixi-vn"): string {
+    const base = DIVERT_ARROW_DOCS[kind];
+    if (engine === "pixi-vn") {
+        if (kind === "divert") return `${base}\n\n${PIXI_VN_DIVERT_NOTE()}`;
+        if (kind === "tunnelCall" || kind === "tunnelReturnPoint") return `${base}\n\n${PIXI_VN_TUNNEL_CALL_NOTE()}`;
+    }
+    return base;
+}
+
+// Ink thread ("pull the content of another knot/stitch into the current flow without
+// leaving") has no equivalent in the pixi-vn runtime, so `<-` was instead made to behave
+// exactly like a tunnel call (`-> knot ->`) — this hover text explains that substitution
+// rather than describing Ink's own thread semantics, which don't apply under this engine.
+const THREAD_DOC = l10n.t(
+    '**Thread (`<-`)**: Pulls the content and choices of another knot/stitch into the current flow, as if written right here, without leaving the current flow the way a divert does. Useful for weaving choices gathered from several different knots into one combined list.\n\nExample:\n```ink\n=== welcome ===\nI had a headache; threading is hard to get your head around.\n<- conversation\n<- walking\n\n= conversation\n*\t"What did you have for lunch?"\n\t"Spam and eggs," he replied.\n-\t-> house\n\n= walking\n*\t[Continue walking]\n\t-> house\n\n= house\nBefore long, we arrived at his house.\n-> END\n```',
+);
+const PIXI_VN_THREAD_DOC = l10n.t(
+    "**Thread (`<-`)**: Ink threads (pulling another knot/stitch's content and choices into the current flow without leaving it) can't be implemented by the **pixi-vn** engine. So under this engine, `<-` is instead made to behave exactly like a tunnel call (`-> knot ->`): it corresponds to performing a **call** to a `label`, and returns here once that label finishes.\n\nExample:\n```ink\n<- conversation\nWe continue on here once the call returns.\n\n= conversation\n\"Hello!\" I said.\n->->\n```",
+);
+
+export function getThreadDoc(engine: "Inky" | "pixi-vn"): string {
+    return engine === "pixi-vn" ? PIXI_VN_THREAD_DOC : THREAD_DOC;
+}
 
 // A `->` immediately adjacent (no space) to another `->` is one half of a `->->`
 // tunnel-return statement, not a plain divert arrow.
@@ -125,16 +178,24 @@ export function getDivertArrowHoverKind(line: string, arrowStart: number): keyof
 // the two combined shuffle forms. Documented in
 // https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
 export const MULTILINE_BLOCK_TYPE_DOCS: Record<string, string> = {
-    stopping:
+    stopping: l10n.t(
         "**Sequence (`{ stopping: ...}`)**: Shows the next alternative each time this point is reached, moving through them in order, then keeps repeating the last one once they've all been shown. This is also what a plain `{A|B|C}` sequence with no type keyword does.\n\nExample:\n```ink\n{ stopping:\n-\tI entered the casino.\n-\tI entered the casino again.\n-\tOnce more, I went inside.\n}\n```",
-    cycle: "**Cycle (`{ cycle: ...}`)**: Shows the next alternative each time this point is reached, moving through them in order, then loops back to the first one once they've all been shown — same as the `&` shorthand.\n\nExample:\n```ink\n{ cycle:\n-\tI held my breath.\n-\tI waited impatiently.\n-\tI paused.\n}\n```",
-    once: "**Once-only (`{ once: ...}`)**: Shows each alternative once, in order, then shows nothing once they've all been used up — same as the `!` shorthand.\n\nExample:\n```ink\n{ once:\n-\tWould my luck hold?\n-\tCould I win the hand?\n}\n```",
-    shuffle:
+    ),
+    cycle: l10n.t(
+        "**Cycle (`{ cycle: ...}`)**: Shows the next alternative each time this point is reached, moving through them in order, then loops back to the first one once they've all been shown — same as the `&` shorthand.\n\nExample:\n```ink\n{ cycle:\n-\tI held my breath.\n-\tI waited impatiently.\n-\tI paused.\n}\n```",
+    ),
+    once: l10n.t(
+        "**Once-only (`{ once: ...}`)**: Shows each alternative once, in order, then shows nothing once they've all been used up — same as the `!` shorthand.\n\nExample:\n```ink\n{ once:\n-\tWould my luck hold?\n-\tCould I win the hand?\n}\n```",
+    ),
+    shuffle: l10n.t(
         "**Shuffle (`{ shuffle: ...}`)**: Shows one alternative at random each time this point is reached, and can repeat entries — same as the `~` shorthand.\n\nExample:\n```ink\n{ shuffle:\n-\tAce of Hearts.\n-\tKing of Spades.\n-\t2 of Diamonds.\n}\n```",
-    "shuffle once":
+    ),
+    "shuffle once": l10n.t(
         "**Shuffle once (`{ shuffle once: ...}`)**: Shuffles the alternatives, plays through all of them exactly once with no repeats, then shows nothing once they run out.\n\nExample:\n```ink\n{ shuffle once:\n-\tThe sun was hot.\n-\tIt was a hot day.\n}\n```",
-    "shuffle stopping":
+    ),
+    "shuffle stopping": l10n.t(
         "**Shuffle stopping (`{ shuffle stopping: ...}`)**: Shuffles all but the last alternative and plays through them, then sticks on that last entry for good once the shuffled ones run out.\n\nExample:\n```ink\n{ shuffle stopping:\n-\tA silver BMW roars past.\n-\tA bright yellow Mustang takes the turn.\n-\tThere are like, cars, here.\n}\n```",
+    ),
 };
 
 const MULTILINE_BLOCK_TYPE_REGEX = /^(stopping|shuffle(?:\s+(?:once|stopping))?|cycle|once)\s*:/;
@@ -253,7 +314,7 @@ export function activate(context: ExtensionContext) {
                             i,
                             offset + localScanStart + range.end,
                         ),
-                        hoverMessage: new MarkdownString("`\\n`: inserts a line break."),
+                        hoverMessage: new MarkdownString(l10n.t("`\\n`: inserts a line break.")),
                     });
                 }
             }
@@ -294,7 +355,7 @@ export function activate(context: ExtensionContext) {
     workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("ink.engine")) {
             const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
-            window.showInformationMessage(`Engine changed to ${newEngine}`);
+            window.showInformationMessage(l10n.t("Engine changed to {0}", newEngine));
             onDidChangeSemanticTokensEmitter.fire();
             for (const doc of workspace.textDocuments) {
                 if (doc.languageId === "ink") {
@@ -304,7 +365,7 @@ export function activate(context: ExtensionContext) {
         }
         if (event.affectsConfiguration("ink.markup")) {
             const newMarkup = workspace.getConfiguration("ink").get<string | null>("markup", null);
-            window.showInformationMessage(`Markup changed to ${newMarkup ?? "none"}`);
+            window.showInformationMessage(l10n.t("Markup changed to {0}", newMarkup ?? l10n.t("none")));
             refreshVisibleMarkdownDecorations();
         }
     });
@@ -360,6 +421,8 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerHoverProvider("ink", {
             provideHover(document, position) {
+                const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+
                 // Normal word/symbol detection (END, DONE, ->, <>, identifiers)
                 const line = document.lineAt(position.line).text;
                 let word: string | undefined;
@@ -383,13 +446,17 @@ export function activate(context: ExtensionContext) {
                         if (word === "END") {
                             return new Hover(
                                 new MarkdownString(
-                                    '**END (`-> END`)**: Ends the story flow immediately and completely — no further choices or content, nothing to resume. Use it when a storyline (or the whole game) is genuinely over; diverting here without it produces an "out of content" warning.\n\nExample:\n```ink\n=== top_knot ===\nHello world!\n-> END\n```',
+                                    l10n.t(
+                                        '**END (`-> END`)**: Ends the story flow immediately and completely — no further choices or content, nothing to resume. Use it when a storyline (or the whole game) is genuinely over; diverting here without it produces an "out of content" warning.\n\nExample:\n```ink\n=== top_knot ===\nHello world!\n-> END\n```',
+                                    ),
                                 ),
                             );
                         }
                         return new Hover(
                             new MarkdownString(
-                                '**DONE (`-> DONE`)**: Marks the current thread or weave as intentionally finished, without stopping the whole story — the engine falls back to any other running thread instead of raising an "out of content" warning. At the top level (outside a thread), it behaves the same as `-> END`.\n\nExample:\n```ink\n== conversation ==\n"Hello!" I said.\n-> DONE\n```',
+                                l10n.t(
+                                    '**DONE (`-> DONE`)**: Marks the current thread or weave as intentionally finished, without stopping the whole story — the engine falls back to any other running thread instead of raising an "out of content" warning. At the top level (outside a thread), it behaves the same as `-> END`.\n\nExample:\n```ink\n== conversation ==\n"Hello!" I said.\n-> DONE\n```',
+                                ),
                             ),
                         );
                     }
@@ -400,7 +467,9 @@ export function activate(context: ExtensionContext) {
                 // divert target used as a value — see getDivertArrowHoverKind.
                 if (word === "->" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
-                        new MarkdownString(DIVERT_ARROW_DOCS[getDivertArrowHoverKind(line, range.start.character)]),
+                        new MarkdownString(
+                            getDivertArrowDoc(getDivertArrowHoverKind(line, range.start.character), engine),
+                        ),
                     );
                 }
 
@@ -408,18 +477,18 @@ export function activate(context: ExtensionContext) {
                 if (word === "<>" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
                         new MarkdownString(
-                            '**Glue (`<>`)**: Suppresses the automatic line-break that would otherwise be inserted before this content, joining it to whatever text came right before. You can\'t "un-stick" a line once glued, and stacking multiple glues has no extra effect.\n\nExample:\n```ink\nWe hurried home <>\n-> to_savile_row\n\n=== to_savile_row ===\nto Savile Row.\n```',
+                            l10n.t(
+                                '**Glue (`<>`)**: Suppresses the automatic line-break that would otherwise be inserted before this content, joining it to whatever text came right before. You can\'t "un-stick" a line once glued, and stacking multiple glues has no extra effect.\n\nExample:\n```ink\nWe hurried home <>\n-> to_savile_row\n\n=== to_savile_row ===\nto Savile Row.\n```',
+                            ),
                         ),
                     );
                 }
 
-                // Hover for thread <- (but not escaped \<-)
+                // Hover for thread <- (but not escaped \<-). Ink threads can't be implemented
+                // by the pixi-vn engine, so under that engine `<-` is instead made to behave
+                // exactly like a tunnel call (`-> knot ->`) — see getThreadDoc.
                 if (word === "<-" && range && !isEscaped(line, range.start.character)) {
-                    return new Hover(
-                        new MarkdownString(
-                            '**Thread (`<-`)**: Pulls the content and choices of another knot/stitch into the current flow, as if written right here, without leaving the current flow the way a divert does. Useful for weaving choices gathered from several different knots into one combined list.\n\nExample:\n```ink\n=== welcome ===\nI had a headache; threading is hard to get your head around.\n<- conversation\n<- walking\n\n= conversation\n*\t"What did you have for lunch?"\n\t"Spam and eggs," he replied.\n-\t-> house\n\n= walking\n*\t[Continue walking]\n\t-> house\n\n= house\nBefore long, we arrived at his house.\n-> END\n```',
-                        ),
-                    );
+                    return new Hover(new MarkdownString(getThreadDoc(engine)));
                 }
 
                 // Hover for the VAR / CONST / LIST declaration keywords, only when the
@@ -439,7 +508,9 @@ export function activate(context: ExtensionContext) {
                 ) {
                     return new Hover(
                         new MarkdownString(
-                            "**Logic (`~`)**: Marks the line as pure logic — an assignment, function call, or other statement — rather than story text. The line itself is never printed.\n\nExample:\n```ink\n~ x = 5\n~ myFunction()\n```",
+                            l10n.t(
+                                "**Logic (`~`)**: Marks the line as pure logic — an assignment, function call, or other statement — rather than story text. The line itself is never printed.\n\nExample:\n```ink\n~ x = 5\n~ myFunction()\n```",
+                            ),
                         ),
                     );
                 }
@@ -453,7 +524,9 @@ export function activate(context: ExtensionContext) {
                 ) {
                     return new Hover(
                         new MarkdownString(
-                            "**Choice brackets (`[` `]`)**: Divide an option's text into three parts. Text *before* the brackets is shown both as the choice and in the resulting output; text *inside* the brackets is shown only in the choice; text *after* the brackets is shown only in the output.\n\nExample:\n```ink\n*\tHello [back!] right back to you!\n\tNice to hear from you!\n```\nChoosing this produces the choice `Hello back!`, then the output `Hello right back to you! Nice to hear from you!`.\n\nIf the option has *only* bracketed text, it disappears from the output once chosen:\n```ink\n*\t[Hello back!]\n\tNice to hear from you!\n```",
+                            l10n.t(
+                                "**Choice brackets (`[` `]`)**: Divide an option's text into three parts. Text *before* the brackets is shown both as the choice and in the resulting output; text *inside* the brackets is shown only in the choice; text *after* the brackets is shown only in the output.\n\nExample:\n```ink\n*\tHello [back!] right back to you!\n\tNice to hear from you!\n```\nChoosing this produces the choice `Hello back!`, then the output `Hello right back to you! Nice to hear from you!`.\n\nIf the option has *only* bracketed text, it disappears from the output once chosen:\n```ink\n*\t[Hello back!]\n\tNice to hear from you!\n```",
+                            ),
                         ),
                     );
                 }
@@ -483,7 +556,9 @@ export function activate(context: ExtensionContext) {
                     if (word === "&" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```",
+                                l10n.t(
+                                    "**Cycle (`&`)**: Cycles repeat their options in a loop.\n\nExample:\n```ink\nIt was {&Monday|Tuesday|Wednesday}\n```",
+                                ),
                             ),
                         );
                     }
@@ -491,7 +566,9 @@ export function activate(context: ExtensionContext) {
                     if (word === "!" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```",
+                                l10n.t(
+                                    "**Once-only (`!`)**: Works like a sequence, but stops producing output after all options are exhausted.\n\nExample:\n```ink\nHe told me a joke. {!I laughed.|I smiled.}\n```",
+                                ),
                             ),
                         );
                     }
@@ -499,7 +576,9 @@ export function activate(context: ExtensionContext) {
                     if (word === "~" && !isEscaped(line, position.character)) {
                         return new Hover(
                             new MarkdownString(
-                                "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```",
+                                l10n.t(
+                                    "**Shuffle (`~`)**: Randomly selects an option each time.\n\nExample:\n```ink\nI tossed the coin. {~Heads|Tails}\n```",
+                                ),
                             ),
                         );
                     }
@@ -509,7 +588,9 @@ export function activate(context: ExtensionContext) {
                 if (word === "|" && !isEscaped(line, position.character)) {
                     return new Hover(
                         new MarkdownString(
-                            "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`.",
+                            l10n.t(
+                                "**Alternative separator (`|`)**: Used to separate alternative pieces of text (commonly inside `{}`).\n\nExample:\n```ink\n{Hello|Hi|Hey}\n```\nThis can output *Hello*, *Hi*, or *Hey* depending on the alternative type.\n\nTo write a literal `|`, escape it as `\\|`.",
+                            ),
                         ),
                     );
                 }
@@ -526,7 +607,9 @@ export function activate(context: ExtensionContext) {
                 ) {
                     return new Hover(
                         new MarkdownString(
-                            "**Conditional branch (`-`)**: Introduces one branch of a multi-clause `{ }` conditional or switch block. Branches are tried in order, and only the first one whose condition matches runs; `- else:` catches anything not matched above.\n\nExample:\n```ink\n{ x:\n- 0: zero\n- 1: one\n- else: lots\n}\n```",
+                            l10n.t(
+                                "**Conditional branch (`-`)**: Introduces one branch of a multi-clause `{ }` conditional or switch block. Branches are tried in order, and only the first one whose condition matches runs; `- else:` catches anything not matched above.\n\nExample:\n```ink\n{ x:\n- 0: zero\n- 1: one\n- else: lots\n}\n```",
+                            ),
                         ),
                     );
                 }
@@ -541,21 +624,27 @@ export function activate(context: ExtensionContext) {
                         if (char === "*") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Choice (`*`)**: Offers the player a one-time option. Once chosen it's used up and won't be offered again on a later visit; by default its text is echoed into the output, then the flow continues into whatever follows.\n\nExample:\n```ink\nHello world!\n*\tHello back!\n\tNice to hear from you!\n```",
+                                    l10n.t(
+                                        "**Choice (`*`)**: Offers the player a one-time option. Once chosen it's used up and won't be offered again on a later visit; by default its text is echoed into the output, then the flow continues into whatever follows.\n\nExample:\n```ink\nHello world!\n*\tHello back!\n\tNice to hear from you!\n```",
+                                    ),
                                 ),
                             );
                         }
                         if (char === "+") {
                             return new Hover(
                                 new MarkdownString(
-                                    "**Sticky Choice (`+`)**: Like `*`, but never gets used up — it stays available even after being picked, which makes it useful for loops and repeatable actions.\n\nExample:\n```ink\n=== homers_couch ===\n+\t[Eat another donut]\n\tYou eat another donut. -> homers_couch\n*\t[Get off the couch]\n\t-> END\n```",
+                                    l10n.t(
+                                        "**Sticky Choice (`+`)**: Like `*`, but never gets used up — it stays available even after being picked, which makes it useful for loops and repeatable actions.\n\nExample:\n```ink\n=== homers_couch ===\n+\t[Eat another donut]\n\tYou eat another donut. -> homers_couch\n*\t[Get off the couch]\n\t-> END\n```",
+                                    ),
                                 ),
                             );
                         }
                         if (char === "-") {
                             return new Hover(
                                 new MarkdownString(
-                                    '**Gather (`-`)**: Collects the different branches of a set of choices back into a single point, so the story continues on a shared path no matter which option was picked. Can be labelled (e.g. `- (top)`) so it can be diverted to or tested later.\n\nExample:\n```ink\n*\t"Murder!"\n*\t"Suicide!"\n-\tMrs Christie lowered her manuscript a moment.\n```',
+                                    l10n.t(
+                                        '**Gather (`-`)**: Collects the different branches of a set of choices back into a single point, so the story continues on a shared path no matter which option was picked. Can be labelled (e.g. `- (top)`) so it can be diverted to or tested later.\n\nExample:\n```ink\n*\t"Murder!"\n*\t"Suicide!"\n-\tMrs Christie lowered her manuscript a moment.\n```',
+                                    ),
                                 ),
                             );
                         }
@@ -808,7 +897,7 @@ export function getDeclaredSymbolHoverText(lines: string[], word: string): strin
         sections.push(cleanedComment);
     }
     if (declaration.kind === "CONST") {
-        sections.push("_Declared as `CONST`: this value is constant._");
+        sections.push(l10n.t("_Declared as `CONST`: this value is constant._"));
     }
 
     if (!sections.length) return;

@@ -8,6 +8,7 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { Button } from "./components/ui/button";
 import { Separator } from "./components/ui/separator";
+import { type Locale, resolveLocale, t } from "./i18n";
 import { vscode } from "./vscode";
 
 type HistoryItem = {
@@ -155,6 +156,7 @@ export default function NarrationView() {
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
     const { choices, inputRequest } = currentState || {};
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
+    const [locale, setLocale] = useState<Locale>("en");
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls to bottom whenever history changes
@@ -172,6 +174,9 @@ export default function NarrationView() {
         const handler = (event: MessageEvent) => {
             if (event.data.type === "set-markup") {
                 setMarkup(event.data.data);
+            }
+            if (event.data.type === "set-locale") {
+                setLocale(resolveLocale(event.data.data));
             }
         };
         window.addEventListener("message", handler);
@@ -359,7 +364,7 @@ export default function NarrationView() {
                         fontSize: "0.75rem",
                     }}
                 >
-                    <ArrowLeft size={14} className="mr-1" /> Back
+                    <ArrowLeft size={14} className="mr-1" /> {t(locale, "back")}
                 </Button>
                 <Button
                     className="my-vscode-button"
@@ -372,7 +377,7 @@ export default function NarrationView() {
                         fontSize: "0.75rem",
                     }}
                 >
-                    <RotateCcw size={14} className="mr-1" /> Restart
+                    <RotateCcw size={14} className="mr-1" /> {t(locale, "restart")}
                 </Button>
             </div>
 
@@ -394,7 +399,7 @@ export default function NarrationView() {
                             fontStyle: "italic",
                         }}
                     >
-                        Loading story...
+                        {t(locale, "loadingStory")}
                     </div>
                 ) : (
                     history.map((item, idx) => (
@@ -460,7 +465,7 @@ export default function NarrationView() {
                                         fontWeight: "bold",
                                     }}
                                 >
-                                    You: {item.inputRequest.input}
+                                    {t(locale, "you")}: {item.inputRequest.input}
                                 </div>
                             )}
                         </div>
@@ -476,7 +481,7 @@ export default function NarrationView() {
                         className="font-semibold mb-2"
                         style={{ color: "var(--vscode-editor-foreground)" }}
                     >
-                        What do you choose?
+                        {t(locale, "whatDoYouChoose")}
                     </div>
                     <div className="flex flex-col gap-2">
                         {choices.map((c, index) => (
@@ -512,8 +517,8 @@ export default function NarrationView() {
                         className="flex-1 px-3 py-2 rounded-md border"
                         placeholder={
                             inputRequest.type === "number"
-                                ? "Enter a number..."
-                                : "Type your response..."
+                                ? t(locale, "enterANumber")
+                                : t(locale, "typeYourResponse")
                         }
                         style={{
                             backgroundColor: "var(--vscode-input-background)",
@@ -526,7 +531,7 @@ export default function NarrationView() {
                         onClick={() => submitInput(inputValue)}
                         variant="default"
                     >
-                        Submit
+                        {t(locale, "submit")}
                     </Button>
                 </div>
             )}

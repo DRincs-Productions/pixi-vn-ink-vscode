@@ -1,0 +1,12 @@
+{
+    "ink.displayName": "ink language",
+    "ink.description": "Inkle's ink scripting language support for Visual Studio Code",
+    "ink.configuration.title": "Ink Extension Settings",
+    "ink.engine.description": "Select the engine used for developing the Ink project.",
+    "ink.markup.description": "Select the markup format for the project. Default is none.",
+    "ink.mainFile.description": "Path to the main .ink file (e.g. main.ink). If empty, no main file is defined.",
+    "ink.rootFolder.description": "Root folder containing .ink files to be loaded. If empty, no root folder is defined.",
+    "ink.port.description": "Port used by the engine for localhost connections.",
+    "ink.preview.title": "Preview of the current file",
+    "ink.runProject.title": "Run the ink project"
+}

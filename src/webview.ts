@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { commands, type ExtensionContext, type TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import { commands, env, type ExtensionContext, l10n, type TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile } from "./utils/ink-utility";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
@@ -10,7 +10,7 @@ export function previewCommand(context: ExtensionContext) {
         const editor = window.activeTextEditor;
 
         if (!editor) {
-            window.showErrorMessage("No active editor found.");
+            window.showErrorMessage(l10n.t("No active editor found."));
             return;
         }
         const rootFolderSetting = getInkRootFolder(editor.document);
@@ -28,14 +28,14 @@ export function runProjectCommand(context: ExtensionContext) {
         const mainFileSetting = config.get<string>("mainFile");
 
         if (!mainFileSetting) {
-            window.showErrorMessage("ink.mainFile is not set in settings.");
+            window.showErrorMessage(l10n.t("ink.mainFile is not set in settings."));
             return;
         }
 
         const editor = window.activeTextEditor;
 
         if (!editor) {
-            window.showErrorMessage("No active editor found.");
+            window.showErrorMessage(l10n.t("No active editor found."));
             return;
         }
 
@@ -47,7 +47,7 @@ export function runProjectCommand(context: ExtensionContext) {
             : path.join(rootFolderSetting, mainFileSetting);
 
         if (!fs.existsSync(mainFilePath)) {
-            window.showErrorMessage(`Main file not found: ${mainFilePath}`);
+            window.showErrorMessage(l10n.t("Main file not found: {0}", mainFilePath));
             return;
         }
 
@@ -88,16 +88,16 @@ export async function openWebview(
             }).ToJson();
         }
     } catch (err: any) {
-        window.showErrorMessage(`Ink compilation failed: ${err.message}`);
+        window.showErrorMessage(l10n.t("Ink compilation failed: {0}", err.message));
         return;
     }
     if (!compiled) {
-        window.showErrorMessage("Ink compilation failed for an unknown reason.");
+        window.showErrorMessage(l10n.t("Ink compilation failed for an unknown reason."));
         return; // 🔴 do not open the preview
     }
 
     // 🔹 Get the file name
-    const panelTitle = `${name} (Preview)`;
+    const panelTitle = l10n.t("{0} (Preview)", name);
 
     // Open webview ONLY if there are no errors
     const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
@@ -142,6 +142,10 @@ export async function openWebview(
                 type: "set-markup",
                 data: markup,
             });
+            panel.webview.postMessage({
+                type: "set-locale",
+                data: env.language,
+            });
         }
     });
 
@@ -168,7 +172,7 @@ export async function openWebview(
                     data: updatedCompiled,
                 });
             } catch (err: any) {
-                window.showErrorMessage(`Ink recompilation failed: ${err.message}`);
+                window.showErrorMessage(l10n.t("Ink recompilation failed: {0}", err.message));
             }
         }
     });

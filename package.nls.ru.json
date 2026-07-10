@@ -1,0 +1,12 @@
+{
+  "ink.displayName": "Язык ink",
+  "ink.description": "Поддержка скриптового языка ink от Inkle для Visual Studio Code",
+  "ink.configuration.title": "Настройки расширения Ink",
+  "ink.engine.description": "Выберите движок, используемый для разработки проекта Ink.",
+  "ink.markup.description": "Выберите формат разметки для проекта. Значение по умолчанию — «нет».",
+  "ink.mainFile.description": "Путь к главному файлу .ink (например, main.ink). Если оставить пустым, главный файл не задан.",
+  "ink.rootFolder.description": "Корневая папка, содержащая файлы .ink для загрузки. Если оставить пустым, корневая папка не задана.",
+  "ink.port.description": "Порт, используемый движком для подключений к localhost.",
+  "ink.preview.title": "Предпросмотр текущего файла",
+  "ink.runProject.title": "Запустить проект ink"
+}
