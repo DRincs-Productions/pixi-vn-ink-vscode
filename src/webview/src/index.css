@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@plugin "tailwindcss-motion";
+@import "tw-animate-css";
+@import "tailwind-animations";
+@plugin "@tailwindcss/typography";
 
 html,
 body,

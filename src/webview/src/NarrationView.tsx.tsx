@@ -405,7 +405,7 @@ export default function NarrationView() {
                     history.map((item, idx) => (
                         <div
                             key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
-                            className="motion-preset-slide-up motion-duration-500"
+                            className="animate-in fade-in slide-in-from-bottom duration-500"
                         >
                             {item.tags?.map((tag, tIdx) => (
                                 <div
