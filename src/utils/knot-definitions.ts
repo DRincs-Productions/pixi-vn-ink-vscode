@@ -1,13 +1,13 @@
 // Pure knot/stitch parsing logic, kept free of any `vscode` import so it can
 // be unit tested directly (mirrors computeInkFoldingRanges in folding.ts).
 
-const IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+export const IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
 
 // A knot (`== name ==`) or stitch (`= name`) header, optionally a `function`.
 // The number of leading `=` distinguishes a top-level knot (2+) from a stitch
 // nested in the preceding knot's body (exactly 1) — the same convention the
 // hover provider's getKnotComment already relies on.
-const HEADER_REGEX = new RegExp(`^\\s*(=+)\\s*(function\\s+)?(${IDENTIFIER})`);
+export const HEADER_REGEX = new RegExp(`^\\s*(=+)\\s*(function\\s+)?(${IDENTIFIER})`);
 
 export interface InkFileLike {
     path: string;
@@ -58,6 +58,35 @@ export function extractKnotDefinitions(filePath: string, content: string): KnotD
 
 export function getAllKnotDefinitions(files: InkFileLike[]): KnotDefinition[] {
     return files.flatMap((file) => extractKnotDefinitions(file.path, file.content));
+}
+
+/**
+ * Returns the knot/stitch that encloses `lineNumber` — the nearest knot/stitch
+ * header at or before that line. Used to scope things that (unlike a knot or
+ * stitch itself) aren't addressable from anywhere in the file, only from
+ * within their own enclosing knot/stitch — e.g. a `temp` variable, whose
+ * value "is thrown away after the story leaves the stitch in which it was
+ * defined" per the official docs.
+ */
+export function getEnclosingKnotStitch(content: string, lineNumber: number): { knotName?: string; stitchName?: string } {
+    let knotName: string | undefined;
+    let stitchName: string | undefined;
+
+    const lines = content.split(/\r?\n/);
+    for (let i = 0; i <= lineNumber && i < lines.length; i++) {
+        const match = lines[i].match(HEADER_REGEX);
+        if (!match) continue;
+
+        const [, equals, , name] = match;
+        if (equals.length >= 2 || !knotName) {
+            knotName = name;
+            stitchName = undefined;
+        } else {
+            stitchName = name;
+        }
+    }
+
+    return { knotName, stitchName };
 }
 
 // A gather (`-`) or choice (`*`/`+`) line whose bullet is immediately followed

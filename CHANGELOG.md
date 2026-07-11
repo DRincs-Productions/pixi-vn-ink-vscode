@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Autocompletion for knot/stitch names right after a divert (`->`) or thread (`<-`) arrow (including `->-> destination`), and for a specific knot's own stitches after typing `-> knot.`. When the accepted suggestion lives in a different file than the one being edited, an `INCLUDE` for that file is inserted automatically — this only happens for the `Inky` engine, since `pixi-vn` compiles each file independently and doesn't resolve `INCLUDE` at all.
 - Ctrl+Click and autocompletion also cover labels — a labelled gather (`- (opts)`) or labelled choice (`* (shove) [...]`), addressable via `-> opts`, `{shove}`, `stitch.label`, or `knot.label`. Unlike knots/stitches, labels are only ever looked up in the current file, never across other project files.
 - Ctrl+Click and autocompletion also cover `VAR`/`CONST`/`LIST` declarations, including a `LIST`'s individual items (e.g. `Adams` in `LIST DoctorsInSurgery = Adams, Bernard`), addressable bare or qualified as `DoctorsInSurgery.Adams` when two lists share an item name. Like labels, these are only ever looked up in the current file.
+- Ctrl+Click and autocompletion also cover `~ temp` declarations (e.g. `~ temp chain = LIST_ALL(x)`). A `temp`'s value only exists within the knot/stitch it was declared in, so — unlike `VAR`/`CONST`/`LIST` — a same-named `temp` declared elsewhere is never offered.
 
 ### Fixed
 

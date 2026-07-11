@@ -32,6 +32,7 @@ import {
     findKnotDefinitionsByName,
     findLabelDefinitionsByName,
     getAllKnotDefinitions,
+    getEnclosingKnotStitch,
 } from "./knot-definitions";
 import { type VariableDefinition, extractVariableDefinitions, findVariableDefinitionsByName } from "./variable-definitions";
 import type InkFile from "../types/InkFile";
@@ -43,6 +44,7 @@ export {
     findKnotDefinitionsByName,
     findLabelDefinitionsByName,
     getAllKnotDefinitions,
+    getEnclosingKnotStitch,
 } from "./knot-definitions";
 export type { KnotDefinition, LabelDefinition } from "./knot-definitions";
 export { extractVariableDefinitions, findVariableDefinitionsByName } from "./variable-definitions";
@@ -113,9 +115,11 @@ function resolveVariableReferenceName(beforeWord: string, word: string): string 
  *   in the project;
  * - labelled gathers/choices (`-> opts` targeting a `- (opts)` or
  *   `* (opts) [...]`), and
- * - declared `VAR`/`CONST`/`LIST` symbols (including individual list items,
- *   e.g. `Adams` or `DoctorsInSurgery.Adams`), referenced in logic lines,
- *   `{ }`, or the declaration itself.
+ * - declared `VAR`/`CONST`/`LIST`/`temp` symbols (including individual list
+ *   items, e.g. `Adams` or `DoctorsInSurgery.Adams`), referenced in logic
+ *   lines, `{ }`, or the declaration itself — a `~ temp` only resolves within
+ *   the knot/stitch it was declared in (its value doesn't exist anywhere
+ *   else, per the official docs).
  *
  * Labels and variables are only ever looked up in the *current* document —
  * unlike a knot/stitch, neither is addressable across an INCLUDE boundary
@@ -159,8 +163,10 @@ export function knotDefinitionProvider(): DefinitionProvider {
 
             if (isDeclaredSymbolHoverContext(document, position, line)) {
                 const variableName = resolveVariableReferenceName(beforeWord, word);
-                const variableDefinitions = extractVariableDefinitions(document.getText());
-                for (const def of findVariableDefinitionsByName(variableDefinitions, variableName)) {
+                const content = document.getText();
+                const variableDefinitions = extractVariableDefinitions(content);
+                const scope = getEnclosingKnotStitch(content, position.line);
+                for (const def of findVariableDefinitionsByName(variableDefinitions, variableName, scope)) {
                     results.push({ filePath: document.uri.fsPath, line: def.line });
                 }
             }
@@ -237,6 +243,7 @@ function labelCompletionItem(def: LabelDefinition, range: Range): CompletionItem
 function variableCompletionItemKind(def: VariableDefinition): CompletionItemKind {
     switch (def.kind) {
         case "VAR":
+        case "TEMP":
             return CompletionItemKind.Variable;
         case "CONST":
             return CompletionItemKind.Constant;
@@ -248,15 +255,15 @@ function variableCompletionItemKind(def: VariableDefinition): CompletionItemKind
 }
 
 /**
- * Builds the completion item for a declared VAR/CONST/LIST symbol (or one of
- * a LIST's own items). Always in the current file, so — like a label
+ * Builds the completion item for a declared VAR/CONST/LIST/temp symbol (or
+ * one of a LIST's own items). Always in the current file, so — like a label
  * suggestion — it never needs registerInsertIncludeCommand's auto-INCLUDE.
  */
 function variableCompletionItem(def: VariableDefinition, range: Range): CompletionItem {
     const item = new CompletionItem(def.name, variableCompletionItemKind(def));
     item.insertText = def.name;
     item.range = range;
-    item.detail = def.listName;
+    item.detail = def.listName ?? (def.stitchName ? `${def.knotName}.${def.stitchName}` : def.knotName);
     return item;
 }
 
@@ -291,10 +298,11 @@ const TRAILING_IDENTIFIER_REGEX = new RegExp(`(${IDENTIFIER})$`);
  * hand. Typing `-> knot.` narrows the list to that knot's own stitches.
  * When the chosen knot/stitch lives in a different file, accepting the
  * suggestion also inserts an `INCLUDE` for that file (see
- * registerInsertIncludeCommand). Also suggests declared VAR/CONST/LIST
+ * registerInsertIncludeCommand). Also suggests declared VAR/CONST/LIST/temp
  * symbols (and a LIST's own items, e.g. `DoctorsInSurgery.Ad` → `Adams`)
  * inside a logic/variable-text context — these are always local to the
- * current file, unlike knots/stitches.
+ * current file, unlike knots/stitches, and a `temp` is further scoped to the
+ * knot/stitch it was declared in.
  */
 export function knotCompletionProvider(): CompletionItemProvider {
     return {
@@ -405,8 +413,8 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 if (itemItems.length) return itemItems;
             }
 
-            // Otherwise, suggest declared VAR/CONST/LIST symbols (and every
-            // list's own items) when the position looks like it could
+            // Otherwise, suggest declared VAR/CONST/LIST/temp symbols (and
+            // every list's own items) when the position looks like it could
             // reference one — a `~` logic line, inside `{ }`, or a VAR/CONST/
             // LIST declaration's own value expression.
             if (!isVariableReferenceContext(document, position, line)) return undefined;
@@ -420,8 +428,14 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 position.character,
             );
 
-            return extractVariableDefinitions(document.getText())
-                .filter((def) => def.name.toLowerCase().startsWith(typedPrefix.toLowerCase()))
+            const content = document.getText();
+            const scope = getEnclosingKnotStitch(content, position.line);
+            return extractVariableDefinitions(content)
+                .filter(
+                    (def) =>
+                        def.name.toLowerCase().startsWith(typedPrefix.toLowerCase()) &&
+                        (def.kind !== "TEMP" || (def.knotName === scope.knotName && def.stitchName === scope.stitchName)),
+                )
                 .map((def) => variableCompletionItem(def, range));
         },
     };

@@ -46,14 +46,14 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Suggestions for INCLUDE statements with folder navigation
   - Suggestions for knot/stitch names right after a divert (`->`) or thread (`<-`) arrow, and for a knot's own stitches after `-> knot.`
   - Suggestions for labels (e.g. `- (opts)`, `* (shove) [...]`), sourced only from the current file, not from other project files
-  - Suggestions for declared `VAR`/`CONST`/`LIST` names and `LIST` items, also sourced only from the current file
+  - Suggestions for declared `VAR`/`CONST`/`LIST`/`temp` names and `LIST` items, also sourced only from the current file — a `temp` suggestion is scoped to the knot/stitch it was declared in, matching where its value is actually valid
   - Accepting a suggestion for a knot/stitch defined in another file automatically adds an `INCLUDE` for it (Inky engine only)
 
 - **Ctrl+Click support**:
   - Navigate to included files by Ctrl+Clicking on INCLUDE statements
   - Navigate to a knot/stitch's definition by Ctrl+Clicking a divert, thread, or divert target — if more than one knot shares that name, all of them are offered
   - Navigate to a label's definition (a labelled gather or choice) the same way — always resolved within the current file
-  - Navigate to a `VAR`/`CONST`/`LIST` declaration (including a specific `LIST` item) the same way — always resolved within the current file
+  - Navigate to a `VAR`/`CONST`/`LIST`/`temp` declaration (including a specific `LIST` item) the same way — a `temp` only resolves within the knot/stitch it was declared in, same as everywhere else in the extension
 
 ---
 

@@ -41,6 +41,7 @@ import {
 	extractLabelDefinitions,
 	findKnotDefinitionsByName,
 	findLabelDefinitionsByName,
+	getEnclosingKnotStitch,
 } from '../utils/knot-definitions';
 import { extractVariableDefinitions, findVariableDefinitionsByName } from '../utils/variable-definitions';
 // import * as myExtension from '../../extension';
@@ -1070,5 +1071,53 @@ suite('Extension Test Suite', () => {
 		const matches = findVariableDefinitionsByName(defs, 'shared');
 
 		assert.strictEqual(matches.length, 2, 'both lists declare an item called "shared"');
+	});
+
+	test('extractVariableDefinitions: finds ~ temp declarations, scoped to their enclosing knot', () => {
+		const content = [
+			'== start',
+			'      ~ temp chain = LIST_ALL(x)',
+			'      ~ temp statesGained = LIST_RANGE(chain, LIST_MIN(chain), x)',
+			'      ~ knowledgeState += statesGained',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+		const temps = defs.filter((d) => d.kind === 'TEMP');
+
+		assert.deepStrictEqual(
+			temps.map((d) => d.name),
+			['chain', 'statesGained'],
+		);
+		assert.strictEqual(temps[0].knotName, 'start');
+		assert.strictEqual(temps[0].stitchName, undefined);
+		assert.strictEqual(temps[0].line, 1);
+	});
+
+	test('findVariableDefinitionsByName: a temp only resolves within the knot/stitch it was declared in', () => {
+		const content = [
+			'== start',
+			'      ~ temp chain = 1',
+			'== other_knot',
+			'      ~ temp chain = 2',
+		].join('\n');
+		const defs = extractVariableDefinitions(content);
+
+		const inStart = findVariableDefinitionsByName(defs, 'chain', { knotName: 'start' });
+		assert.strictEqual(inStart.length, 1);
+		assert.strictEqual(inStart[0].line, 1, 'resolves to the temp declared in the same knot');
+
+		const inOther = findVariableDefinitionsByName(defs, 'chain', { knotName: 'other_knot' });
+		assert.strictEqual(inOther.length, 1);
+		assert.strictEqual(inOther[0].line, 3, 'a same-named temp in a different knot resolves to its own, not the first one');
+
+		const noScope = findVariableDefinitionsByName(defs, 'chain');
+		assert.strictEqual(noScope.length, 0, 'without a matching scope, an out-of-scope temp never matches');
+	});
+
+	test('getEnclosingKnotStitch: finds the nearest knot/stitch header at or before a line', () => {
+		const content = ['== knot_one', '= stitch_one', 'Text.', '== knot_two', 'Text.'].join('\n');
+
+		assert.deepStrictEqual(getEnclosingKnotStitch(content, 2), { knotName: 'knot_one', stitchName: 'stitch_one' });
+		assert.deepStrictEqual(getEnclosingKnotStitch(content, 4), { knotName: 'knot_two', stitchName: undefined });
 	});
 });
