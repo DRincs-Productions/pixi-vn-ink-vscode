@@ -7,12 +7,15 @@
     // symbols used for start and end a block comment. Remove this entry if your language does not support block comments
     "blockComment": ["/*", "*/"]
   },
-  // symbols used as brackets
-  "brackets": [["{", "}"], ["(", ")"]],
+  // no native bracket pairs: leaving this undefined makes VS Code auto-detect brackets
+  // straight from the grammar (which would then also start colorizing/matching [ ]),
+  // so it must stay an explicit empty list instead.
+  "brackets": [],
+  // same reasoning: an explicit empty list, not an absence, so [ ] keeps only its
+  // custom TextMate colour instead of picking up the native rainbow bracket colours.
+  "colorizedBracketPairs": [],
   // symbols that are auto closed when typing
   "autoClosingPairs": [
-    ["{", "}"],
-    ["(", ")"],
     ["\"", "\""],
     ["'", "'"],
     {

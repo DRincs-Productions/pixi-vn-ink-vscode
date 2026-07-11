@@ -12,5 +12,5 @@
 	{ number_of_warm_things > 2:
 		Despite the snow, I felt incorrigibly snug.
 	- else:
-		That night I was colder than I have ever been.
+		That night I was colder than I {have} ever been.
 	}
