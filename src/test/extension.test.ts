@@ -35,6 +35,11 @@ import {
 	findPixiVnUnimplementedFunctionCalls,
 	isBuiltinFunctionCallContext,
 } from '../utils/builtin-functions';
+import {
+	computeIncludeInsertion,
+	extractKnotDefinitions,
+	findKnotDefinitionsByName,
+} from '../utils/knot-definitions';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -847,5 +852,119 @@ suite('Extension Test Suite', () => {
 			!divertLineTokens.some((t) => t.scopes.includes('meta.multiline.block.ink')),
 			'both the cycle block and its parent stopping block should have closed by this point',
 		);
+	});
+
+	test('extractKnotDefinitions: finds top-level knots, nested stitches, and functions', () => {
+		const content = [
+			'=== knot_one ===',
+			'Text.',
+			'= stitch_a',
+			'More text.',
+			'-> DONE',
+			'',
+			'=== function knot_two(x) ===',
+			'~ return x',
+		].join('\n');
+
+		const defs = extractKnotDefinitions('/proj/a.ink', content);
+
+		assert.deepStrictEqual(
+			defs.map((d) => d.fullName),
+			['knot_one', 'knot_one.stitch_a', 'knot_two'],
+		);
+		assert.strictEqual(defs[0].line, 0);
+		assert.strictEqual(defs[0].stitchName, undefined);
+		assert.strictEqual(defs[1].knotName, 'knot_one');
+		assert.strictEqual(defs[1].line, 2);
+		assert.strictEqual(defs[2].isFunction, true, 'a === function name === header is a function knot');
+	});
+
+	test('findKnotDefinitionsByName: proposes every knot sharing a name across files', () => {
+		const defsA = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '-> DONE'].join('\n'),
+		);
+		const defsB = extractKnotDefinitions(
+			'/proj/b.ink',
+			['== knot_one ==', '-> END'].join('\n'),
+		);
+		const all = [...defsA, ...defsB];
+
+		const matches = findKnotDefinitionsByName(all, 'knot_one');
+
+		assert.strictEqual(matches.length, 2, 'two files each define knot_one, both should be proposed');
+		assert.deepStrictEqual(
+			matches.map((d) => d.filePath).sort(),
+			['/proj/a.ink', '/proj/b.ink'],
+		);
+	});
+
+	test('findKnotDefinitionsByName: a dotted knot.stitch name only matches that exact stitch', () => {
+		const defs = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '= stitch_a', '-> DONE', '', '=== knot_two ===', '= stitch_a', '-> DONE'].join('\n'),
+		);
+
+		const matches = findKnotDefinitionsByName(defs, 'knot_one.stitch_a');
+
+		assert.strictEqual(matches.length, 1);
+		assert.strictEqual(matches[0].knotName, 'knot_one');
+	});
+
+	test('findKnotDefinitionsByName: an unqualified name also matches a stitch with that plain name', () => {
+		const defs = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '= stitch_a', '-> DONE'].join('\n'),
+		);
+
+		const matches = findKnotDefinitionsByName(defs, 'stitch_a');
+
+		assert.strictEqual(matches.length, 1);
+		assert.strictEqual(matches[0].fullName, 'knot_one.stitch_a');
+	});
+
+	test('computeIncludeInsertion: adds alongside existing includes at the top, keeping the blank line after them', () => {
+		const lines = ['INCLUDE a.ink', 'INCLUDE b.ink', '', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'c.ink');
+
+		assert.strictEqual(line, 2, 'inserted right after the last existing include, before the blank line');
+		assert.strictEqual(text, 'INCLUDE c.ink\n');
+	});
+
+	test('computeIncludeInsertion: adds a missing blank line after the include block when there wasn\'t one', () => {
+		const lines = ['INCLUDE a.ink', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'b.ink');
+
+		assert.strictEqual(line, 1);
+		assert.strictEqual(text, 'INCLUDE b.ink\n\n', 'a blank line is added since the original file had none');
+	});
+
+	test('computeIncludeInsertion: inserts at the very top when the file has no includes yet, with a trailing blank line', () => {
+		const lines = ['=== knot_one ===', 'Some text.'];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0);
+		assert.strictEqual(text, 'INCLUDE a.ink\n\n');
+	});
+
+	test('computeIncludeInsertion: does not add an extra blank line when the top of the file is already blank', () => {
+		const lines = ['', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0);
+		assert.strictEqual(text, 'INCLUDE a.ink\n');
+	});
+
+	test('computeIncludeInsertion: ignores an INCLUDE that appears later in the file, not part of the leading block', () => {
+		const lines = ['=== knot_one ===', 'INCLUDE stray.ink'];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0, 'the stray INCLUDE further down does not count as the leading block');
+		assert.strictEqual(text, 'INCLUDE a.ink\n\n');
 	});
 });

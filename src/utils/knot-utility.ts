@@ -1,0 +1,258 @@
+import * as path from "node:path";
+import {
+    CompletionItem,
+    CompletionItemKind,
+    type CompletionItemProvider,
+    type DefinitionProvider,
+    type Disposable,
+    Location,
+    Position,
+    Range,
+    type TextDocument,
+    Uri,
+    WorkspaceEdit,
+    commands,
+    workspace,
+} from "vscode";
+import {
+    escapeRegExp,
+    isEscaped,
+    isKnotReferenceContext,
+    isPrecededByUnescapedDivertToKnot,
+    isPrecededByUnescapedThreadToKnot,
+} from "./divert-context";
+import { getInkRootFolder, loadInkFolder } from "./include-utility";
+import {
+    type KnotDefinition,
+    computeIncludeInsertion,
+    findKnotDefinitionsByName,
+    getAllKnotDefinitions,
+} from "./knot-definitions";
+import type InkFile from "../types/InkFile";
+
+export {
+    computeIncludeInsertion,
+    extractKnotDefinitions,
+    findKnotDefinitionsByName,
+    getAllKnotDefinitions,
+} from "./knot-definitions";
+export type { KnotDefinition } from "./knot-definitions";
+
+const IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+
+/**
+ * Loads every .ink file the project considers part of the story: everything
+ * under `ink.rootFolder` (recursively), or the whole workspace when that
+ * setting is empty. Currently-open documents are overlaid with their live
+ * (possibly unsaved) buffer instead of the on-disk contents.
+ */
+export async function getProjectInkFiles(document: TextDocument): Promise<InkFile[]> {
+    const rootFolder = getInkRootFolder(document);
+    if (!rootFolder) {
+        return [{ path: document.uri.fsPath, content: document.getText() }];
+    }
+
+    const files = await loadInkFolder(rootFolder, rootFolder);
+
+    const openContentByPath = new Map<string, string>();
+    for (const doc of workspace.textDocuments) {
+        if (doc.languageId === "ink") {
+            openContentByPath.set(path.resolve(doc.uri.fsPath), doc.getText());
+        }
+    }
+    openContentByPath.set(path.resolve(document.uri.fsPath), document.getText());
+
+    const result = files.map((file) => {
+        const liveContent = openContentByPath.get(path.resolve(file.path));
+        return liveContent === undefined ? file : { path: file.path, content: liveContent };
+    });
+
+    if (!result.some((file) => path.resolve(file.path) === path.resolve(document.uri.fsPath))) {
+        result.push({ path: document.uri.fsPath, content: document.getText() });
+    }
+
+    return result;
+}
+
+/**
+ * Given the word right before which a divert/thread arrow sits (e.g. `-> knot.`
+ * right before `stitch` in `-> knot.stitch`), returns the dotted `knot.word`
+ * name to resolve, or just `word` when it isn't the stitch half of a dotted
+ * target.
+ */
+function resolveReferencedName(line: string, beforeWord: string, word: string): string {
+    if (isPrecededByUnescapedDivertToKnot(line, beforeWord) || isPrecededByUnescapedThreadToKnot(line, beforeWord)) {
+        const parentMatch = beforeWord.match(new RegExp(`(?:->|<-)\\s*(${IDENTIFIER})\\.\\s*$`));
+        if (parentMatch) return `${parentMatch[1]}.${word}`;
+    }
+    return word;
+}
+
+/**
+ * Ctrl+Click / Go to Definition for knot and stitch references (`-> knot`,
+ * `<- knot`, `-> knot.stitch`, `{knot}`, tunnel calls, divert-target values,
+ * …), searching across every .ink file in the project — not just the current
+ * file. When more than one knot/stitch shares the referenced name (e.g. two
+ * files each define a knot called the same thing), all of them are returned
+ * so the editor offers a peek list instead of picking one arbitrarily.
+ */
+export function knotDefinitionProvider(): DefinitionProvider {
+    return {
+        async provideDefinition(document, position) {
+            const line = document.lineAt(position.line).text;
+            const range = document.getWordRangeAtPosition(position, new RegExp(IDENTIFIER));
+            if (!range) return;
+
+            const word = document.getText(range);
+            const beforeWord = line.substring(0, range.start.character);
+
+            if (!isKnotReferenceContext(document, position, line, beforeWord)) return;
+
+            const fullName = resolveReferencedName(line, beforeWord, word);
+
+            const projectFiles = await getProjectInkFiles(document);
+            const currentPath = path.resolve(document.uri.fsPath);
+            const definitions = findKnotDefinitionsByName(getAllKnotDefinitions(projectFiles), fullName).filter(
+                (def) => !(path.resolve(def.filePath) === currentPath && def.line === position.line),
+            );
+            if (!definitions.length) return;
+
+            return definitions.map((def) => new Location(Uri.file(def.filePath), new Position(def.line, 0)));
+        },
+    };
+}
+
+export const INSERT_INCLUDE_COMMAND = "ink._insertIncludeForKnot";
+
+/**
+ * Registers the internal command a completion item runs after the user
+ * accepts a knot/stitch suggestion that lives in another file: adds an
+ * `INCLUDE` for that file if one isn't already present. Only meaningful for
+ * the Inky engine — the pixi-vn engine compiles each file independently
+ * (see diagnostics.ts) and doesn't resolve INCLUDE at all.
+ */
+export function registerInsertIncludeCommand(): Disposable {
+    return commands.registerCommand(INSERT_INCLUDE_COMMAND, async (docUri: Uri, targetFilePath: string) => {
+        const document = await workspace.openTextDocument(docUri);
+        if (path.resolve(document.uri.fsPath) === path.resolve(targetFilePath)) return;
+
+        const rootFolder = getInkRootFolder(document);
+        if (!rootFolder) return;
+
+        const relativePath = path.relative(rootFolder, targetFilePath).split(path.sep).join("/");
+        const alreadyIncluded = new RegExp(`^\\s*INCLUDE\\s+${escapeRegExp(relativePath)}\\s*$`, "m").test(
+            document.getText(),
+        );
+        if (alreadyIncluded) return;
+
+        const lines: string[] = [];
+        for (let i = 0; i < document.lineCount; i++) {
+            lines.push(document.lineAt(i).text);
+        }
+        const { line, text } = computeIncludeInsertion(lines, relativePath);
+
+        const edit = new WorkspaceEdit();
+        edit.insert(docUri, new Position(line, 0), text);
+        await workspace.applyEdit(edit);
+    });
+}
+
+function knotCompletionItemKind(def: KnotDefinition): CompletionItemKind {
+    if (def.isFunction) return CompletionItemKind.Function;
+    return def.stitchName ? CompletionItemKind.Field : CompletionItemKind.Class;
+}
+
+/**
+ * Attaches the auto-INCLUDE command to `item` when `def` lives in a different
+ * file than the one being edited and the engine actually resolves INCLUDE
+ * (i.e. not pixi-vn).
+ */
+function attachIncludeCommand(item: CompletionItem, document: TextDocument, def: KnotDefinition): void {
+    const engine = workspace.getConfiguration("ink", document.uri).get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine === "pixi-vn") return;
+    if (path.resolve(def.filePath) === path.resolve(document.uri.fsPath)) return;
+
+    item.command = {
+        command: INSERT_INCLUDE_COMMAND,
+        title: "",
+        arguments: [document.uri, def.filePath],
+    };
+}
+
+const ARROW_DOTTED_REGEX = new RegExp(`(->|<-)\\s*(${IDENTIFIER})\\.(${IDENTIFIER})?$`);
+const ARROW_WORD_REGEX = new RegExp(`(->|<-)\\s*(${IDENTIFIER})?$`);
+
+/**
+ * Suggests knots/stitches right after a divert (`->`) or thread (`<-`) arrow
+ * is typed — including a `->->  destination` tunnel return — so writing a
+ * divert doesn't require remembering (or misspelling) every knot name by
+ * hand. Typing `-> knot.` narrows the list to that knot's own stitches.
+ * When the chosen knot/stitch lives in a different file, accepting the
+ * suggestion also inserts an `INCLUDE` for that file (see
+ * registerInsertIncludeCommand).
+ */
+export function knotCompletionProvider(): CompletionItemProvider {
+    return {
+        async provideCompletionItems(document, position) {
+            const line = document.lineAt(position).text;
+            const beforeCursor = line.substring(0, position.character);
+
+            const dottedMatch = beforeCursor.match(ARROW_DOTTED_REGEX);
+            if (dottedMatch?.index !== undefined) {
+                if (isEscaped(line, dottedMatch.index)) return undefined;
+
+                const knotName = dottedMatch[2];
+                const typedPrefix = dottedMatch[3] ?? "";
+                const range = new Range(
+                    position.line,
+                    position.character - typedPrefix.length,
+                    position.line,
+                    position.character,
+                );
+
+                const projectFiles = await getProjectInkFiles(document);
+                const stitches = getAllKnotDefinitions(projectFiles).filter(
+                    (def) =>
+                        def.knotName === knotName &&
+                        def.stitchName &&
+                        def.stitchName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
+                );
+
+                return stitches.map((def) => {
+                    const item = new CompletionItem(def.stitchName ?? "", knotCompletionItemKind(def));
+                    item.insertText = def.stitchName;
+                    item.range = range;
+                    item.detail = path.basename(def.filePath);
+                    attachIncludeCommand(item, document, def);
+                    return item;
+                });
+            }
+
+            const arrowMatch = beforeCursor.match(ARROW_WORD_REGEX);
+            if (!arrowMatch || arrowMatch.index === undefined) return undefined;
+            if (isEscaped(line, arrowMatch.index)) return undefined;
+
+            const typedPrefix = arrowMatch[2] ?? "";
+            const range = new Range(
+                position.line,
+                position.character - typedPrefix.length,
+                position.line,
+                position.character,
+            );
+
+            const projectFiles = await getProjectInkFiles(document);
+            const definitions = getAllKnotDefinitions(projectFiles).filter((def) =>
+                def.fullName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
+            );
+
+            return definitions.map((def) => {
+                const item = new CompletionItem(def.fullName, knotCompletionItemKind(def));
+                item.insertText = def.fullName;
+                item.range = range;
+                item.detail = path.basename(def.filePath);
+                attachIncludeCommand(item, document, def);
+                return item;
+            });
+        },
+    };
+}
