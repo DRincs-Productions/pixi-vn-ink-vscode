@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 - Ctrl+Click (Go to Definition) on a knot/stitch reference — a divert (`-> knot`), thread (`<- knot`), tunnel call, divert target value, or a knot/stitch name inside `{ }` — jumps to where it's defined, searching every `.ink` file under `ink.rootFolder` (or the whole workspace if that setting is empty), not just the current file. If more than one knot/stitch shares the same name across files, all of them are offered instead of picking one arbitrarily.
 - Autocompletion for knot/stitch names right after a divert (`->`) or thread (`<-`) arrow (including `->-> destination`), and for a specific knot's own stitches after typing `-> knot.`. When the accepted suggestion lives in a different file than the one being edited, an `INCLUDE` for that file is inserted automatically — this only happens for the `Inky` engine, since `pixi-vn` compiles each file independently and doesn't resolve `INCLUDE` at all.
+- Ctrl+Click and autocompletion also cover labels — a labelled gather (`- (opts)`) or labelled choice (`* (shove) [...]`), addressable via `-> opts`, `{shove}`, `stitch.label`, or `knot.label`. Unlike knots/stitches, labels are only ever looked up in the current file, never across other project files.
 
 ## [0.5.8] - 2026-07-11
 

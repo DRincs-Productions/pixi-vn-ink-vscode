@@ -24,8 +24,11 @@ import {
 import { getInkRootFolder, loadInkFolder } from "./include-utility";
 import {
     type KnotDefinition,
+    type LabelDefinition,
     computeIncludeInsertion,
+    extractLabelDefinitions,
     findKnotDefinitionsByName,
+    findLabelDefinitionsByName,
     getAllKnotDefinitions,
 } from "./knot-definitions";
 import type InkFile from "../types/InkFile";
@@ -33,10 +36,12 @@ import type InkFile from "../types/InkFile";
 export {
     computeIncludeInsertion,
     extractKnotDefinitions,
+    extractLabelDefinitions,
     findKnotDefinitionsByName,
+    findLabelDefinitionsByName,
     getAllKnotDefinitions,
 } from "./knot-definitions";
-export type { KnotDefinition } from "./knot-definitions";
+export type { KnotDefinition, LabelDefinition } from "./knot-definitions";
 
 const IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
 
@@ -89,12 +94,16 @@ function resolveReferencedName(line: string, beforeWord: string, word: string): 
 }
 
 /**
- * Ctrl+Click / Go to Definition for knot and stitch references (`-> knot`,
+ * Ctrl+Click / Go to Definition for knot/stitch references (`-> knot`,
  * `<- knot`, `-> knot.stitch`, `{knot}`, tunnel calls, divert-target values,
- * …), searching across every .ink file in the project — not just the current
- * file. When more than one knot/stitch shares the referenced name (e.g. two
- * files each define a knot called the same thing), all of them are returned
- * so the editor offers a peek list instead of picking one arbitrarily.
+ * …) and for labelled gathers/choices (`-> opts` targeting a `- (opts)` or
+ * `* (opts) [...]`). Knots/stitches are searched across every .ink file in
+ * the project; labels are only ever looked up in the *current* document —
+ * unlike a knot/stitch, a label isn't addressable across an INCLUDE boundary
+ * from just its bare name, so there's no project-wide file to jump to. When
+ * more than one match shares the referenced name (e.g. two files each define
+ * a knot called the same thing), all of them are returned so the editor
+ * offers a peek list instead of picking one arbitrarily.
  */
 export function knotDefinitionProvider(): DefinitionProvider {
     return {
@@ -109,10 +118,15 @@ export function knotDefinitionProvider(): DefinitionProvider {
             if (!isKnotReferenceContext(document, position, line, beforeWord)) return;
 
             const fullName = resolveReferencedName(line, beforeWord, word);
+            const currentPath = path.resolve(document.uri.fsPath);
 
             const projectFiles = await getProjectInkFiles(document);
-            const currentPath = path.resolve(document.uri.fsPath);
-            const definitions = findKnotDefinitionsByName(getAllKnotDefinitions(projectFiles), fullName).filter(
+            const knotMatches = findKnotDefinitionsByName(getAllKnotDefinitions(projectFiles), fullName);
+
+            const labelDefinitions = extractLabelDefinitions(document.uri.fsPath, document.getText());
+            const labelMatches = findLabelDefinitionsByName(labelDefinitions, fullName);
+
+            const definitions = [...knotMatches, ...labelMatches].filter(
                 (def) => !(path.resolve(def.filePath) === currentPath && def.line === position.line),
             );
             if (!definitions.length) return;
@@ -160,6 +174,19 @@ export function registerInsertIncludeCommand(): Disposable {
 function knotCompletionItemKind(def: KnotDefinition): CompletionItemKind {
     if (def.isFunction) return CompletionItemKind.Function;
     return def.stitchName ? CompletionItemKind.Field : CompletionItemKind.Class;
+}
+
+/**
+ * Builds the completion item for a label (`(name)` on a gather/choice line).
+ * Always in the current file, so — unlike a knot/stitch suggestion — it
+ * never needs registerInsertIncludeCommand's auto-INCLUDE.
+ */
+function labelCompletionItem(def: LabelDefinition, range: Range): CompletionItem {
+    const item = new CompletionItem(def.labelName, CompletionItemKind.Reference);
+    item.insertText = def.labelName;
+    item.range = range;
+    item.detail = def.stitchName ? `${def.knotName}.${def.stitchName}` : def.knotName;
+    return item;
 }
 
 /**
@@ -217,8 +244,7 @@ export function knotCompletionProvider(): CompletionItemProvider {
                         def.stitchName &&
                         def.stitchName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
                 );
-
-                return stitches.map((def) => {
+                const stitchItems = stitches.map((def) => {
                     const item = new CompletionItem(def.stitchName ?? "", knotCompletionItemKind(def));
                     item.insertText = def.stitchName;
                     item.range = range;
@@ -226,6 +252,21 @@ export function knotCompletionProvider(): CompletionItemProvider {
                     attachIncludeCommand(item, document, def);
                     return item;
                 });
+
+                // `knotName` (the text before the dot) may itself be a stitch name
+                // (-> stitch.label, same knot) or a knot name (-> knot.label, a
+                // label directly in that knot's own top-level weave) — either way
+                // it addresses a label, per the doc's addressing examples.
+                const labelDefinitions = extractLabelDefinitions(document.uri.fsPath, document.getText());
+                const labelItems = labelDefinitions
+                    .filter(
+                        (def) =>
+                            (def.stitchName === knotName || (!def.stitchName && def.knotName === knotName)) &&
+                            def.labelName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
+                    )
+                    .map((def) => labelCompletionItem(def, range));
+
+                return [...stitchItems, ...labelItems];
             }
 
             const arrowMatch = beforeCursor.match(ARROW_WORD_REGEX);
@@ -244,8 +285,7 @@ export function knotCompletionProvider(): CompletionItemProvider {
             const definitions = getAllKnotDefinitions(projectFiles).filter((def) =>
                 def.fullName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
             );
-
-            return definitions.map((def) => {
+            const knotItems = definitions.map((def) => {
                 const item = new CompletionItem(def.fullName, knotCompletionItemKind(def));
                 item.insertText = def.fullName;
                 item.range = range;
@@ -253,6 +293,15 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 attachIncludeCommand(item, document, def);
                 return item;
             });
+
+            // Labels are only ever local to the current file (see
+            // knotDefinitionProvider's doc comment), so they're sourced
+            // straight from `document` rather than getProjectInkFiles.
+            const labelItems = extractLabelDefinitions(document.uri.fsPath, document.getText())
+                .filter((def) => def.labelName.toLowerCase().startsWith(typedPrefix.toLowerCase()))
+                .map((def) => labelCompletionItem(def, range));
+
+            return [...knotItems, ...labelItems];
         },
     };
 }

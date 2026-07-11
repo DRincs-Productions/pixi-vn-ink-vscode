@@ -38,7 +38,9 @@ import {
 import {
 	computeIncludeInsertion,
 	extractKnotDefinitions,
+	extractLabelDefinitions,
 	findKnotDefinitionsByName,
+	findLabelDefinitionsByName,
 } from '../utils/knot-definitions';
 // import * as myExtension from '../../extension';
 
@@ -966,5 +968,58 @@ suite('Extension Test Suite', () => {
 
 		assert.strictEqual(line, 0, 'the stray INCLUDE further down does not count as the leading block');
 		assert.strictEqual(text, 'INCLUDE a.ink\n\n');
+	});
+
+	test('extractLabelDefinitions: finds labelled gathers and choices, distinct from plain ones', () => {
+		const content = [
+			'=== fight ===',
+			'- (opts)',
+			'*	[Pull a face]',
+			'	You pull a face, and the soldier comes at you! -> shove',
+			'',
+			'*	(shove) [Shove the guard aside] You shove the guard to one side, but he comes back swinging.',
+			'',
+			'*	{shove} [Grapple and fight] -> fight_the_guard',
+			'-	-> opts',
+		].join('\n');
+
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.deepStrictEqual(
+			defs.map((d) => d.labelName),
+			['opts', 'shove'],
+			'only the labelled gather/choice are found, not the plain "* [Pull a face]" or "-\t-> opts"',
+		);
+		assert.strictEqual(defs[0].knotName, 'fight');
+		assert.strictEqual(defs[0].stitchName, undefined);
+		assert.deepStrictEqual(defs[0].fullNames, ['opts', 'fight.opts']);
+		assert.strictEqual(defs[1].line, 5);
+	});
+
+	test('extractLabelDefinitions: a label nested in a stitch is addressable as stitch.label and knot.stitch.label', () => {
+		const content = ['=== knot ===', '= stitch_one', '\t- (gatherpoint) Some content.'].join('\n');
+
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.strictEqual(defs.length, 1);
+		assert.deepStrictEqual(defs[0].fullNames, ['gatherpoint', 'stitch_one.gatherpoint', 'knot.stitch_one.gatherpoint']);
+	});
+
+	test('findLabelDefinitionsByName: resolves a bare label within the same file, proposing every match', () => {
+		const content = ['=== fight ===', '- (opts)', '-\t-> opts', '', '=== another_knot ===', '- (opts)'].join('\n');
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		const matches = findLabelDefinitionsByName(defs, 'opts');
+
+		assert.strictEqual(matches.length, 2, 'two knots each label a gather "opts" — both are proposed');
+	});
+
+	test('findLabelDefinitionsByName: resolves a dotted stitch.label or knot.label path to just that one label', () => {
+		const content = ['=== knot ===', '= stitch_one', '\t- (gatherpoint) Some content.'].join('\n');
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'stitch_one.gatherpoint').length, 1);
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.stitch_one.gatherpoint').length, 1);
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.gatherpoint').length, 0, 'wrong path does not match');
 	});
 });
