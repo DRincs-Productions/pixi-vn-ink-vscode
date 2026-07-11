@@ -5,7 +5,7 @@ import {
     type CompletionItemProvider,
     type DefinitionProvider,
     type Disposable,
-    Location,
+    type LocationLink,
     Position,
     Range,
     type TextDocument,
@@ -16,10 +16,12 @@ import {
 } from "vscode";
 import {
     escapeRegExp,
+    isDeclaredSymbolHoverContext,
     isEscaped,
     isKnotReferenceContext,
     isPrecededByUnescapedDivertToKnot,
     isPrecededByUnescapedThreadToKnot,
+    isVariableReferenceContext,
 } from "./divert-context";
 import { getInkRootFolder, loadInkFolder } from "./include-utility";
 import {
@@ -31,6 +33,7 @@ import {
     findLabelDefinitionsByName,
     getAllKnotDefinitions,
 } from "./knot-definitions";
+import { type VariableDefinition, extractVariableDefinitions, findVariableDefinitionsByName } from "./variable-definitions";
 import type InkFile from "../types/InkFile";
 
 export {
@@ -42,6 +45,8 @@ export {
     getAllKnotDefinitions,
 } from "./knot-definitions";
 export type { KnotDefinition, LabelDefinition } from "./knot-definitions";
+export { extractVariableDefinitions, findVariableDefinitionsByName } from "./variable-definitions";
+export type { VariableDefinition } from "./variable-definitions";
 
 const IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
 
@@ -93,17 +98,41 @@ function resolveReferencedName(line: string, beforeWord: string, word: string): 
     return word;
 }
 
+// Same idea as resolveReferencedName, but for a dotted `list.item` value
+// reference (e.g. `DoctorsInSurgery.Adams`) rather than a divert/thread arrow
+// target — the dot isn't preceded by `->`/`<-` here, just another identifier.
+function resolveVariableReferenceName(beforeWord: string, word: string): string {
+    const parentMatch = beforeWord.match(new RegExp(`(${IDENTIFIER})\\.\\s*$`));
+    return parentMatch ? `${parentMatch[1]}.${word}` : word;
+}
+
 /**
- * Ctrl+Click / Go to Definition for knot/stitch references (`-> knot`,
- * `<- knot`, `-> knot.stitch`, `{knot}`, tunnel calls, divert-target values,
- * …) and for labelled gathers/choices (`-> opts` targeting a `- (opts)` or
- * `* (opts) [...]`). Knots/stitches are searched across every .ink file in
- * the project; labels are only ever looked up in the *current* document —
- * unlike a knot/stitch, a label isn't addressable across an INCLUDE boundary
+ * Ctrl+Click / Go to Definition for:
+ * - knot/stitch references (`-> knot`, `<- knot`, `-> knot.stitch`, `{knot}`,
+ *   tunnel calls, divert-target values, …), searched across every .ink file
+ *   in the project;
+ * - labelled gathers/choices (`-> opts` targeting a `- (opts)` or
+ *   `* (opts) [...]`), and
+ * - declared `VAR`/`CONST`/`LIST` symbols (including individual list items,
+ *   e.g. `Adams` or `DoctorsInSurgery.Adams`), referenced in logic lines,
+ *   `{ }`, or the declaration itself.
+ *
+ * Labels and variables are only ever looked up in the *current* document —
+ * unlike a knot/stitch, neither is addressable across an INCLUDE boundary
  * from just its bare name, so there's no project-wide file to jump to. When
  * more than one match shares the referenced name (e.g. two files each define
- * a knot called the same thing), all of them are returned so the editor
- * offers a peek list instead of picking one arbitrarily.
+ * a knot called the same thing, or two lists each declare an item of the
+ * same name), all of them are returned so the editor offers a peek list
+ * instead of picking one arbitrarily.
+ *
+ * Returns `LocationLink[]` (not plain `Location[]`) with an explicit
+ * `originSelectionRange` set to just the identifier — ink's
+ * `language-configuration.json` intentionally sets a very permissive
+ * `wordPattern` (so double-clicking selects a whole multi-word phrase), but
+ * that same pattern is what VS Code falls back to for the Ctrl+hover
+ * underline range when a provider returns plain `Location`s, which would
+ * otherwise underline far more than just the clicked word (e.g. the whole
+ * of `<- compare_prints(-> top)` instead of just `compare_prints`/`top`).
  */
 export function knotDefinitionProvider(): DefinitionProvider {
     return {
@@ -114,24 +143,40 @@ export function knotDefinitionProvider(): DefinitionProvider {
 
             const word = document.getText(range);
             const beforeWord = line.substring(0, range.start.character);
-
-            if (!isKnotReferenceContext(document, position, line, beforeWord)) return;
-
-            const fullName = resolveReferencedName(line, beforeWord, word);
             const currentPath = path.resolve(document.uri.fsPath);
 
-            const projectFiles = await getProjectInkFiles(document);
-            const knotMatches = findKnotDefinitionsByName(getAllKnotDefinitions(projectFiles), fullName);
+            const results: { filePath: string; line: number }[] = [];
 
-            const labelDefinitions = extractLabelDefinitions(document.uri.fsPath, document.getText());
-            const labelMatches = findLabelDefinitionsByName(labelDefinitions, fullName);
+            if (isKnotReferenceContext(document, position, line, beforeWord)) {
+                const fullName = resolveReferencedName(line, beforeWord, word);
 
-            const definitions = [...knotMatches, ...labelMatches].filter(
+                const projectFiles = await getProjectInkFiles(document);
+                results.push(...findKnotDefinitionsByName(getAllKnotDefinitions(projectFiles), fullName));
+
+                const labelDefinitions = extractLabelDefinitions(document.uri.fsPath, document.getText());
+                results.push(...findLabelDefinitionsByName(labelDefinitions, fullName));
+            }
+
+            if (isDeclaredSymbolHoverContext(document, position, line)) {
+                const variableName = resolveVariableReferenceName(beforeWord, word);
+                const variableDefinitions = extractVariableDefinitions(document.getText());
+                for (const def of findVariableDefinitionsByName(variableDefinitions, variableName)) {
+                    results.push({ filePath: document.uri.fsPath, line: def.line });
+                }
+            }
+
+            const definitions = results.filter(
                 (def) => !(path.resolve(def.filePath) === currentPath && def.line === position.line),
             );
             if (!definitions.length) return;
 
-            return definitions.map((def) => new Location(Uri.file(def.filePath), new Position(def.line, 0)));
+            const links: LocationLink[] = definitions.map((def) => ({
+                originSelectionRange: range,
+                targetUri: Uri.file(def.filePath),
+                targetRange: new Range(def.line, 0, def.line, 0),
+                targetSelectionRange: new Range(def.line, 0, def.line, 0),
+            }));
+            return links;
         },
     };
 }
@@ -189,6 +234,32 @@ function labelCompletionItem(def: LabelDefinition, range: Range): CompletionItem
     return item;
 }
 
+function variableCompletionItemKind(def: VariableDefinition): CompletionItemKind {
+    switch (def.kind) {
+        case "VAR":
+            return CompletionItemKind.Variable;
+        case "CONST":
+            return CompletionItemKind.Constant;
+        case "LIST":
+            return CompletionItemKind.Enum;
+        case "LIST_ITEM":
+            return CompletionItemKind.EnumMember;
+    }
+}
+
+/**
+ * Builds the completion item for a declared VAR/CONST/LIST symbol (or one of
+ * a LIST's own items). Always in the current file, so — like a label
+ * suggestion — it never needs registerInsertIncludeCommand's auto-INCLUDE.
+ */
+function variableCompletionItem(def: VariableDefinition, range: Range): CompletionItem {
+    const item = new CompletionItem(def.name, variableCompletionItemKind(def));
+    item.insertText = def.name;
+    item.range = range;
+    item.detail = def.listName;
+    return item;
+}
+
 /**
  * Attaches the auto-INCLUDE command to `item` when `def` lives in a different
  * file than the one being edited and the engine actually resolves INCLUDE
@@ -208,6 +279,10 @@ function attachIncludeCommand(item: CompletionItem, document: TextDocument, def:
 
 const ARROW_DOTTED_REGEX = new RegExp(`(->|<-)\\s*(${IDENTIFIER})\\.(${IDENTIFIER})?$`);
 const ARROW_WORD_REGEX = new RegExp(`(->|<-)\\s*(${IDENTIFIER})?$`);
+// A dotted `list.item` value reference, e.g. `DoctorsInSurgery.Ad` — unlike
+// ARROW_DOTTED_REGEX, not preceded by a divert/thread arrow.
+const VARIABLE_DOTTED_REGEX = new RegExp(`(${IDENTIFIER})\\.(${IDENTIFIER})?$`);
+const TRAILING_IDENTIFIER_REGEX = new RegExp(`(${IDENTIFIER})$`);
 
 /**
  * Suggests knots/stitches right after a divert (`->`) or thread (`<-`) arrow
@@ -216,7 +291,10 @@ const ARROW_WORD_REGEX = new RegExp(`(->|<-)\\s*(${IDENTIFIER})?$`);
  * hand. Typing `-> knot.` narrows the list to that knot's own stitches.
  * When the chosen knot/stitch lives in a different file, accepting the
  * suggestion also inserts an `INCLUDE` for that file (see
- * registerInsertIncludeCommand).
+ * registerInsertIncludeCommand). Also suggests declared VAR/CONST/LIST
+ * symbols (and a LIST's own items, e.g. `DoctorsInSurgery.Ad` → `Adams`)
+ * inside a logic/variable-text context — these are always local to the
+ * current file, unlike knots/stitches.
  */
 export function knotCompletionProvider(): CompletionItemProvider {
     return {
@@ -270,10 +348,71 @@ export function knotCompletionProvider(): CompletionItemProvider {
             }
 
             const arrowMatch = beforeCursor.match(ARROW_WORD_REGEX);
-            if (!arrowMatch || arrowMatch.index === undefined) return undefined;
-            if (isEscaped(line, arrowMatch.index)) return undefined;
+            if (arrowMatch?.index !== undefined && !isEscaped(line, arrowMatch.index)) {
+                const typedPrefix = arrowMatch[2] ?? "";
+                const range = new Range(
+                    position.line,
+                    position.character - typedPrefix.length,
+                    position.line,
+                    position.character,
+                );
 
-            const typedPrefix = arrowMatch[2] ?? "";
+                const projectFiles = await getProjectInkFiles(document);
+                const definitions = getAllKnotDefinitions(projectFiles).filter((def) =>
+                    def.fullName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
+                );
+                const knotItems = definitions.map((def) => {
+                    const item = new CompletionItem(def.fullName, knotCompletionItemKind(def));
+                    item.insertText = def.fullName;
+                    item.range = range;
+                    item.detail = path.basename(def.filePath);
+                    attachIncludeCommand(item, document, def);
+                    return item;
+                });
+
+                // Labels are only ever local to the current file (see
+                // knotDefinitionProvider's doc comment), so they're sourced
+                // straight from `document` rather than getProjectInkFiles.
+                const labelItems = extractLabelDefinitions(document.uri.fsPath, document.getText())
+                    .filter((def) => def.labelName.toLowerCase().startsWith(typedPrefix.toLowerCase()))
+                    .map((def) => labelCompletionItem(def, range));
+
+                return [...knotItems, ...labelItems];
+            }
+
+            // Not right after a divert/thread arrow — try a dotted `list.item`
+            // value reference first (e.g. `DoctorsInSurgery.Ad`), narrowing to
+            // that specific list's own items.
+            const listDotMatch = beforeCursor.match(VARIABLE_DOTTED_REGEX);
+            if (listDotMatch) {
+                const listName = listDotMatch[1];
+                const typedItemPrefix = listDotMatch[2] ?? "";
+                const range = new Range(
+                    position.line,
+                    position.character - typedItemPrefix.length,
+                    position.line,
+                    position.character,
+                );
+
+                const itemItems = extractVariableDefinitions(document.getText())
+                    .filter(
+                        (def) =>
+                            def.kind === "LIST_ITEM" &&
+                            def.listName === listName &&
+                            def.name.toLowerCase().startsWith(typedItemPrefix.toLowerCase()),
+                    )
+                    .map((def) => variableCompletionItem(def, range));
+                if (itemItems.length) return itemItems;
+            }
+
+            // Otherwise, suggest declared VAR/CONST/LIST symbols (and every
+            // list's own items) when the position looks like it could
+            // reference one — a `~` logic line, inside `{ }`, or a VAR/CONST/
+            // LIST declaration's own value expression.
+            if (!isVariableReferenceContext(document, position, line)) return undefined;
+
+            const trailingIdentifierMatch = beforeCursor.match(TRAILING_IDENTIFIER_REGEX);
+            const typedPrefix = trailingIdentifierMatch ? trailingIdentifierMatch[0] : "";
             const range = new Range(
                 position.line,
                 position.character - typedPrefix.length,
@@ -281,27 +420,9 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 position.character,
             );
 
-            const projectFiles = await getProjectInkFiles(document);
-            const definitions = getAllKnotDefinitions(projectFiles).filter((def) =>
-                def.fullName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
-            );
-            const knotItems = definitions.map((def) => {
-                const item = new CompletionItem(def.fullName, knotCompletionItemKind(def));
-                item.insertText = def.fullName;
-                item.range = range;
-                item.detail = path.basename(def.filePath);
-                attachIncludeCommand(item, document, def);
-                return item;
-            });
-
-            // Labels are only ever local to the current file (see
-            // knotDefinitionProvider's doc comment), so they're sourced
-            // straight from `document` rather than getProjectInkFiles.
-            const labelItems = extractLabelDefinitions(document.uri.fsPath, document.getText())
-                .filter((def) => def.labelName.toLowerCase().startsWith(typedPrefix.toLowerCase()))
-                .map((def) => labelCompletionItem(def, range));
-
-            return [...knotItems, ...labelItems];
+            return extractVariableDefinitions(document.getText())
+                .filter((def) => def.name.toLowerCase().startsWith(typedPrefix.toLowerCase()))
+                .map((def) => variableCompletionItem(def, range));
         },
     };
 }

@@ -6,8 +6,7 @@ import {
     type CompletionItemProvider,
     type DefinitionProvider,
     FileType,
-    Location,
-    Position,
+    type LocationLink,
     Range,
     type TextDocument,
     Uri,
@@ -156,7 +155,19 @@ export function includeCtrlClick(): DefinitionProvider {
             try {
                 const fileUri = Uri.file(fullPath);
                 await workspace.fs.stat(fileUri); // controllo che esista
-                return new Location(fileUri, new Position(0, 0));
+                // Returning a LocationLink (rather than a plain Location) with an
+                // explicit originSelectionRange keeps the Ctrl+hover underline to
+                // just the path — ink's language-configuration.json intentionally
+                // sets a very permissive wordPattern (so double-click selects a
+                // whole multi-word phrase), which is what VS Code would otherwise
+                // fall back to, underlining the entire "INCLUDE ..." line instead.
+                const link: LocationLink = {
+                    originSelectionRange: fullRange,
+                    targetUri: fileUri,
+                    targetRange: new Range(0, 0, 0, 0),
+                    targetSelectionRange: new Range(0, 0, 0, 0),
+                };
+                return [link];
             } catch {
                 return;
             }

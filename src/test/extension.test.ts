@@ -42,6 +42,7 @@ import {
 	findKnotDefinitionsByName,
 	findLabelDefinitionsByName,
 } from '../utils/knot-definitions';
+import { extractVariableDefinitions, findVariableDefinitionsByName } from '../utils/variable-definitions';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -1021,5 +1022,53 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(findLabelDefinitionsByName(defs, 'stitch_one.gatherpoint').length, 1);
 		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.stitch_one.gatherpoint').length, 1);
 		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.gatherpoint').length, 0, 'wrong path does not match');
+	});
+
+	test('extractVariableDefinitions: finds VAR, CONST, and every LIST item (parens and explicit values stripped)', () => {
+		const content = [
+			'VAR knowledge_of_the_cure = false',
+			'VAR players_name = "Emilia"',
+			'CONST MAX_HEALTH = 100',
+			'LIST DoctorsInSurgery = Adams, Bernard, (Cartwright)',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+
+		assert.strictEqual(defs.length, 7, '2 VAR + 1 CONST + 1 LIST + 3 LIST_ITEM');
+		assert.strictEqual(defs[0].kind, 'VAR');
+		assert.strictEqual(defs[2].kind, 'CONST');
+		assert.strictEqual(defs[3].kind, 'LIST');
+		assert.strictEqual(defs[3].name, 'DoctorsInSurgery');
+		assert.deepStrictEqual(
+			defs.slice(4).map((d) => d.name),
+			['Adams', 'Bernard', 'Cartwright'],
+			'"(Cartwright)" is still a valid item name once the parens are stripped',
+		);
+		assert.deepStrictEqual(defs[4].fullNames, ['Adams', 'DoctorsInSurgery.Adams']);
+	});
+
+	test('extractVariableDefinitions: strips an explicit item value (e.g. "Alive = 1") down to just the name', () => {
+		const defs = extractVariableDefinitions('LIST Status = Alive = 1, Dead');
+
+		assert.deepStrictEqual(
+			defs.filter((d) => d.kind === 'LIST_ITEM').map((d) => d.name),
+			['Alive', 'Dead'],
+		);
+	});
+
+	test('findVariableDefinitionsByName: resolves bare and dotted list.item references', () => {
+		const defs = extractVariableDefinitions('LIST DoctorsInSurgery = Adams, Bernard, (Cartwright)');
+
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'Adams').length, 1);
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'DoctorsInSurgery.Adams').length, 1);
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'DoctorsInSurgery.Nope').length, 0);
+	});
+
+	test('findVariableDefinitionsByName: an item name shared by two lists proposes both', () => {
+		const defs = extractVariableDefinitions(['LIST A = shared, x', 'LIST B = shared, y'].join('\n'));
+
+		const matches = findVariableDefinitionsByName(defs, 'shared');
+
+		assert.strictEqual(matches.length, 2, 'both lists declare an item called "shared"');
 	});
 });

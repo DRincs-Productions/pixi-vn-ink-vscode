@@ -11,6 +11,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Ctrl+Click (Go to Definition) on a knot/stitch reference — a divert (`-> knot`), thread (`<- knot`), tunnel call, divert target value, or a knot/stitch name inside `{ }` — jumps to where it's defined, searching every `.ink` file under `ink.rootFolder` (or the whole workspace if that setting is empty), not just the current file. If more than one knot/stitch shares the same name across files, all of them are offered instead of picking one arbitrarily.
 - Autocompletion for knot/stitch names right after a divert (`->`) or thread (`<-`) arrow (including `->-> destination`), and for a specific knot's own stitches after typing `-> knot.`. When the accepted suggestion lives in a different file than the one being edited, an `INCLUDE` for that file is inserted automatically — this only happens for the `Inky` engine, since `pixi-vn` compiles each file independently and doesn't resolve `INCLUDE` at all.
 - Ctrl+Click and autocompletion also cover labels — a labelled gather (`- (opts)`) or labelled choice (`* (shove) [...]`), addressable via `-> opts`, `{shove}`, `stitch.label`, or `knot.label`. Unlike knots/stitches, labels are only ever looked up in the current file, never across other project files.
+- Ctrl+Click and autocompletion also cover `VAR`/`CONST`/`LIST` declarations, including a `LIST`'s individual items (e.g. `Adams` in `LIST DoctorsInSurgery = Adams, Bernard`), addressable bare or qualified as `DoctorsInSurgery.Adams` when two lists share an item name. Like labels, these are only ever looked up in the current file.
+
+### Fixed
+
+- A knot/label/variable reference inside a `{ }` block whose opening brace sits alone on its own line (e.g. a `{` followed on the next line by `bedroomLightState ? seen:`) is now correctly recognized as being inside `{ }` for Ctrl+Click and hover purposes — previously only the current line's own braces were counted, so anything after the first line of such a block silently stopped being clickable.
+- Ctrl+Click on a knot/stitch/label/variable/INCLUDE reference now only underlines the exact word (e.g. just `compare_prints` and `top` in `<- compare_prints(-> top)`) instead of the whole line — ink's `language-configuration.json` intentionally sets a very permissive `wordPattern` for double-click word selection, but that same pattern was also being used as the Ctrl+hover underline range.
 
 ## [0.5.8] - 2026-07-11
 

@@ -27,8 +27,11 @@ import {
     escapeRegExp,
     getTunnelCallLineDestination,
     getTunnelReturnDestination,
+    getUncommentedSegments,
+    isDeclaredSymbolHoverContext,
     isDivertTargetValueContext,
     isEscaped,
+    isInsideCurlyBraceBlockAtLines,
     isInsideVariableText,
     isKnotReferenceContext,
     isPrecededByUnescapedDivert,
@@ -43,6 +46,7 @@ export {
     getTunnelCallLineDestination,
     getTunnelReturnDestination,
     isDivertTargetValueContext,
+    isInsideCurlyBraceBlockAtLines,
     isPrecededByUnescapedDivert,
     isPrecededByUnescapedDivertToKnot,
     isPrecededByUnescapedThread,
@@ -600,7 +604,7 @@ export function activate(context: ExtensionContext) {
                     char === "-" &&
                     !isEscaped(line, position.character) &&
                     isConditionalBranchDash(line, position.character) &&
-                    isInsideCurlyBraceBlock(document, position)
+                    isInsideVariableText(document, position)
                 ) {
                     return new Hover(
                         new MarkdownString(
@@ -964,69 +968,6 @@ export function isConditionalBranchDash(line: string, dashChar: number): boolean
     return line.indexOf(":", dashChar + 1) !== -1;
 }
 
-function countUnescapedBraceDelta(text: string): number {
-    let delta = 0;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === "{" && (i === 0 || text[i - 1] !== "\\")) {
-            delta++;
-        } else if (text[i] === "}" && (i === 0 || text[i - 1] !== "\\")) {
-            delta--;
-        }
-    }
-    return delta;
-}
-
-function stripLineComment(text: string): string {
-    const idx = text.indexOf("//");
-    return idx === -1 ? text : text.substring(0, idx);
-}
-
-/**
- * Returns true when `character` on `lines[lineNumber]` sits inside a `{ }`
- * block that may have opened on an earlier line (e.g. a multi-line conditional
- * or switch block), by tracking unescaped brace depth from the start of the
- * document. Unlike `isInsideVariableText`, this looks across lines. Block
- * comments and `//` line comments are stripped before counting, so braces
- * mentioned in comments don't throw off the depth.
- */
-export function isInsideCurlyBraceBlockAtLines(lines: string[], lineNumber: number, character: number): boolean {
-    let depth = 0;
-    let inBlockComment = false;
-    for (let i = 0; i < lineNumber; i++) {
-        const { segments, inComment } = getUncommentedSegments(lines[i], inBlockComment);
-        inBlockComment = inComment;
-        for (const { text } of segments) {
-            depth += countUnescapedBraceDelta(stripLineComment(text));
-        }
-    }
-
-    const { segments } = getUncommentedSegments(lines[lineNumber], inBlockComment);
-    for (const { text, offset } of segments) {
-        if (offset >= character) continue;
-        const localEnd = Math.min(text.length, character - offset);
-        depth += countUnescapedBraceDelta(stripLineComment(text.substring(0, localEnd)));
-    }
-
-    return depth > 0;
-}
-
-function isInsideCurlyBraceBlock(document: TextDocument, position: Position): boolean {
-    const lines: string[] = [];
-    for (let i = 0; i <= position.line; i++) {
-        lines.push(document.lineAt(i).text);
-    }
-    return isInsideCurlyBraceBlockAtLines(lines, position.line, position.character);
-}
-
-export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {
-    const trimmed = line.trimStart();
-    if (/^(VAR|CONST)\b/.test(trimmed)) return true;
-    if (trimmed.startsWith("~")) return true;
-    if (isInsideVariableText(document, position)) return true;
-
-    return /(==|!=|<=|>=|<|>|=|\+|-|\*|\/|%|\bmod\b|\bnot\b|\bor\b|\band\b)/.test(line);
-}
-
 /**
  * Returns true when `line` is a "normal text" line in ink — i.e. not a choice,
  * knot declaration, logic line, comment, include, or variable declaration.
@@ -1092,41 +1033,4 @@ export function findMatchingBracketsInNormalText(line: string): number[] {
     }
 
     return positions;
-}
-
-/**
- * Splits `line` into text segments that lie outside of block comments,
- * carrying the original character offset of each segment so callers can map
- * positions back to the original line.  `inBlockComment` is the state at the
- * start of the line; the returned `inComment` reflects the state at the end.
- */
-function getUncommentedSegments(
-    line: string,
-    inBlockComment: boolean,
-): { segments: { text: string; offset: number }[]; inComment: boolean } {
-    const segments: { text: string; offset: number }[] = [];
-    let i = 0;
-    let inCmnt = inBlockComment;
-
-    while (i < line.length) {
-        if (inCmnt) {
-            const closeIdx = line.indexOf("*/", i);
-            if (closeIdx < 0) break; // rest of line is inside the comment
-            inCmnt = false;
-            i = closeIdx + 2;
-        } else {
-            const openIdx = line.indexOf("/*", i);
-            if (openIdx < 0) {
-                segments.push({ text: line.substring(i), offset: i });
-                break;
-            }
-            if (openIdx > i) {
-                segments.push({ text: line.substring(i, openIdx), offset: i });
-            }
-            inCmnt = true;
-            i = openIdx + 2;
-        }
-    }
-
-    return { segments, inComment: inCmnt };
 }

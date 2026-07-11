@@ -93,21 +93,104 @@ export function isPrecededByUnescapedThreadToKnot(line: string, before: string):
     return !!match && match.index !== undefined && !isEscaped(line, match.index);
 }
 
-export function isInsideVariableText(document: TextDocument, position: Position): boolean {
-    const line = document.lineAt(position.line).text;
-    const before = line.substring(0, position.character);
+function countUnescapedBraceDelta(text: string): number {
+    let delta = 0;
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === "{" && (i === 0 || text[i - 1] !== "\\")) {
+            delta++;
+        } else if (text[i] === "}" && (i === 0 || text[i - 1] !== "\\")) {
+            delta--;
+        }
+    }
+    return delta;
+}
 
-    // Count unescaped curly braces before the position
-    let depth = 0;
-    for (let i = 0; i < before.length; i++) {
-        if (before[i] === "{" && (i === 0 || before[i - 1] !== "\\")) {
-            depth++;
-        } else if (before[i] === "}" && (i === 0 || before[i - 1] !== "\\")) {
-            depth--;
+function stripLineComment(text: string): string {
+    const idx = text.indexOf("//");
+    return idx === -1 ? text : text.substring(0, idx);
+}
+
+/**
+ * Splits `line` into text segments that lie outside of block comments,
+ * carrying the original character offset of each segment so callers can map
+ * positions back to the original line. `inBlockComment` is the state at the
+ * start of the line; the returned `inComment` reflects the state at the end.
+ */
+export function getUncommentedSegments(
+    line: string,
+    inBlockComment: boolean,
+): { segments: { text: string; offset: number }[]; inComment: boolean } {
+    const segments: { text: string; offset: number }[] = [];
+    let i = 0;
+    let inCmnt = inBlockComment;
+
+    while (i < line.length) {
+        if (inCmnt) {
+            const closeIdx = line.indexOf("*/", i);
+            if (closeIdx < 0) break; // rest of line is inside the comment
+            inCmnt = false;
+            i = closeIdx + 2;
+        } else {
+            const openIdx = line.indexOf("/*", i);
+            if (openIdx < 0) {
+                segments.push({ text: line.substring(i), offset: i });
+                break;
+            }
+            if (openIdx > i) {
+                segments.push({ text: line.substring(i, openIdx), offset: i });
+            }
+            inCmnt = true;
+            i = openIdx + 2;
         }
     }
 
-    return depth > 0; // true if we are inside a { ... }
+    return { segments, inComment: inCmnt };
+}
+
+/**
+ * Returns true when `character` on `lines[lineNumber]` sits inside a `{ }`
+ * block that may have opened on an earlier line (e.g. a multi-line
+ * conditional/switch block, or a `{ }` deliberately split so its opening
+ * brace sits alone on its own line), by tracking unescaped brace depth from
+ * the start of the document. Block comments and `//` line comments are
+ * stripped before counting, so braces mentioned in comments don't throw off
+ * the depth.
+ */
+export function isInsideCurlyBraceBlockAtLines(lines: string[], lineNumber: number, character: number): boolean {
+    let depth = 0;
+    let inBlockComment = false;
+    for (let i = 0; i < lineNumber; i++) {
+        const { segments, inComment } = getUncommentedSegments(lines[i], inBlockComment);
+        inBlockComment = inComment;
+        for (const { text } of segments) {
+            depth += countUnescapedBraceDelta(stripLineComment(text));
+        }
+    }
+
+    const { segments } = getUncommentedSegments(lines[lineNumber], inBlockComment);
+    for (const { text, offset } of segments) {
+        if (offset >= character) continue;
+        const localEnd = Math.min(text.length, character - offset);
+        depth += countUnescapedBraceDelta(stripLineComment(text.substring(0, localEnd)));
+    }
+
+    return depth > 0;
+}
+
+/**
+ * Returns true when `position` sits inside an unescaped `{ }` block —
+ * tracking brace depth from the start of the document (see
+ * {@link isInsideCurlyBraceBlockAtLines}), not just the current line. A `{ }`
+ * block whose opening brace sits alone on its own line (a common ink
+ * formatting style) still counts: single-line-only counting would otherwise
+ * miss it entirely on every line after the opening one.
+ */
+export function isInsideVariableText(document: TextDocument, position: Position): boolean {
+    const lines: string[] = [];
+    for (let i = 0; i <= position.line; i++) {
+        lines.push(document.lineAt(i).text);
+    }
+    return isInsideCurlyBraceBlockAtLines(lines, position.line, position.character);
 }
 
 /**
@@ -131,4 +214,37 @@ export function isKnotReferenceContext(
         isPrecededByUnescapedThreadToKnot(line, beforeWord) ||
         isInsideVariableText(document, position)
     );
+}
+
+/**
+ * Returns true when `word` is used where a declared `VAR`/`CONST`/`LIST`
+ * symbol could plausibly be referenced: on the declaration line itself, a
+ * `~` logic line, inside `{ }`, or a line containing an operator (`==`, `+`,
+ * `mod`, `or`, …). Broad on purpose — the hover popup this gates only shows
+ * anything when a symbol with that exact name actually exists, so a loose
+ * match here just means no popup rather than a wrong one.
+ */
+export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {
+    const trimmed = line.trimStart();
+    if (/^(VAR|CONST)\b/.test(trimmed)) return true;
+    if (trimmed.startsWith("~")) return true;
+    if (isInsideVariableText(document, position)) return true;
+
+    // `?` is the "has" operator for LIST membership tests (e.g. `bedroomLightState ? seen`).
+    return /(==|!=|<=|>=|<|>|=|\+|-|\*|\/|%|\?|\bmod\b|\bnot\b|\bor\b|\band\b)/.test(line);
+}
+
+/**
+ * A narrower version of {@link isDeclaredSymbolHoverContext} for gating
+ * autocompletion suggestions: drops the trailing "line contains an operator"
+ * fallback, which matches almost any narrative sentence containing a hyphen
+ * or the English words "or"/"and" — harmless for a hover popup (nothing
+ * shows unless the exact symbol exists) but too noisy for a completion
+ * widget that would otherwise pop up while typing plain prose.
+ */
+export function isVariableReferenceContext(document: TextDocument, position: Position, line: string): boolean {
+    const trimmed = line.trimStart();
+    if (/^(VAR|CONST|LIST)\b/.test(trimmed)) return true;
+    if (trimmed.startsWith("~")) return true;
+    return isInsideVariableText(document, position);
 }
