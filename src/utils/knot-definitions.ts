@@ -20,6 +20,9 @@ export interface KnotDefinition {
     fullName: string;
     filePath: string;
     line: number;
+    // Column where the knot/stitch's own name starts on `line` — Go to
+    // Definition should land right on the name, not column 0 of the line.
+    column: number;
     isFunction: boolean;
 }
 
@@ -37,10 +40,13 @@ export function extractKnotDefinitions(filePath: string, content: string): KnotD
 
         const [, equals, functionKeyword, name] = match;
         const isFunction = Boolean(functionKeyword);
+        // `name` is the last thing HEADER_REGEX captures, so it always ends
+        // exactly where the whole match ends — no need for a separate lookup.
+        const column = match[0].length - name.length;
 
         if (equals.length >= 2 || !currentKnot) {
             currentKnot = name;
-            definitions.push({ knotName: name, fullName: name, filePath, line: i, isFunction });
+            definitions.push({ knotName: name, fullName: name, filePath, line: i, column, isFunction });
         } else {
             definitions.push({
                 knotName: currentKnot,
@@ -48,6 +54,7 @@ export function extractKnotDefinitions(filePath: string, content: string): KnotD
                 fullName: `${currentKnot}.${name}`,
                 filePath,
                 line: i,
+                column,
                 isFunction,
             });
         }
@@ -109,6 +116,9 @@ export interface LabelDefinition {
     fullNames: string[];
     filePath: string;
     line: number;
+    // Column where the label name itself starts on `line` (i.e. right after
+    // the opening `(`), not the bullet that precedes it.
+    column: number;
 }
 
 /**
@@ -141,6 +151,9 @@ export function extractLabelDefinitions(filePath: string, content: string): Labe
         if (!labelMatch) continue;
 
         const labelName = labelMatch[1];
+        // LABEL_REGEX ends with a literal `)` right after the name, so the
+        // name itself starts one character before the match ends.
+        const column = labelMatch[0].length - labelName.length - 1;
         const fullNames = [labelName];
         if (currentStitch) {
             fullNames.push(`${currentStitch}.${labelName}`);
@@ -149,7 +162,15 @@ export function extractLabelDefinitions(filePath: string, content: string): Labe
             fullNames.push(`${currentKnot}.${labelName}`);
         }
 
-        definitions.push({ labelName, knotName: currentKnot, stitchName: currentStitch, fullNames, filePath, line: i });
+        definitions.push({
+            labelName,
+            knotName: currentKnot,
+            stitchName: currentStitch,
+            fullNames,
+            filePath,
+            line: i,
+            column,
+        });
     }
 
     return definitions;

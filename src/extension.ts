@@ -73,6 +73,12 @@ export const DECLARATION_KEYWORD_DOCS: Record<string, string> = {
     ),
 };
 
+// Hover text for the `ref` keyword in a knot/stitch/function's parameter list,
+// documented in https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+const REF_PARAMETER_DOC = l10n.t(
+    "**Parameter passed by reference (`ref`)**: Written immediately before a parameter's name, it lets the knot/stitch/function alter the caller's actual variable directly, instead of receiving a temporary copy of its value.\n\nExample:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```",
+);
+
 // Hover text for the `->` divert arrow (and its `->->` tunnel-return form), keyed by
 // the role a specific arrow plays — see getDivertArrowHoverKind. Documented in
 // https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
@@ -496,6 +502,12 @@ export function activate(context: ExtensionContext) {
                 // word actually opens the declaration line (not a coincidental match).
                 if (word in DECLARATION_KEYWORD_DOCS && range && isDeclarationKeywordContext(line, range.start.character)) {
                     return new Hover(new MarkdownString(DECLARATION_KEYWORD_DOCS[word]));
+                }
+
+                // Hover for the `ref` by-reference-parameter keyword, only inside a
+                // knot/stitch/function's own parameter list.
+                if (word === "ref" && range && isRefParameterContext(line, range.start.character)) {
+                    return new Hover(new MarkdownString(REF_PARAMETER_DOC));
                 }
 
                 // Hover for the logic tilde (~) at the start of a logic line, e.g. `~ x = 1`.
@@ -925,6 +937,17 @@ export function isVariableTextTypeSpecifier(line: string, position: number): boo
  */
 export function isDeclarationKeywordContext(line: string, wordStartChar: number): boolean {
     return /^\s*$/.test(line.substring(0, wordStartChar));
+}
+
+/**
+ * Returns true when the `ref` at `wordStartChar` is the by-reference-parameter
+ * keyword — immediately after a `(` or `,` inside a knot/stitch/function's
+ * parameter list (a `=+ name(...)` header line) — as opposed to a narrative
+ * word that happens to be "ref" appearing elsewhere.
+ */
+export function isRefParameterContext(line: string, wordStartChar: number): boolean {
+    if (!/^\s*=+/.test(line)) return false;
+    return /[(,]\s*$/.test(line.substring(0, wordStartChar));
 }
 
 /**

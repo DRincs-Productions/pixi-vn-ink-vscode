@@ -25,6 +25,7 @@ import {
 	isPrecededByUnescapedDivertToKnot,
 	isPrecededByUnescapedThread,
 	isPrecededByUnescapedThreadToKnot,
+	isRefParameterContext,
 	isTildeLogicContext,
 	isTunnelReturnArrow,
 	isVariableTextTypeSpecifier,
@@ -878,9 +879,12 @@ suite('Extension Test Suite', () => {
 		);
 		assert.strictEqual(defs[0].line, 0);
 		assert.strictEqual(defs[0].stitchName, undefined);
+		assert.strictEqual(defs[0].column, 4, 'points at "knot_one" itself, right after "=== "');
 		assert.strictEqual(defs[1].knotName, 'knot_one');
 		assert.strictEqual(defs[1].line, 2);
+		assert.strictEqual(defs[1].column, 2, 'points at "stitch_a", right after "= "');
 		assert.strictEqual(defs[2].isFunction, true, 'a === function name === header is a function knot');
+		assert.strictEqual(defs[2].column, 13, 'points at "knot_two", right after "=== function "');
 	});
 
 	test('findKnotDefinitionsByName: proposes every knot sharing a name across files', () => {
@@ -995,7 +999,9 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(defs[0].knotName, 'fight');
 		assert.strictEqual(defs[0].stitchName, undefined);
 		assert.deepStrictEqual(defs[0].fullNames, ['opts', 'fight.opts']);
+		assert.strictEqual(defs[0].column, 3, 'points at "opts" itself, right after "- ("');
 		assert.strictEqual(defs[1].line, 5);
+		assert.strictEqual(defs[1].column, 3, 'points at "shove" itself, right after "*\\t("');
 	});
 
 	test('extractLabelDefinitions: a label nested in a stitch is addressable as stitch.label and knot.stitch.label', () => {
@@ -1037,15 +1043,23 @@ suite('Extension Test Suite', () => {
 
 		assert.strictEqual(defs.length, 7, '2 VAR + 1 CONST + 1 LIST + 3 LIST_ITEM');
 		assert.strictEqual(defs[0].kind, 'VAR');
+		assert.strictEqual(defs[0].column, 4, 'points at the name itself, right after "VAR "');
 		assert.strictEqual(defs[2].kind, 'CONST');
+		assert.strictEqual(defs[2].column, 6, 'points at the name itself, right after "CONST "');
 		assert.strictEqual(defs[3].kind, 'LIST');
 		assert.strictEqual(defs[3].name, 'DoctorsInSurgery');
+		assert.strictEqual(defs[3].column, 5, 'points at the list name itself, right after "LIST "');
 		assert.deepStrictEqual(
 			defs.slice(4).map((d) => d.name),
 			['Adams', 'Bernard', 'Cartwright'],
 			'"(Cartwright)" is still a valid item name once the parens are stripped',
 		);
 		assert.deepStrictEqual(defs[4].fullNames, ['Adams', 'DoctorsInSurgery.Adams']);
+		assert.deepStrictEqual(
+			defs.slice(4).map((d) => d.column),
+			[24, 31, 41],
+			'each item points at its own name, not the parenthesis or a shared offset',
+		);
 	});
 
 	test('extractVariableDefinitions: strips an explicit item value (e.g. "Alive = 1") down to just the name', () => {
@@ -1091,6 +1105,7 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(temps[0].knotName, 'start');
 		assert.strictEqual(temps[0].stitchName, undefined);
 		assert.strictEqual(temps[0].line, 1);
+		assert.strictEqual(temps[0].column, 13, 'points at "chain" itself, right after "~ temp "');
 	});
 
 	test('findVariableDefinitionsByName: a temp only resolves within the knot/stitch it was declared in', () => {
@@ -1119,5 +1134,95 @@ suite('Extension Test Suite', () => {
 
 		assert.deepStrictEqual(getEnclosingKnotStitch(content, 2), { knotName: 'knot_one', stitchName: 'stitch_one' });
 		assert.deepStrictEqual(getEnclosingKnotStitch(content, 4), { knotName: 'knot_two', stitchName: undefined });
+	});
+
+	test('extractVariableDefinitions: finds parameters in a knot/function header, including a leading ref', () => {
+		const content = [
+			'=== function move_to_supporter(ref item_state, new_supporter) ===',
+			'    ~ item_state -= LIST_ALL(Supporters)',
+			'    ~ item_state += new_supporter',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+		const params = defs.filter((d) => d.kind === 'PARAM');
+
+		assert.deepStrictEqual(
+			params.map((p) => p.name),
+			['item_state', 'new_supporter'],
+		);
+		assert.strictEqual(params[0].isRef, true, 'item_state is declared with a leading ref');
+		assert.strictEqual(params[1].isRef, false, 'new_supporter has no ref');
+		assert.strictEqual(params[0].column, 35, 'points at "item_state" itself, past the leading "ref "');
+		assert.strictEqual(params[1].column, 47, 'points at "new_supporter" itself');
+		assert.strictEqual(params[0].knotName, 'move_to_supporter');
+		assert.strictEqual(params[0].line, 0, 'a parameter is defined on its header line');
+	});
+
+	test('findVariableDefinitionsByName: a parameter only resolves within its own knot/stitch', () => {
+		const content = ['=== knot_one(x) ===', '    ~ y = x', '=== knot_two(x) ===', '    ~ z = x'].join('\n');
+		const defs = extractVariableDefinitions(content);
+
+		const inKnotOne = findVariableDefinitionsByName(defs, 'x', { knotName: 'knot_one' });
+		assert.strictEqual(inKnotOne.length, 1);
+		assert.strictEqual(inKnotOne[0].line, 0);
+
+		const inKnotTwo = findVariableDefinitionsByName(defs, 'x', { knotName: 'knot_two' });
+		assert.strictEqual(inKnotTwo.length, 1);
+		assert.strictEqual(inKnotTwo[0].line, 2, 'resolves to its own knot\'s parameter, not the other one');
+	});
+
+	test('isRefParameterContext: true only for ref right after ( or , on a knot/function header line', () => {
+		assert.strictEqual(
+			isRefParameterContext('=== function move_to_supporter(ref item_state, new_supporter) ===', 32),
+			true,
+			'ref right after the opening (',
+		);
+		assert.strictEqual(
+			isRefParameterContext('== cook_with(nameOfThing, ref thingToBoil) ==', 27),
+			true,
+			'ref right after a comma',
+		);
+		assert.strictEqual(
+			isRefParameterContext('He handed her ref card, a document she needed.', 15),
+			false,
+			'plain narrative text, not a knot/function header line',
+		);
+		assert.strictEqual(
+			isRefParameterContext('=== knot_name ===', 4),
+			false,
+			'ref keyword requires ( or , right before it, not just any header line',
+		);
+	});
+
+	test('syntax grammar: ref in a parameter list gets its own scope, distinct from a plain parameter name', async () => {
+		const grammar = await createInkGrammar();
+		const lines = ['=== function move_to_supporter(ref item_state, new_supporter) ==='];
+		const tokens = tokenizeInkLines(grammar, lines)[0];
+
+		const refToken = tokens.find((t) => t.text === 'ref');
+		assert.ok(refToken, 'ref should be tokenized as its own token');
+		assert.ok(
+			refToken!.scopes.includes('keyword.other.ref.ink'),
+			'ref should get the keyword.other.ref.ink scope so it can be coloured distinctly',
+		);
+
+		const paramToken = tokens.find((t) => t.text === 'new_supporter');
+		assert.ok(paramToken, 'the plain parameter should still be tokenized');
+		assert.ok(
+			!paramToken!.scopes.includes('keyword.other.ref.ink'),
+			'a plain parameter name must not be mistaken for the ref keyword',
+		);
+	});
+
+	test('syntax grammar: an identifier containing "ref" as a substring is not mistaken for the ref keyword', async () => {
+		const grammar = await createInkGrammar();
+		const lines = ['=== knot_one(ref_count, preferences) ==='];
+		const tokens = tokenizeInkLines(grammar, lines)[0];
+
+		for (const name of ['ref_count', 'preferences']) {
+			const token = tokens.find((t) => t.text === name);
+			assert.ok(token, `${name} should be tokenized as its own token`);
+			assert.ok(!token!.scopes.includes('keyword.other.ref.ink'), `${name} must not match the ref keyword`);
+		}
 	});
 });

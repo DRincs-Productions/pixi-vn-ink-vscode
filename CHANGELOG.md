@@ -13,6 +13,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - Ctrl+Click and autocompletion also cover labels — a labelled gather (`- (opts)`) or labelled choice (`* (shove) [...]`), addressable via `-> opts`, `{shove}`, `stitch.label`, or `knot.label`. Unlike knots/stitches, labels are only ever looked up in the current file, never across other project files.
 - Ctrl+Click and autocompletion also cover `VAR`/`CONST`/`LIST` declarations, including a `LIST`'s individual items (e.g. `Adams` in `LIST DoctorsInSurgery = Adams, Bernard`), addressable bare or qualified as `DoctorsInSurgery.Adams` when two lists share an item name. Like labels, these are only ever looked up in the current file.
 - Ctrl+Click and autocompletion also cover `~ temp` declarations (e.g. `~ temp chain = LIST_ALL(x)`). A `temp`'s value only exists within the knot/stitch it was declared in, so — unlike `VAR`/`CONST`/`LIST` — a same-named `temp` declared elsewhere is never offered.
+- Syntax highlighting and a hover popup for the `ref` keyword in a knot/stitch/function's parameter list (e.g. `=== function move_to_supporter(ref item_state, new_supporter) ===`), explaining that it passes the parameter by reference so the callee can alter the caller's actual variable. Parameters themselves (`ref` or not) are now also covered by Ctrl+Click and autocompletion, scoped to the knot/stitch that declares them — same as a `~ temp`.
 
 ### Fixed
 

@@ -149,7 +149,7 @@ export function knotDefinitionProvider(): DefinitionProvider {
             const beforeWord = line.substring(0, range.start.character);
             const currentPath = path.resolve(document.uri.fsPath);
 
-            const results: { filePath: string; line: number }[] = [];
+            const results: { filePath: string; line: number; column: number }[] = [];
 
             if (isKnotReferenceContext(document, position, line, beforeWord)) {
                 const fullName = resolveReferencedName(line, beforeWord, word);
@@ -167,7 +167,7 @@ export function knotDefinitionProvider(): DefinitionProvider {
                 const variableDefinitions = extractVariableDefinitions(content);
                 const scope = getEnclosingKnotStitch(content, position.line);
                 for (const def of findVariableDefinitionsByName(variableDefinitions, variableName, scope)) {
-                    results.push({ filePath: document.uri.fsPath, line: def.line });
+                    results.push({ filePath: document.uri.fsPath, line: def.line, column: def.column });
                 }
             }
 
@@ -179,8 +179,8 @@ export function knotDefinitionProvider(): DefinitionProvider {
             const links: LocationLink[] = definitions.map((def) => ({
                 originSelectionRange: range,
                 targetUri: Uri.file(def.filePath),
-                targetRange: new Range(def.line, 0, def.line, 0),
-                targetSelectionRange: new Range(def.line, 0, def.line, 0),
+                targetRange: new Range(def.line, def.column, def.line, def.column),
+                targetSelectionRange: new Range(def.line, def.column, def.line, def.column),
             }));
             return links;
         },
@@ -244,6 +244,7 @@ function variableCompletionItemKind(def: VariableDefinition): CompletionItemKind
     switch (def.kind) {
         case "VAR":
         case "TEMP":
+        case "PARAM":
             return CompletionItemKind.Variable;
         case "CONST":
             return CompletionItemKind.Constant;
@@ -255,15 +256,17 @@ function variableCompletionItemKind(def: VariableDefinition): CompletionItemKind
 }
 
 /**
- * Builds the completion item for a declared VAR/CONST/LIST/temp symbol (or
- * one of a LIST's own items). Always in the current file, so — like a label
- * suggestion — it never needs registerInsertIncludeCommand's auto-INCLUDE.
+ * Builds the completion item for a declared VAR/CONST/LIST/temp/parameter
+ * symbol (or one of a LIST's own items). Always in the current file, so —
+ * like a label suggestion — it never needs registerInsertIncludeCommand's
+ * auto-INCLUDE.
  */
 function variableCompletionItem(def: VariableDefinition, range: Range): CompletionItem {
     const item = new CompletionItem(def.name, variableCompletionItemKind(def));
     item.insertText = def.name;
     item.range = range;
-    item.detail = def.listName ?? (def.stitchName ? `${def.knotName}.${def.stitchName}` : def.knotName);
+    const scopeDetail = def.stitchName ? `${def.knotName}.${def.stitchName}` : def.knotName;
+    item.detail = def.listName ?? (def.kind === "PARAM" && def.isRef ? `ref ${scopeDetail ?? ""}`.trim() : scopeDetail);
     return item;
 }
 
@@ -413,10 +416,10 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 if (itemItems.length) return itemItems;
             }
 
-            // Otherwise, suggest declared VAR/CONST/LIST/temp symbols (and
-            // every list's own items) when the position looks like it could
-            // reference one — a `~` logic line, inside `{ }`, or a VAR/CONST/
-            // LIST declaration's own value expression.
+            // Otherwise, suggest declared VAR/CONST/LIST/temp/parameter
+            // symbols (and every list's own items) when the position looks
+            // like it could reference one — a `~` logic line, inside `{ }`,
+            // or a VAR/CONST/LIST declaration's own value expression.
             if (!isVariableReferenceContext(document, position, line)) return undefined;
 
             const trailingIdentifierMatch = beforeCursor.match(TRAILING_IDENTIFIER_REGEX);
@@ -430,11 +433,12 @@ export function knotCompletionProvider(): CompletionItemProvider {
 
             const content = document.getText();
             const scope = getEnclosingKnotStitch(content, position.line);
+            const isScoped = (kind: VariableDefinition["kind"]) => kind === "TEMP" || kind === "PARAM";
             return extractVariableDefinitions(content)
                 .filter(
                     (def) =>
                         def.name.toLowerCase().startsWith(typedPrefix.toLowerCase()) &&
-                        (def.kind !== "TEMP" || (def.knotName === scope.knotName && def.stitchName === scope.stitchName)),
+                        (!isScoped(def.kind) || (def.knotName === scope.knotName && def.stitchName === scope.stitchName)),
                 )
                 .map((def) => variableCompletionItem(def, range));
         },
