@@ -147,8 +147,18 @@
           "patterns": [
             {
               "name": "entity.name.function.ink",
-              "begin": "\\(",
-              "end": "\\)",
+              "begin": "(\\()",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
+              "end": "(\\))",
+              "endCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
               "patterns": [
                 {
                   "name": "entity.name.function.ink",
@@ -169,8 +179,18 @@
           "patterns": [
             {
               "name": "entity.name.function.ink",
-              "begin": "\\(",
-              "end": "\\)",
+              "begin": "(\\()",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
+              "end": "(\\))",
+              "endCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
               "patterns": [
                 {
                   "name": "entity.name.function.ink",
@@ -231,8 +251,18 @@
         },
         {
           "name": "meta.function.divert.call.ink",
-          "begin": "(?<=(?:^|[^\\\\])->\\s*[a-zA-Z0-9_]+)\\s*\\(",
-          "end": "\\)",
+          "begin": "(?<=(?:^|[^\\\\])->\\s*[a-zA-Z0-9_]+)\\s*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.operator.round.ink"
+            }
+          },
+          "end": "(\\))",
+          "endCaptures": {
+            "1": {
+              "name": "keyword.other.operator.round.ink"
+            }
+          },
           "patterns": [
             {
               "include": "#knots"
@@ -244,8 +274,18 @@
         },
         {
           "name": "meta.function.thread.call.ink",
-          "begin": "(?<=(?:^|[^\\\\])<-\\s*[a-zA-Z0-9_]+)\\s*\\(",
-          "end": "\\)",
+          "begin": "(?<=(?:^|[^\\\\])<-\\s*[a-zA-Z0-9_]+)\\s*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.operator.round.ink"
+            }
+          },
+          "end": "(\\))",
+          "endCaptures": {
+            "1": {
+              "name": "keyword.other.operator.round.ink"
+            }
+          },
           "patterns": [
             {
               "include": "#knots"
@@ -280,8 +320,18 @@
             },
             {
               "name": "meta.function.parameters.ink",
-              "begin": "\\(",
-              "end": "\\)",
+              "begin": "(\\()",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
+              "end": "(\\))",
+              "endCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
               "patterns": [
                 {
                   "name": "keyword.other.ref.ink",
@@ -326,8 +376,18 @@
             },
             {
               "name": "meta.function.parameters.ink",
-              "begin": "\\(",
-              "end": "\\)",
+              "begin": "(\\()",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
+              "end": "(\\))",
+              "endCaptures": {
+                "1": {
+                  "name": "keyword.other.operator.round.ink"
+                }
+              },
               "patterns": [
                 {
                   "name": "keyword.other.ref.ink",
@@ -585,6 +645,12 @@
                   "include": "#conditionalText"
                 },
                 {
+                  "include": "#variableText"
+                },
+                {
+                  "include": "#printingVariables"
+                },
+                {
                   "include": "#glue"
                 },
                 {
@@ -645,6 +711,21 @@
                   "include": "#knots"
                 },
                 {
+                  "include": "#conditionalBlocks"
+                },
+                {
+                  "include": "#conditionalChoices"
+                },
+                {
+                  "include": "#conditionalText"
+                },
+                {
+                  "include": "#variableText"
+                },
+                {
+                  "include": "#printingVariables"
+                },
+                {
                   "include": "#glue"
                 },
                 {
@@ -667,6 +748,21 @@
                 },
                 {
                   "include": "#knots"
+                },
+                {
+                  "include": "#conditionalBlocks"
+                },
+                {
+                  "include": "#conditionalChoices"
+                },
+                {
+                  "include": "#conditionalText"
+                },
+                {
+                  "include": "#variableText"
+                },
+                {
+                  "include": "#printingVariables"
                 },
                 {
                   "include": "#glue"
@@ -779,6 +875,10 @@
           "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()"
         },
         {
+          "name": "keyword.other.operator.round.ink",
+          "match": "[()]"
+        },
+        {
           "name": "variable.other.constant.ink",
           "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
         }
@@ -840,7 +940,7 @@
       "patterns": [
         {
           "name": "meta.tilde.logic.ink",
-          "begin": "~",
+          "begin": "(?<=^\\s*)~",
           "beginCaptures": {
             "0": {
               "name": "keyword.other.tilde.ink"
