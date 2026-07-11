@@ -8,5 +8,6 @@
     "ink.rootFolder.description": "Root folder containing .ink files to be loaded. If empty, no root folder is defined.",
     "ink.port.description": "Port used by the engine for localhost connections.",
     "ink.preview.title": "Preview of the current file",
-    "ink.runProject.title": "Run the ink project"
+    "ink.runProject.title": "Run the ink project",
+    "ink.runFromKnot.title": "Run the ink project from this knot"
 }

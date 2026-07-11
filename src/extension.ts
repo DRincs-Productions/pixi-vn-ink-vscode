@@ -38,8 +38,9 @@ import {
     isTunnelReturnArrow,
 } from "./utils/divert-context";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
+import { knotRunCodeLensProvider } from "./utils/knot-codelens";
 import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
-import { previewCommand, runProjectCommand } from "./webview";
+import { previewCommand, runFromKnotCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
 export {
@@ -237,6 +238,7 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(previewCommand(context));
     context.subscriptions.push(runProjectCommand(context));
+    context.subscriptions.push(runFromKnotCommand(context));
 
     // Emitter used to tell VS Code to re-compute semantic tokens when the engine setting changes
     const onDidChangeSemanticTokensEmitter = new EventEmitter<void>();
@@ -410,6 +412,10 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         languages.registerFoldingRangeProvider({ language: "ink" }, inkFoldingRangeProvider()),
     );
+
+    // "Run from here" CodeLens above each top-level knot: opens the preview with a
+    // temporary `-> knot` divert prepended, without touching the file on disk
+    context.subscriptions.push(languages.registerCodeLensProvider({ language: "ink" }, knotRunCodeLensProvider()));
 
     // Suggestions include
     const includeSuggestionsProvider = suggestionsInclude();

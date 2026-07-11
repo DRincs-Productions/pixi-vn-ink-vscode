@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "Корневая папка, содержащая файлы .ink для загрузки. Если оставить пустым, корневая папка не задана.",
   "ink.port.description": "Порт, используемый движком для подключений к localhost.",
   "ink.preview.title": "Предпросмотр текущего файла",
-  "ink.runProject.title": "Запустить проект ink"
+  "ink.runProject.title": "Запустить проект ink",
+  "ink.runFromKnot.title": "Запустить проект ink с этого knot"
 }

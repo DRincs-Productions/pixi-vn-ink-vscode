@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "Stammordner, der die zu ladenden .ink-Dateien enthält. Wenn leer, ist kein Stammordner definiert.",
   "ink.port.description": "Port, den die Engine für localhost-Verbindungen verwendet.",
   "ink.preview.title": "Vorschau der aktuellen Datei",
-  "ink.runProject.title": "Ink-Projekt ausführen"
+  "ink.runProject.title": "Ink-Projekt ausführen",
+  "ink.runFromKnot.title": "Ink-Projekt ab diesem knot ausführen"
 }

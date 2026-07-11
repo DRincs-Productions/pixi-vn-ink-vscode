@@ -115,6 +115,12 @@
         "title": "%ink.runProject.title%",
         "icon": "$(play)",
         "category": "Ink"
+      },
+      {
+        "command": "ink.runFromKnot",
+        "title": "%ink.runFromKnot.title%",
+        "icon": "$(play)",
+        "category": "Ink"
       }
     ],
     "menus": {
@@ -132,6 +138,12 @@
           "when": "config.ink.mainFile",
           "icon": "$(play)",
           "tooltip": "%ink.runProject.title%"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ink.runFromKnot",
+          "when": "false"
         }
       ]
     }

@@ -22,6 +22,26 @@ export function previewCommand(context: ExtensionContext) {
     });
 }
 
+export function runFromKnotCommand(context: ExtensionContext) {
+    return commands.registerCommand("ink.runFromKnot", async (uri: Uri, knotName: string) => {
+        const document =
+            workspace.textDocuments.find((doc) => doc.uri.toString() === uri.toString()) ??
+            (await workspace.openTextDocument(uri));
+
+        const rootFolderSetting = getInkRootFolder(document);
+        return await openWebview(
+            context,
+            rootFolderSetting,
+            {
+                name: path.basename(document.fileName),
+                text: document.getText(),
+                uri: document.uri,
+            },
+            knotName,
+        );
+    });
+}
+
 export function runProjectCommand(context: ExtensionContext) {
     return commands.registerCommand("ink.runProject", async () => {
         const config = workspace.getConfiguration("ink");
@@ -69,8 +89,13 @@ export async function openWebview(
         text: string;
         uri: Uri;
     },
+    // When set, a `-> entryKnot` divert is prepended to the compiled source
+    // (never written back to the file) so the preview starts from that knot
+    // instead of the top of the file. See `ink.runFromKnot`.
+    entryKnot?: string,
 ) {
     const { name, text, uri } = file;
+    const withEntryKnot = (source: string) => (entryKnot ? `-> ${entryKnot}\n${source}` : source);
 
     const config = workspace.getConfiguration("ink");
     const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
@@ -79,11 +104,11 @@ export async function openWebview(
     let compiled: string | undefined;
     try {
         if (engine === "pixi-vn") {
-            compiled = compilePixiVN(text, {
+            compiled = compilePixiVN(withEntryKnot(text), {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
             });
         } else {
-            compiled = compile(text, {
+            compiled = compile(withEntryKnot(text), {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
             }).ToJson();
         }
@@ -97,7 +122,7 @@ export async function openWebview(
     }
 
     // 🔹 Get the file name
-    const panelTitle = l10n.t("{0} (Preview)", name);
+    const panelTitle = entryKnot ? l10n.t("{0} (Preview from {1})", name, entryKnot) : l10n.t("{0} (Preview)", name);
 
     // Open webview ONLY if there are no errors
     const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
@@ -157,11 +182,11 @@ export async function openWebview(
                 const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
                 let updatedCompiled: string | undefined;
                 if (engine === "pixi-vn") {
-                    updatedCompiled = compilePixiVN(newText, {
+                    updatedCompiled = compilePixiVN(withEntryKnot(newText), {
                         LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
                     });
                 } else {
-                    updatedCompiled = compile(newText, {
+                    updatedCompiled = compile(withEntryKnot(newText), {
                         LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
                     }).ToJson();
                 }
