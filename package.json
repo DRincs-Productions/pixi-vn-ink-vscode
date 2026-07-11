@@ -2,7 +2,7 @@
   "name": "pixi-vn-ink-vscode",
   "displayName": "%ink.displayName%",
   "description": "%ink.description%",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "l10n": "./l10n",
   "repository": {
     "type": "git",
