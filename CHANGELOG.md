@@ -8,6 +8,28 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
 ### Added
 
+- Ctrl+Click (Go to Definition) on a knot/stitch reference — a divert (`-> knot`), thread (`<- knot`), tunnel call, divert target value, or a knot/stitch name inside `{ }` — jumps to where it's defined, searching every `.ink` file under `ink.rootFolder` (or the whole workspace if that setting is empty), not just the current file. If more than one knot/stitch shares the same name across files, all of them are offered instead of picking one arbitrarily.
+- Autocompletion for knot/stitch names right after a divert (`->`) or thread (`<-`) arrow (including `->-> destination`), and for a specific knot's own stitches after typing `-> knot.`. When the accepted suggestion lives in a different file than the one being edited, an `INCLUDE` for that file is inserted automatically — this only happens for the `Inky` engine, since `pixi-vn` compiles each file independently and doesn't resolve `INCLUDE` at all.
+- Ctrl+Click and autocompletion also cover labels — a labelled gather (`- (opts)`) or labelled choice (`* (shove) [...]`), addressable via `-> opts`, `{shove}`, `stitch.label`, or `knot.label`. Unlike knots/stitches, labels are only ever looked up in the current file, never across other project files.
+- Ctrl+Click and autocompletion also cover `VAR`/`CONST`/`LIST` declarations, including a `LIST`'s individual items (e.g. `Adams` in `LIST DoctorsInSurgery = Adams, Bernard`), addressable bare or qualified as `DoctorsInSurgery.Adams` when two lists share an item name. Like labels, these are only ever looked up in the current file.
+- Ctrl+Click and autocompletion also cover `~ temp` declarations (e.g. `~ temp chain = LIST_ALL(x)`). A `temp`'s value only exists within the knot/stitch it was declared in, so — unlike `VAR`/`CONST`/`LIST` — a same-named `temp` declared elsewhere is never offered.
+- Syntax highlighting and a hover popup for the `ref` keyword in a knot/stitch/function's parameter list (e.g. `=== function move_to_supporter(ref item_state, new_supporter) ===`), explaining that it passes the parameter by reference so the callee can alter the caller's actual variable. Parameters themselves (`ref` or not) are now also covered by Ctrl+Click and autocompletion, scoped to the knot/stitch that declares them — same as a `~ temp`.
+
+### Fixed
+
+- A knot/label/variable reference inside a `{ }` block whose opening brace sits alone on its own line (e.g. a `{` followed on the next line by `bedroomLightState ? seen:`) is now correctly recognized as being inside `{ }` for Ctrl+Click and hover purposes — previously only the current line's own braces were counted, so anything after the first line of such a block silently stopped being clickable.
+- Ctrl+Click on a knot/stitch/label/variable/INCLUDE reference now only underlines the exact word (e.g. just `compare_prints` and `top` in `<- compare_prints(-> top)`) instead of the whole line — ink's `language-configuration.json` intentionally sets a very permissive `wordPattern` for double-click word selection, but that same pattern was also being used as the Ctrl+hover underline range.
+
+## [0.5.8] - 2026-07-11
+
+### Added
+
+- Localization of hover documentation and UI messages into German, Spanish, French, Italian, Japanese, Korean, Russian, and Chinese (Simplified), alongside the existing English strings.
+
+## [0.5.7] - 2026-07-09
+
+### Added
+
 - Hover documentation for ink's built-in "game query" functions: `CHOICE_COUNT()`, `TURNS()`, `TURNS_SINCE()`, `SEED_RANDOM()`, `RANDOM()`, `INT()`, `FLOOR()`, `FLOAT()`, `POW()`, `LIST_VALUE()`, `LIST_COUNT()`, `LIST_MIN()`, `LIST_MAX()`, `LIST_RANDOM()`, `LIST_ALL()`, `LIST_RANGE()`, and `LIST_INVERT()`. Hovering over a call to one of these functions (e.g. `~ SEED_RANDOM(235)` or `{RANDOM(1, 6)}`) shows a short description and an example, taken from the [official ink documentation](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md).
 - New example `examples/game_queries_and_functions.ink` showing all of the above functions in use.
 - When the `pixi-vn` engine is selected, calls to `CHOICE_COUNT()`, `TURNS()`, `TURNS_SINCE()`, `SEED_RANDOM()`, `LIST_RANDOM()`, `LIST_COUNT()`, `LIST_INVERT()`, `LIST_ALL()`, `LIST_RANGE()`, `LIST_MIN()`, `LIST_MAX()`, and `LIST_VALUE()` are now underlined with a yellow warning (like any other diagnostic), explaining that the function isn't implemented by `pixi-vn` yet, with a link to request it. Switching the `ink.engine` setting updates the warnings immediately on all open files. The hover popup for these functions is unaffected by the engine setting.
@@ -27,11 +49,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Fixed
 
 - The `-` that introduces a branch of a `{ }` conditional or switch block (e.g. `- else:`, `- 0: zero`) no longer shows the unrelated "Gather" hover popup, and no longer shows nothing at all when written right after the opening brace (e.g. `{ - x > 0:`).
-- Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on snake_case identifiers containing an underscore (e.g. two `visit_paris` on the same line no longer italicizes everything in between); a single `_` is only treated as emphasis when it isn't sandwiched between two word characters, matching CommonMark's rule for intraword underscores.
+- Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on snake*case identifiers containing an underscore (e.g. two `visit_paris` on the same line no longer italicizes everything in between); a single `*` is only treated as emphasis when it isn't sandwiched between two word characters, matching CommonMark's rule for intraword underscores.
 - Choice brackets `[` `]` are now coloured even when the choice has a label before them (e.g. `*\t(rock) [Throw rock at guard] -> throw`) — previously the label caused the rest of the line, including the brackets, to be left uncoloured. The label itself is now also coloured with the same scope as a regular choice bullet instead of a gather.
 - An escaped divert/thread arrow (`\->`, `\<-`) is no longer coloured or treated as a real divert/thread — it's literal text, so it no longer shows the Divert/END/DONE hover popup or the knot-comment popup for the word after it.
 - Code folding no longer reveals a divert that's only the action of one specific choice (e.g. `-> fight_guard` nested under `*\t(get_out) [Shove him aside]`) as if it were the whole knot's exit point — it's now only kept visible when it sits at the same indentation as its own paragraph, matching a statement every path through the knot could actually reach.
-- Folding a knot/stitch with no such exit divert now collapses its *entire* body instead of only its first paragraph — previously, any paragraphs after the first stayed fully expanded even when collapsed. A trailing `/** ... */` comment that documents the *next* knot is still left visible rather than folded away with the previous one.
+- Folding a knot/stitch with no such exit divert now collapses its _entire_ body instead of only its first paragraph — previously, any paragraphs after the first stayed fully expanded even when collapsed. A trailing `/** ... */` comment that documents the _next_ knot is still left visible rather than folded away with the previous one.
 - Folding a `function` no longer reveals a trailing `-> DONE` or `-> END` as if it were the function's exit point — those don't describe how a function actually returns (that's what `~ return` is for), so they're now folded away with the rest of the body, all the way to the next knot/stitch/function. A function diverting to a knot/stitch still gets that divert revealed, same as a knot would.
 - Hovering the stitch half of a dotted divert target (e.g. `in_first_class` in `-> the_orient_express.in_first_class`) now shows its knot-comment popup — previously only hovering the knot half (`the_orient_express`) worked.
 - A divert or thread written inside conditional text (e.g. `{ x: <- seen_light }` or `{ x: -> knot }`) is now coloured and gets its hover popup like anywhere else — previously it was left as plain, unrecognized text because that context's grammar rule didn't include the divert/thread patterns at all.

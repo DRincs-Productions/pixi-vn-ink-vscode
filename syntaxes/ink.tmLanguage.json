@@ -284,6 +284,10 @@
               "end": "\\)",
               "patterns": [
                 {
+                  "name": "keyword.other.ref.ink",
+                  "match": "\\bref\\b"
+                },
+                {
                   "include": "#knots"
                 },
                 {
@@ -325,6 +329,10 @@
               "begin": "\\(",
               "end": "\\)",
               "patterns": [
+                {
+                  "name": "keyword.other.ref.ink",
+                  "match": "\\bref\\b"
+                },
                 {
                   "include": "#knots"
                 },

@@ -25,6 +25,7 @@ import {
 	isPrecededByUnescapedDivertToKnot,
 	isPrecededByUnescapedThread,
 	isPrecededByUnescapedThreadToKnot,
+	isRefParameterContext,
 	isTildeLogicContext,
 	isTunnelReturnArrow,
 	isVariableTextTypeSpecifier,
@@ -35,6 +36,15 @@ import {
 	findPixiVnUnimplementedFunctionCalls,
 	isBuiltinFunctionCallContext,
 } from '../utils/builtin-functions';
+import {
+	computeIncludeInsertion,
+	extractKnotDefinitions,
+	extractLabelDefinitions,
+	findKnotDefinitionsByName,
+	findLabelDefinitionsByName,
+	getEnclosingKnotStitch,
+} from '../utils/knot-definitions';
+import { extractVariableDefinitions, findVariableDefinitionsByName } from '../utils/variable-definitions';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -847,5 +857,372 @@ suite('Extension Test Suite', () => {
 			!divertLineTokens.some((t) => t.scopes.includes('meta.multiline.block.ink')),
 			'both the cycle block and its parent stopping block should have closed by this point',
 		);
+	});
+
+	test('extractKnotDefinitions: finds top-level knots, nested stitches, and functions', () => {
+		const content = [
+			'=== knot_one ===',
+			'Text.',
+			'= stitch_a',
+			'More text.',
+			'-> DONE',
+			'',
+			'=== function knot_two(x) ===',
+			'~ return x',
+		].join('\n');
+
+		const defs = extractKnotDefinitions('/proj/a.ink', content);
+
+		assert.deepStrictEqual(
+			defs.map((d) => d.fullName),
+			['knot_one', 'knot_one.stitch_a', 'knot_two'],
+		);
+		assert.strictEqual(defs[0].line, 0);
+		assert.strictEqual(defs[0].stitchName, undefined);
+		assert.strictEqual(defs[0].column, 4, 'points at "knot_one" itself, right after "=== "');
+		assert.strictEqual(defs[1].knotName, 'knot_one');
+		assert.strictEqual(defs[1].line, 2);
+		assert.strictEqual(defs[1].column, 2, 'points at "stitch_a", right after "= "');
+		assert.strictEqual(defs[2].isFunction, true, 'a === function name === header is a function knot');
+		assert.strictEqual(defs[2].column, 13, 'points at "knot_two", right after "=== function "');
+	});
+
+	test('findKnotDefinitionsByName: proposes every knot sharing a name across files', () => {
+		const defsA = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '-> DONE'].join('\n'),
+		);
+		const defsB = extractKnotDefinitions(
+			'/proj/b.ink',
+			['== knot_one ==', '-> END'].join('\n'),
+		);
+		const all = [...defsA, ...defsB];
+
+		const matches = findKnotDefinitionsByName(all, 'knot_one');
+
+		assert.strictEqual(matches.length, 2, 'two files each define knot_one, both should be proposed');
+		assert.deepStrictEqual(
+			matches.map((d) => d.filePath).sort(),
+			['/proj/a.ink', '/proj/b.ink'],
+		);
+	});
+
+	test('findKnotDefinitionsByName: a dotted knot.stitch name only matches that exact stitch', () => {
+		const defs = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '= stitch_a', '-> DONE', '', '=== knot_two ===', '= stitch_a', '-> DONE'].join('\n'),
+		);
+
+		const matches = findKnotDefinitionsByName(defs, 'knot_one.stitch_a');
+
+		assert.strictEqual(matches.length, 1);
+		assert.strictEqual(matches[0].knotName, 'knot_one');
+	});
+
+	test('findKnotDefinitionsByName: an unqualified name also matches a stitch with that plain name', () => {
+		const defs = extractKnotDefinitions(
+			'/proj/a.ink',
+			['=== knot_one ===', '= stitch_a', '-> DONE'].join('\n'),
+		);
+
+		const matches = findKnotDefinitionsByName(defs, 'stitch_a');
+
+		assert.strictEqual(matches.length, 1);
+		assert.strictEqual(matches[0].fullName, 'knot_one.stitch_a');
+	});
+
+	test('computeIncludeInsertion: adds alongside existing includes at the top, keeping the blank line after them', () => {
+		const lines = ['INCLUDE a.ink', 'INCLUDE b.ink', '', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'c.ink');
+
+		assert.strictEqual(line, 2, 'inserted right after the last existing include, before the blank line');
+		assert.strictEqual(text, 'INCLUDE c.ink\n');
+	});
+
+	test('computeIncludeInsertion: adds a missing blank line after the include block when there wasn\'t one', () => {
+		const lines = ['INCLUDE a.ink', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'b.ink');
+
+		assert.strictEqual(line, 1);
+		assert.strictEqual(text, 'INCLUDE b.ink\n\n', 'a blank line is added since the original file had none');
+	});
+
+	test('computeIncludeInsertion: inserts at the very top when the file has no includes yet, with a trailing blank line', () => {
+		const lines = ['=== knot_one ===', 'Some text.'];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0);
+		assert.strictEqual(text, 'INCLUDE a.ink\n\n');
+	});
+
+	test('computeIncludeInsertion: does not add an extra blank line when the top of the file is already blank', () => {
+		const lines = ['', '=== knot_one ==='];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0);
+		assert.strictEqual(text, 'INCLUDE a.ink\n');
+	});
+
+	test('computeIncludeInsertion: ignores an INCLUDE that appears later in the file, not part of the leading block', () => {
+		const lines = ['=== knot_one ===', 'INCLUDE stray.ink'];
+
+		const { line, text } = computeIncludeInsertion(lines, 'a.ink');
+
+		assert.strictEqual(line, 0, 'the stray INCLUDE further down does not count as the leading block');
+		assert.strictEqual(text, 'INCLUDE a.ink\n\n');
+	});
+
+	test('extractLabelDefinitions: finds labelled gathers and choices, distinct from plain ones', () => {
+		const content = [
+			'=== fight ===',
+			'- (opts)',
+			'*	[Pull a face]',
+			'	You pull a face, and the soldier comes at you! -> shove',
+			'',
+			'*	(shove) [Shove the guard aside] You shove the guard to one side, but he comes back swinging.',
+			'',
+			'*	{shove} [Grapple and fight] -> fight_the_guard',
+			'-	-> opts',
+		].join('\n');
+
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.deepStrictEqual(
+			defs.map((d) => d.labelName),
+			['opts', 'shove'],
+			'only the labelled gather/choice are found, not the plain "* [Pull a face]" or "-\t-> opts"',
+		);
+		assert.strictEqual(defs[0].knotName, 'fight');
+		assert.strictEqual(defs[0].stitchName, undefined);
+		assert.deepStrictEqual(defs[0].fullNames, ['opts', 'fight.opts']);
+		assert.strictEqual(defs[0].column, 3, 'points at "opts" itself, right after "- ("');
+		assert.strictEqual(defs[1].line, 5);
+		assert.strictEqual(defs[1].column, 3, 'points at "shove" itself, right after "*\\t("');
+	});
+
+	test('extractLabelDefinitions: a label nested in a stitch is addressable as stitch.label and knot.stitch.label', () => {
+		const content = ['=== knot ===', '= stitch_one', '\t- (gatherpoint) Some content.'].join('\n');
+
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.strictEqual(defs.length, 1);
+		assert.deepStrictEqual(defs[0].fullNames, ['gatherpoint', 'stitch_one.gatherpoint', 'knot.stitch_one.gatherpoint']);
+	});
+
+	test('findLabelDefinitionsByName: resolves a bare label within the same file, proposing every match', () => {
+		const content = ['=== fight ===', '- (opts)', '-\t-> opts', '', '=== another_knot ===', '- (opts)'].join('\n');
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		const matches = findLabelDefinitionsByName(defs, 'opts');
+
+		assert.strictEqual(matches.length, 2, 'two knots each label a gather "opts" — both are proposed');
+	});
+
+	test('findLabelDefinitionsByName: resolves a dotted stitch.label or knot.label path to just that one label', () => {
+		const content = ['=== knot ===', '= stitch_one', '\t- (gatherpoint) Some content.'].join('\n');
+		const defs = extractLabelDefinitions('/proj/a.ink', content);
+
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'stitch_one.gatherpoint').length, 1);
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.stitch_one.gatherpoint').length, 1);
+		assert.strictEqual(findLabelDefinitionsByName(defs, 'knot.gatherpoint').length, 0, 'wrong path does not match');
+	});
+
+	test('extractVariableDefinitions: finds VAR, CONST, and every LIST item (parens and explicit values stripped)', () => {
+		const content = [
+			'VAR knowledge_of_the_cure = false',
+			'VAR players_name = "Emilia"',
+			'CONST MAX_HEALTH = 100',
+			'LIST DoctorsInSurgery = Adams, Bernard, (Cartwright)',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+
+		assert.strictEqual(defs.length, 7, '2 VAR + 1 CONST + 1 LIST + 3 LIST_ITEM');
+		assert.strictEqual(defs[0].kind, 'VAR');
+		assert.strictEqual(defs[0].column, 4, 'points at the name itself, right after "VAR "');
+		assert.strictEqual(defs[2].kind, 'CONST');
+		assert.strictEqual(defs[2].column, 6, 'points at the name itself, right after "CONST "');
+		assert.strictEqual(defs[3].kind, 'LIST');
+		assert.strictEqual(defs[3].name, 'DoctorsInSurgery');
+		assert.strictEqual(defs[3].column, 5, 'points at the list name itself, right after "LIST "');
+		assert.deepStrictEqual(
+			defs.slice(4).map((d) => d.name),
+			['Adams', 'Bernard', 'Cartwright'],
+			'"(Cartwright)" is still a valid item name once the parens are stripped',
+		);
+		assert.deepStrictEqual(defs[4].fullNames, ['Adams', 'DoctorsInSurgery.Adams']);
+		assert.deepStrictEqual(
+			defs.slice(4).map((d) => d.column),
+			[24, 31, 41],
+			'each item points at its own name, not the parenthesis or a shared offset',
+		);
+	});
+
+	test('extractVariableDefinitions: strips an explicit item value (e.g. "Alive = 1") down to just the name', () => {
+		const defs = extractVariableDefinitions('LIST Status = Alive = 1, Dead');
+
+		assert.deepStrictEqual(
+			defs.filter((d) => d.kind === 'LIST_ITEM').map((d) => d.name),
+			['Alive', 'Dead'],
+		);
+	});
+
+	test('findVariableDefinitionsByName: resolves bare and dotted list.item references', () => {
+		const defs = extractVariableDefinitions('LIST DoctorsInSurgery = Adams, Bernard, (Cartwright)');
+
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'Adams').length, 1);
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'DoctorsInSurgery.Adams').length, 1);
+		assert.strictEqual(findVariableDefinitionsByName(defs, 'DoctorsInSurgery.Nope').length, 0);
+	});
+
+	test('findVariableDefinitionsByName: an item name shared by two lists proposes both', () => {
+		const defs = extractVariableDefinitions(['LIST A = shared, x', 'LIST B = shared, y'].join('\n'));
+
+		const matches = findVariableDefinitionsByName(defs, 'shared');
+
+		assert.strictEqual(matches.length, 2, 'both lists declare an item called "shared"');
+	});
+
+	test('extractVariableDefinitions: finds ~ temp declarations, scoped to their enclosing knot', () => {
+		const content = [
+			'== start',
+			'      ~ temp chain = LIST_ALL(x)',
+			'      ~ temp statesGained = LIST_RANGE(chain, LIST_MIN(chain), x)',
+			'      ~ knowledgeState += statesGained',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+		const temps = defs.filter((d) => d.kind === 'TEMP');
+
+		assert.deepStrictEqual(
+			temps.map((d) => d.name),
+			['chain', 'statesGained'],
+		);
+		assert.strictEqual(temps[0].knotName, 'start');
+		assert.strictEqual(temps[0].stitchName, undefined);
+		assert.strictEqual(temps[0].line, 1);
+		assert.strictEqual(temps[0].column, 13, 'points at "chain" itself, right after "~ temp "');
+	});
+
+	test('findVariableDefinitionsByName: a temp only resolves within the knot/stitch it was declared in', () => {
+		const content = [
+			'== start',
+			'      ~ temp chain = 1',
+			'== other_knot',
+			'      ~ temp chain = 2',
+		].join('\n');
+		const defs = extractVariableDefinitions(content);
+
+		const inStart = findVariableDefinitionsByName(defs, 'chain', { knotName: 'start' });
+		assert.strictEqual(inStart.length, 1);
+		assert.strictEqual(inStart[0].line, 1, 'resolves to the temp declared in the same knot');
+
+		const inOther = findVariableDefinitionsByName(defs, 'chain', { knotName: 'other_knot' });
+		assert.strictEqual(inOther.length, 1);
+		assert.strictEqual(inOther[0].line, 3, 'a same-named temp in a different knot resolves to its own, not the first one');
+
+		const noScope = findVariableDefinitionsByName(defs, 'chain');
+		assert.strictEqual(noScope.length, 0, 'without a matching scope, an out-of-scope temp never matches');
+	});
+
+	test('getEnclosingKnotStitch: finds the nearest knot/stitch header at or before a line', () => {
+		const content = ['== knot_one', '= stitch_one', 'Text.', '== knot_two', 'Text.'].join('\n');
+
+		assert.deepStrictEqual(getEnclosingKnotStitch(content, 2), { knotName: 'knot_one', stitchName: 'stitch_one' });
+		assert.deepStrictEqual(getEnclosingKnotStitch(content, 4), { knotName: 'knot_two', stitchName: undefined });
+	});
+
+	test('extractVariableDefinitions: finds parameters in a knot/function header, including a leading ref', () => {
+		const content = [
+			'=== function move_to_supporter(ref item_state, new_supporter) ===',
+			'    ~ item_state -= LIST_ALL(Supporters)',
+			'    ~ item_state += new_supporter',
+		].join('\n');
+
+		const defs = extractVariableDefinitions(content);
+		const params = defs.filter((d) => d.kind === 'PARAM');
+
+		assert.deepStrictEqual(
+			params.map((p) => p.name),
+			['item_state', 'new_supporter'],
+		);
+		assert.strictEqual(params[0].isRef, true, 'item_state is declared with a leading ref');
+		assert.strictEqual(params[1].isRef, false, 'new_supporter has no ref');
+		assert.strictEqual(params[0].column, 35, 'points at "item_state" itself, past the leading "ref "');
+		assert.strictEqual(params[1].column, 47, 'points at "new_supporter" itself');
+		assert.strictEqual(params[0].knotName, 'move_to_supporter');
+		assert.strictEqual(params[0].line, 0, 'a parameter is defined on its header line');
+	});
+
+	test('findVariableDefinitionsByName: a parameter only resolves within its own knot/stitch', () => {
+		const content = ['=== knot_one(x) ===', '    ~ y = x', '=== knot_two(x) ===', '    ~ z = x'].join('\n');
+		const defs = extractVariableDefinitions(content);
+
+		const inKnotOne = findVariableDefinitionsByName(defs, 'x', { knotName: 'knot_one' });
+		assert.strictEqual(inKnotOne.length, 1);
+		assert.strictEqual(inKnotOne[0].line, 0);
+
+		const inKnotTwo = findVariableDefinitionsByName(defs, 'x', { knotName: 'knot_two' });
+		assert.strictEqual(inKnotTwo.length, 1);
+		assert.strictEqual(inKnotTwo[0].line, 2, 'resolves to its own knot\'s parameter, not the other one');
+	});
+
+	test('isRefParameterContext: true only for ref right after ( or , on a knot/function header line', () => {
+		assert.strictEqual(
+			isRefParameterContext('=== function move_to_supporter(ref item_state, new_supporter) ===', 32),
+			true,
+			'ref right after the opening (',
+		);
+		assert.strictEqual(
+			isRefParameterContext('== cook_with(nameOfThing, ref thingToBoil) ==', 27),
+			true,
+			'ref right after a comma',
+		);
+		assert.strictEqual(
+			isRefParameterContext('He handed her ref card, a document she needed.', 15),
+			false,
+			'plain narrative text, not a knot/function header line',
+		);
+		assert.strictEqual(
+			isRefParameterContext('=== knot_name ===', 4),
+			false,
+			'ref keyword requires ( or , right before it, not just any header line',
+		);
+	});
+
+	test('syntax grammar: ref in a parameter list gets its own scope, distinct from a plain parameter name', async () => {
+		const grammar = await createInkGrammar();
+		const lines = ['=== function move_to_supporter(ref item_state, new_supporter) ==='];
+		const tokens = tokenizeInkLines(grammar, lines)[0];
+
+		const refToken = tokens.find((t) => t.text === 'ref');
+		assert.ok(refToken, 'ref should be tokenized as its own token');
+		assert.ok(
+			refToken!.scopes.includes('keyword.other.ref.ink'),
+			'ref should get the keyword.other.ref.ink scope so it can be coloured distinctly',
+		);
+
+		const paramToken = tokens.find((t) => t.text === 'new_supporter');
+		assert.ok(paramToken, 'the plain parameter should still be tokenized');
+		assert.ok(
+			!paramToken!.scopes.includes('keyword.other.ref.ink'),
+			'a plain parameter name must not be mistaken for the ref keyword',
+		);
+	});
+
+	test('syntax grammar: an identifier containing "ref" as a substring is not mistaken for the ref keyword', async () => {
+		const grammar = await createInkGrammar();
+		const lines = ['=== knot_one(ref_count, preferences) ==='];
+		const tokens = tokenizeInkLines(grammar, lines)[0];
+
+		for (const name of ['ref_count', 'preferences']) {
+			const token = tokens.find((t) => t.text === name);
+			assert.ok(token, `${name} should be tokenized as its own token`);
+			assert.ok(!token!.scopes.includes('keyword.other.ref.ink'), `${name} must not match the ref keyword`);
+		}
 	});
 });

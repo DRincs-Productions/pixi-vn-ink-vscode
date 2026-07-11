@@ -23,10 +23,36 @@ import { inkFoldingRangeProvider } from "./folding";
 import { findMarkdownTokenRanges } from "./markdown";
 import { BUILTIN_FUNCTIONS, isBuiltinFunctionCallContext } from "./utils/builtin-functions";
 import { collectCommentAbove } from "./utils/comments";
+import {
+    escapeRegExp,
+    getTunnelCallLineDestination,
+    getTunnelReturnDestination,
+    getUncommentedSegments,
+    isDeclaredSymbolHoverContext,
+    isDivertTargetValueContext,
+    isEscaped,
+    isInsideCurlyBraceBlockAtLines,
+    isInsideVariableText,
+    isKnotReferenceContext,
+    isPrecededByUnescapedDivert,
+    isTunnelReturnArrow,
+} from "./utils/divert-context";
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
+import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
 import { previewCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
+export {
+    getTunnelCallLineDestination,
+    getTunnelReturnDestination,
+    isDivertTargetValueContext,
+    isInsideCurlyBraceBlockAtLines,
+    isPrecededByUnescapedDivert,
+    isPrecededByUnescapedDivertToKnot,
+    isPrecededByUnescapedThread,
+    isPrecededByUnescapedThreadToKnot,
+    isTunnelReturnArrow,
+} from "./utils/divert-context";
 
 // Legend for the pixi-vn bracket semantic tokens (uses the built-in "keyword" type so it
 // shares the theme colour already used by choice brackets in the TextMate grammar).
@@ -46,6 +72,12 @@ export const DECLARATION_KEYWORD_DOCS: Record<string, string> = {
         "**LIST**: Declares a list — an enumeration of named values that double as on/off flags (a *set*). List variables can be tested, combined, and compared much like mathematical sets, and can also be used as simple state machines.\n\nExample:\n```ink\nLIST DoctorsInSurgery = Adams, Bernard, (Cartwright)\n```",
     ),
 };
+
+// Hover text for the `ref` keyword in a knot/stitch/function's parameter list,
+// documented in https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md
+const REF_PARAMETER_DOC = l10n.t(
+    "**Parameter passed by reference (`ref`)**: Written immediately before a parameter's name, it lets the knot/stitch/function alter the caller's actual variable directly, instead of receiving a temporary copy of its value.\n\nExample:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```",
+);
 
 // Hover text for the `->` divert arrow (and its `->->` tunnel-return form), keyed by
 // the role a specific arrow plays — see getDivertArrowHoverKind. Documented in
@@ -110,42 +142,6 @@ const PIXI_VN_THREAD_DOC = l10n.t(
 
 export function getThreadDoc(engine: "Inky" | "pixi-vn"): string {
     return engine === "pixi-vn" ? PIXI_VN_THREAD_DOC : THREAD_DOC;
-}
-
-// A `->` immediately adjacent (no space) to another `->` is one half of a `->->`
-// tunnel-return statement, not a plain divert arrow.
-export function isTunnelReturnArrow(line: string, arrowStart: number): boolean {
-    return (
-        line.substring(arrowStart, arrowStart + 4) === "->->" ||
-        (arrowStart >= 2 && line.substring(arrowStart - 2, arrowStart) === "->")
-    );
-}
-
-// Given that `arrowStart` is one half of a `->->` pair (isTunnelReturnArrow is true),
-// returns the destination name written right after it, e.g. `youre_dead` in
-// `->-> youre_dead` — this is a *different* statement from a bare `->->`: it leaves
-// the tunnel for that destination instead of resuming at the original call site.
-export function getTunnelReturnDestination(line: string, arrowStart: number): string | undefined {
-    const pairEnd = line.substring(arrowStart, arrowStart + 4) === "->->" ? arrowStart + 4 : arrowStart + 2;
-    return line.substring(pairEnd).match(/^\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?)/)?.[1];
-}
-
-// A `->` is used as a value rather than executed when it's a function/knot argument
-// (preceded by `(` or `,`) or the right-hand side of an assignment/comparison
-// (preceded by `=`), e.g. `Foo(-> knot)` or `VAR x = -> knot`.
-export function isDivertTargetValueContext(beforeArrow: string): boolean {
-    return /[(,=]\s*$/.test(beforeArrow);
-}
-
-// A tunnel call written on one line: `-> knot ->` or `-> knot -> destination`,
-// optionally with a parameter list and/or a trailing comment.
-const TUNNEL_CALL_LINE_REGEX =
-    /^\s*->\s*[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?\s*(?:\([^()]*\))?\s*->\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?)?\s*(?:\/\/.*)?$/;
-
-export function getTunnelCallLineDestination(line: string): { isTunnelCallLine: boolean; destination?: string } {
-    const match = line.match(TUNNEL_CALL_LINE_REGEX);
-    if (!match) return { isTunnelCallLine: false };
-    return { isTunnelCallLine: true, destination: match[1] };
 }
 
 /**
@@ -407,6 +403,9 @@ export function activate(context: ExtensionContext) {
     const includeProvider = includeCtrlClick();
     context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, includeProvider));
 
+    // CTRL+CLICK support for knot/stitch references (diverts, threads, divert targets, {knot} conditions, …)
+    context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, knotDefinitionProvider()));
+
     // Folding for knot/stitch/function headers, keeping trailing exit diverts visible
     context.subscriptions.push(
         languages.registerFoldingRangeProvider({ language: "ink" }, inkFoldingRangeProvider()),
@@ -416,6 +415,14 @@ export function activate(context: ExtensionContext) {
     const includeSuggestionsProvider = suggestionsInclude();
     context.subscriptions.push(
         languages.registerCompletionItemProvider({ language: "ink" }, includeSuggestionsProvider, " "),
+    );
+
+    // Suggestions for knot/stitch names right after a divert (->) or thread (<-) arrow,
+    // and for a knot's own stitches after `-> knot.`. Accepting a suggestion for a
+    // knot/stitch defined in another file also inserts an INCLUDE for it.
+    context.subscriptions.push(registerInsertIncludeCommand());
+    context.subscriptions.push(
+        languages.registerCompletionItemProvider({ language: "ink" }, knotCompletionProvider(), "-", ">", ".", " "),
     );
 
     context.subscriptions.push(
@@ -495,6 +502,12 @@ export function activate(context: ExtensionContext) {
                 // word actually opens the declaration line (not a coincidental match).
                 if (word in DECLARATION_KEYWORD_DOCS && range && isDeclarationKeywordContext(line, range.start.character)) {
                     return new Hover(new MarkdownString(DECLARATION_KEYWORD_DOCS[word]));
+                }
+
+                // Hover for the `ref` by-reference-parameter keyword, only inside a
+                // knot/stitch/function's own parameter list.
+                if (word === "ref" && range && isRefParameterContext(line, range.start.character)) {
+                    return new Hover(new MarkdownString(REF_PARAMETER_DOC));
                 }
 
                 // Hover for the logic tilde (~) at the start of a logic line, e.g. `~ x = 1`.
@@ -603,7 +616,7 @@ export function activate(context: ExtensionContext) {
                     char === "-" &&
                     !isEscaped(line, position.character) &&
                     isConditionalBranchDash(line, position.character) &&
-                    isInsideCurlyBraceBlock(document, position)
+                    isInsideVariableText(document, position)
                 ) {
                     return new Hover(
                         new MarkdownString(
@@ -662,15 +675,8 @@ export function activate(context: ExtensionContext) {
                 // name should not trigger the popup.
                 const wordStartChar = range ? range.start.character : position.character;
                 const beforeWord = line.substring(0, wordStartChar);
-                const isKnotReferenceContext =
-                    /^\s*=/.test(line) || // knot/stitch definition line (=== name === or = stitch)
-                    isPrecededByUnescapedDivert(line, beforeWord) || // immediately preceded by a real divert arrow
-                    isPrecededByUnescapedDivertToKnot(line, beforeWord) || // -> knot.stitch, hovering the stitch part
-                    isPrecededByUnescapedThread(line, beforeWord) || // immediately preceded by a real thread arrow
-                    isPrecededByUnescapedThreadToKnot(line, beforeWord) || // <- knot.stitch, hovering the stitch part
-                    isInsideVariableText(document, position); // inside { }
 
-                if (isKnotReferenceContext) {
+                if (isKnotReferenceContext(document, position, line, beforeWord)) {
                     const commentLines = getKnotComment(document, word);
                     if (commentLines) {
                         return commentLines;
@@ -733,54 +739,8 @@ export function activate(context: ExtensionContext) {
     refreshVisibleMarkdownDecorations();
 }
 
-function escapeRegExp(s: string) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function isEndDoneHoverContext(line: string, wordStartChar: number) {
     return isPrecededByUnescapedDivert(line, line.substring(0, wordStartChar));
-}
-
-/**
- * Returns true when `before` (a prefix of `line` ending right where a word
- * starts) ends with a real, unescaped divert arrow (optionally followed by
- * whitespace), e.g. `-> ` or `->`. An escaped arrow (`\->`) doesn't count —
- * it's literal text, not a real divert, so it shouldn't be treated as one.
- */
-export function isPrecededByUnescapedDivert(line: string, before: string): boolean {
-    const match = before.match(/->\s*$/);
-    return !!match && match.index !== undefined && !isEscaped(line, match.index);
-}
-
-/**
- * Returns true when `before` ends with a real, unescaped divert arrow
- * followed by a knot name and a dot, e.g. `-> the_orient_express.` right
- * before the stitch part of a dotted `-> knot.stitch` divert target. This is
- * what makes hovering the *stitch* half of such a divert (not just the knot
- * half right after the arrow) still trigger the knot-comment popup.
- */
-export function isPrecededByUnescapedDivertToKnot(line: string, before: string): boolean {
-    const match = before.match(/->\s*[A-Za-z_][A-Za-z0-9_]*\.\s*$/);
-    return !!match && match.index !== undefined && !isEscaped(line, match.index);
-}
-
-/**
- * Same as {@link isPrecededByUnescapedDivert}, but for a thread arrow (`<-`)
- * instead of a divert arrow (`->`).
- */
-export function isPrecededByUnescapedThread(line: string, before: string): boolean {
-    const match = before.match(/<-\s*$/);
-    return !!match && match.index !== undefined && !isEscaped(line, match.index);
-}
-
-/**
- * Same as {@link isPrecededByUnescapedDivertToKnot}, but for a thread arrow
- * (`<-`) instead of a divert arrow (`->`), e.g. `<- knot.` right before the
- * stitch part of a dotted `<- knot.stitch` thread target.
- */
-export function isPrecededByUnescapedThreadToKnot(line: string, before: string): boolean {
-    const match = before.match(/<-\s*[A-Za-z_][A-Za-z0-9_]*\.\s*$/);
-    return !!match && match.index !== undefined && !isEscaped(line, match.index);
 }
 
 /**
@@ -936,23 +896,6 @@ function cleanCommentLines(commentLines: string[]): string | undefined {
     return cleaned || undefined;
 }
 
-function isInsideVariableText(document: TextDocument, position: Position): boolean {
-    const line = document.lineAt(position.line).text;
-    const before = line.substring(0, position.character);
-
-    // Count unescaped curly braces before the position
-    let depth = 0;
-    for (let i = 0; i < before.length; i++) {
-        if (before[i] === "{" && (i === 0 || before[i - 1] !== "\\")) {
-            depth++;
-        } else if (before[i] === "}" && (i === 0 || before[i - 1] !== "\\")) {
-            depth--;
-        }
-    }
-
-    return depth > 0; // true if we are inside a { ... }
-}
-
 /**
  * Returns true when the character at `position` is the type-specifier of a
  * variable-text block (`~` shuffle, `&` cycle, `!` once-only).  The specifier
@@ -997,6 +940,17 @@ export function isDeclarationKeywordContext(line: string, wordStartChar: number)
 }
 
 /**
+ * Returns true when the `ref` at `wordStartChar` is the by-reference-parameter
+ * keyword — immediately after a `(` or `,` inside a knot/stitch/function's
+ * parameter list (a `=+ name(...)` header line) — as opposed to a narrative
+ * word that happens to be "ref" appearing elsewhere.
+ */
+export function isRefParameterContext(line: string, wordStartChar: number): boolean {
+    if (!/^\s*=+/.test(line)) return false;
+    return /[(,]\s*$/.test(line.substring(0, wordStartChar));
+}
+
+/**
  * Returns true when the `~` at `charPos` marks a logic line (e.g. `~ x = 1`),
  * i.e. it's the first non-whitespace character on the line. Distinct from the
  * shuffle `~` type-specifier, which only appears right after an opening `{`.
@@ -1035,74 +989,6 @@ export function isConditionalBranchDash(line: string, dashChar: number): boolean
     if (line.substring(dashChar, dashChar + 2) === "->") return false;
 
     return line.indexOf(":", dashChar + 1) !== -1;
-}
-
-function countUnescapedBraceDelta(text: string): number {
-    let delta = 0;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === "{" && (i === 0 || text[i - 1] !== "\\")) {
-            delta++;
-        } else if (text[i] === "}" && (i === 0 || text[i - 1] !== "\\")) {
-            delta--;
-        }
-    }
-    return delta;
-}
-
-function stripLineComment(text: string): string {
-    const idx = text.indexOf("//");
-    return idx === -1 ? text : text.substring(0, idx);
-}
-
-/**
- * Returns true when `character` on `lines[lineNumber]` sits inside a `{ }`
- * block that may have opened on an earlier line (e.g. a multi-line conditional
- * or switch block), by tracking unescaped brace depth from the start of the
- * document. Unlike `isInsideVariableText`, this looks across lines. Block
- * comments and `//` line comments are stripped before counting, so braces
- * mentioned in comments don't throw off the depth.
- */
-export function isInsideCurlyBraceBlockAtLines(lines: string[], lineNumber: number, character: number): boolean {
-    let depth = 0;
-    let inBlockComment = false;
-    for (let i = 0; i < lineNumber; i++) {
-        const { segments, inComment } = getUncommentedSegments(lines[i], inBlockComment);
-        inBlockComment = inComment;
-        for (const { text } of segments) {
-            depth += countUnescapedBraceDelta(stripLineComment(text));
-        }
-    }
-
-    const { segments } = getUncommentedSegments(lines[lineNumber], inBlockComment);
-    for (const { text, offset } of segments) {
-        if (offset >= character) continue;
-        const localEnd = Math.min(text.length, character - offset);
-        depth += countUnescapedBraceDelta(stripLineComment(text.substring(0, localEnd)));
-    }
-
-    return depth > 0;
-}
-
-function isInsideCurlyBraceBlock(document: TextDocument, position: Position): boolean {
-    const lines: string[] = [];
-    for (let i = 0; i <= position.line; i++) {
-        lines.push(document.lineAt(i).text);
-    }
-    return isInsideCurlyBraceBlockAtLines(lines, position.line, position.character);
-}
-
-export function isDeclaredSymbolHoverContext(document: TextDocument, position: Position, line: string): boolean {
-    const trimmed = line.trimStart();
-    if (/^(VAR|CONST)\b/.test(trimmed)) return true;
-    if (trimmed.startsWith("~")) return true;
-    if (isInsideVariableText(document, position)) return true;
-
-    return /(==|!=|<=|>=|<|>|=|\+|-|\*|\/|%|\bmod\b|\bnot\b|\bor\b|\band\b)/.test(line);
-}
-
-function isEscaped(line: string, position: number): boolean {
-    // true if the character at `position` is preceded by a backslash
-    return position > 0 && line[position - 1] === "\\";
 }
 
 /**
@@ -1170,41 +1056,4 @@ export function findMatchingBracketsInNormalText(line: string): number[] {
     }
 
     return positions;
-}
-
-/**
- * Splits `line` into text segments that lie outside of block comments,
- * carrying the original character offset of each segment so callers can map
- * positions back to the original line.  `inBlockComment` is the state at the
- * start of the line; the returned `inComment` reflects the state at the end.
- */
-function getUncommentedSegments(
-    line: string,
-    inBlockComment: boolean,
-): { segments: { text: string; offset: number }[]; inComment: boolean } {
-    const segments: { text: string; offset: number }[] = [];
-    let i = 0;
-    let inCmnt = inBlockComment;
-
-    while (i < line.length) {
-        if (inCmnt) {
-            const closeIdx = line.indexOf("*/", i);
-            if (closeIdx < 0) break; // rest of line is inside the comment
-            inCmnt = false;
-            i = closeIdx + 2;
-        } else {
-            const openIdx = line.indexOf("/*", i);
-            if (openIdx < 0) {
-                segments.push({ text: line.substring(i), offset: i });
-                break;
-            }
-            if (openIdx > i) {
-                segments.push({ text: line.substring(i, openIdx), offset: i });
-            }
-            inCmnt = true;
-            i = openIdx + 2;
-        }
-    }
-
-    return { segments, inComment: inCmnt };
 }
