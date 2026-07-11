@@ -43,7 +43,11 @@
         "extensions": [
           ".ink"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./resources/icon.png",
+          "dark": "./resources/icon.png"
+        }
       }
     ],
     "grammars": [
