@@ -12,7 +12,8 @@
       "!!**/dist",
       "!!**/test",
       "!!src/generated",
-      "!!**/generated"
+      "!!**/generated",
+      "!!/pixi-vn-ink"
     ]
   },
   "formatter": {
