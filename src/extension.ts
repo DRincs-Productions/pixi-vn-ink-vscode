@@ -1,6 +1,6 @@
 import {
-    DecorationRangeBehavior,
     type DecorationOptions,
+    DecorationRangeBehavior,
     type Diagnostic,
     EventEmitter,
     type ExtensionContext,
@@ -8,7 +8,6 @@ import {
     l10n,
     languages,
     MarkdownString,
-    type Position,
     Range,
     SemanticTokensBuilder,
     SemanticTokensLegend,
@@ -31,7 +30,6 @@ import {
     isDeclaredSymbolHoverContext,
     isDivertTargetValueContext,
     isEscaped,
-    isInsideCurlyBraceBlockAtLines,
     isInsideVariableText,
     isKnotReferenceContext,
     isPrecededByUnescapedDivert,
@@ -40,6 +38,7 @@ import {
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { knotRunCodeLensProvider } from "./utils/knot-codelens";
 import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
+import { schedulePixiVnDevDataPolling } from "./utils/pixi-vn-dev-data";
 import { previewCommand, runFromKnotCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
@@ -88,22 +87,22 @@ export const DIVERT_ARROW_DOCS: Record<string, string> = {
         '**Divert (`->`)**: Moves the story immediately to another knot, stitch, or gather, with no user input required — it can even happen invisibly, mid-sentence. Diverts can also pass arguments, e.g. `-> accuse("Hastings")`.\n\nExample:\n```ink\n=== hurry_home ===\nWe hurried home -> as_fast_as_we_could\n\n=== as_fast_as_we_could ===\nas fast as we could.\n```',
     ),
     tunnelCall: l10n.t(
-        '**Tunnel call (`-> knot ->`)**: Diverts into `knot` as a *tunnel* rather than a plain divert — it remembers where it came from, so a `->->` reached inside `knot` returns control right back here instead of leaving for good.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
+        "**Tunnel call (`-> knot ->`)**: Diverts into `knot` as a *tunnel* rather than a plain divert — it remembers where it came from, so a `->->` reached inside `knot` returns control right back here instead of leaving for good.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```",
     ),
     tunnelReturnPoint: l10n.t(
-        '**Tunnel return point (the second `->` in `-> knot ->`)**: Marks this as a tunnel call rather than a plain divert — once `knot` reaches a `->->`, the flow resumes right after this arrow instead of stopping inside `knot`.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n```',
+        "**Tunnel return point (the second `->` in `-> knot ->`)**: Marks this as a tunnel call rather than a plain divert — once `knot` reaches a `->->`, the flow resumes right after this arrow instead of stopping inside `knot`.\n\nExample:\n```ink\n-> crossing_the_date_line ->\nWe continue on, once the tunnel returns.\n```",
     ),
     tunnelOnward: l10n.t(
-        '**Tunnel onward (`-> knot -> next`)**: Calls `knot` as a tunnel, but once it returns with a `->->`, continues at `next` instead of resuming right after this line.\n\nExample:\n```ink\n-> crossing_the_date_line -> check_foggs_health\n```',
+        "**Tunnel onward (`-> knot -> next`)**: Calls `knot` as a tunnel, but once it returns with a `->->`, continues at `next` instead of resuming right after this line.\n\nExample:\n```ink\n-> crossing_the_date_line -> check_foggs_health\n```",
     ),
     tunnelReturn: l10n.t(
-        '**Tunnel return (`->->`)**: Returns from the tunnel that was called to reach here, resuming the flow right after the `-> knot ->` that invoked it — like a function return, unlike a plain divert, which never comes back.\n\nExample:\n```ink\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```',
+        "**Tunnel return (`->->`)**: Returns from the tunnel that was called to reach here, resuming the flow right after the `-> knot ->` that invoked it — like a function return, unlike a plain divert, which never comes back.\n\nExample:\n```ink\n=== crossing_the_date_line ===\nWe crossed the date line, gaining a whole day!\n->->\n```",
     ),
     tunnelReturnElsewhere: l10n.t(
-        '**Tunnel return, elsewhere (`->-> destination`)**: Leaves the tunnel entirely — instead of resuming right after the `-> knot ->` that called it, the flow jumps straight to `destination`. Use sparingly; it\'s easy to lose track of where control actually ends up.\n\nExample:\n```ink\n=== fall_down_cliff ===\n-> hurt(5) ->\nYou\'re still alive! You pick yourself up and walk on.\n\n=== hurt(x) ===\n~ stamina -= x\n{ stamina <= 0:\n\t->-> youre_dead\n}\n\n=== youre_dead ===\nSuddenly, there is a white light all around you.\n```',
+        "**Tunnel return, elsewhere (`->-> destination`)**: Leaves the tunnel entirely — instead of resuming right after the `-> knot ->` that called it, the flow jumps straight to `destination`. Use sparingly; it's easy to lose track of where control actually ends up.\n\nExample:\n```ink\n=== fall_down_cliff ===\n-> hurt(5) ->\nYou're still alive! You pick yourself up and walk on.\n\n=== hurt(x) ===\n~ stamina -= x\n{ stamina <= 0:\n\t->-> youre_dead\n}\n\n=== youre_dead ===\nSuddenly, there is a white light all around you.\n```",
     ),
     divertTargetValue: l10n.t(
-        '**Divert target (as a value)**: Here `-> name` isn\'t an immediate jump — it\'s a *divert target*, a storable value naming a location, being passed as an argument, assigned to a variable, or compared. The receiving parameter/variable must be explicitly typed as a divert target, so it isn\'t confused with a read count.\n\nExample:\n```ink\nVAR current_epilogue = -> everybody_dies\n\n=== sleeping_in_hut ===\nYou lie down and close your eyes.\n-> generic_sleep(-> waking_in_the_hut)\n\n=== generic_sleep(-> waking)\nYou sleep, perchance to dream...\n-> waking\n```',
+        "**Divert target (as a value)**: Here `-> name` isn't an immediate jump — it's a *divert target*, a storable value naming a location, being passed as an argument, assigned to a variable, or compared. The receiving parameter/variable must be explicitly typed as a divert target, so it isn't confused with a read count.\n\nExample:\n```ink\nVAR current_epilogue = -> everybody_dies\n\n=== sleeping_in_hut ===\nYou lie down and close your eyes.\n-> generic_sleep(-> waking_in_the_hut)\n\n=== generic_sleep(-> waking)\nYou sleep, perchance to dream...\n-> waking\n```",
     ),
 };
 
@@ -239,6 +238,10 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(previewCommand(context));
     context.subscriptions.push(runProjectCommand(context));
     context.subscriptions.push(runFromKnotCommand(context));
+
+    // Keep the pixi-vn Vite dev-server data (characters, labels, assets manifest) cached
+    // and refreshed in the background for upcoming pixi-vn-aware features.
+    schedulePixiVnDevDataPolling(context);
 
     // Emitter used to tell VS Code to re-compute semantic tokens when the engine setting changes
     const onDidChangeSemanticTokensEmitter = new EventEmitter<void>();
@@ -428,9 +431,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(languages.registerDefinitionProvider({ language: "ink" }, knotDefinitionProvider()));
 
     // Folding for knot/stitch/function headers, keeping trailing exit diverts visible
-    context.subscriptions.push(
-        languages.registerFoldingRangeProvider({ language: "ink" }, inkFoldingRangeProvider()),
-    );
+    context.subscriptions.push(languages.registerFoldingRangeProvider({ language: "ink" }, inkFoldingRangeProvider()));
 
     // "Run from here" CodeLens above each top-level knot: opens the preview with a
     // temporary `-> knot` divert prepended, without touching the file on disk
@@ -499,9 +500,7 @@ export function activate(context: ExtensionContext) {
                 // divert target used as a value — see getDivertArrowHoverKind.
                 if (word === "->" && range && !isEscaped(line, range.start.character)) {
                     return new Hover(
-                        new MarkdownString(
-                            getDivertArrowDoc(getDivertArrowHoverKind(line, range.start.character), engine),
-                        ),
+                        new MarkdownString(getDivertArrowDoc(getDivertArrowHoverKind(line, range.start.character), engine)),
                     );
                 }
 
@@ -720,9 +719,7 @@ export function activate(context: ExtensionContext) {
             {
                 onDidChangeSemanticTokens: onDidChangeSemanticTokensEmitter.event,
                 provideDocumentSemanticTokens(document) {
-                    const engine = workspace
-                        .getConfiguration("ink")
-                        .get<"Inky" | "pixi-vn">("engine", "Inky");
+                    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
                     const builder = new SemanticTokensBuilder(bracketTokenLegend);
                     if (engine !== "pixi-vn") {
                         return builder.build();
@@ -731,10 +728,7 @@ export function activate(context: ExtensionContext) {
                     let inBlockComment = false;
                     for (let i = 0; i < document.lineCount; i++) {
                         const line = document.lineAt(i).text;
-                        const { segments, inComment: newState } = getUncommentedSegments(
-                            line,
-                            inBlockComment,
-                        );
+                        const { segments, inComment: newState } = getUncommentedSegments(line, inBlockComment);
                         inBlockComment = newState;
 
                         if (segments.length === 0) continue;

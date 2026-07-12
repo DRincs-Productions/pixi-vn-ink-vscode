@@ -33,7 +33,9 @@ async function main() {
         sourcesContent: false,
         platform: "node",
         outfile: "dist/extension.js",
-        external: ["vscode"],
+        // "vite" is never actually imported at runtime: it's only reached through a dynamic
+        // import() inside @drincs/pixi-vn/vite's `buildStart` hook, which our code never calls.
+        external: ["vscode", "vite"],
         logLevel: "silent",
         plugins: [
             /* add to the end of plugins array */
