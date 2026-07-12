@@ -1,8 +1,22 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { commands, env, type ExtensionContext, l10n, type TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import {
+    commands,
+    env,
+    type ExtensionContext,
+    l10n,
+    OverviewRulerLane,
+    Range,
+    type TextDocument,
+    TextEditorRevealType,
+    ThemeColor,
+    Uri,
+    ViewColumn,
+    window,
+    workspace,
+} from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
-import { compile } from "./utils/ink-utility";
+import { compile, getRuntimeError } from "./utils/ink-utility";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
 
 export function previewCommand(context: ExtensionContext) {
@@ -138,11 +152,65 @@ export async function openWebview(
     // ✅ Pass the title to getWebviewHtml
     panel.webview.html = getWebviewHtml(scriptUri, styleUri, panelTitle);
 
+    // Highlights the source line a runtime error was reported on. The `-> entryKnot`
+    // divert prepended by withEntryKnot shifts every reported line down by one, so it
+    // must be subtracted back out to map onto the real (unmodified) document.
+    const lineOffset = entryKnot ? 1 : 0;
+    const errorLineDecoration = window.createTextEditorDecorationType({
+        isWholeLine: true,
+        backgroundColor: new ThemeColor("inputValidation.errorBackground"),
+        border: "1px solid",
+        borderColor: new ThemeColor("inputValidation.errorBorder"),
+        overviewRulerColor: new ThemeColor("editorError.foreground"),
+        overviewRulerLane: OverviewRulerLane.Full,
+    });
+
+    const clearErrorHighlight = () => {
+        for (const editor of window.visibleTextEditors) {
+            if (editor.document.uri.toString() === uri.toString()) {
+                editor.setDecorations(errorLineDecoration, []);
+            }
+        }
+    };
+
+    const getCurrentDocument = async () =>
+        workspace.textDocuments.find((d) => d.uri.toString() === uri.toString()) ?? (await workspace.openTextDocument(uri));
+
+    const highlightErrorLine = async (reportedLine: number) => {
+        const line = reportedLine - lineOffset;
+        if (line < 1) {
+            clearErrorHighlight();
+            return;
+        }
+        const doc = await getCurrentDocument();
+        const lineIndex = Math.min(line - 1, doc.lineCount - 1);
+        const range = doc.lineAt(lineIndex).range;
+        const existingEditor = window.visibleTextEditors.find((e) => e.document.uri.toString() === uri.toString());
+        const editor =
+            existingEditor ?? (await window.showTextDocument(doc, { viewColumn: ViewColumn.One, preserveFocus: true }));
+        editor.setDecorations(errorLineDecoration, [new Range(range.start, range.end)]);
+        editor.revealRange(range, TextEditorRevealType.InCenterIfOutsideViewport);
+    };
+
     // ✅ Send the compiled JSON to the webview
     // 🔹 listen for messages from the webview
     panel.webview.onDidReceiveMessage(async (message) => {
         if (message.type === "log") {
             console.log("Log from webview:", message.message, message.data);
+        }
+        if (message.type === "runtime-error-line") {
+            const choices: number[] = Array.isArray(message.choices) ? message.choices : [];
+            const runtimeError =
+                message.hasError && engine !== "pixi-vn"
+                    ? getRuntimeError(withEntryKnot((await getCurrentDocument()).getText()), choices, {
+                          LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+                      })
+                    : undefined;
+            if (runtimeError?.line !== undefined) {
+                await highlightErrorLine(runtimeError.line);
+            } else {
+                clearErrorHighlight();
+            }
         }
         if (message.type === "ready") {
             console.log("Webview is ready, sending compiled story.");
@@ -205,6 +273,8 @@ export async function openWebview(
     // 🔹 Remove listener when the webview is closed
     panel.onDidDispose(() => {
         saveListener.dispose();
+        clearErrorHighlight();
+        errorLineDecoration.dispose();
     });
 }
 

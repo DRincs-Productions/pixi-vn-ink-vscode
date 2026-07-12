@@ -4,6 +4,8 @@ type Key =
     | "back"
     | "restart"
     | "loadingStory"
+    | "errorRunningStory"
+    | "lineNumber"
     | "you"
     | "whatDoYouChoose"
     | "enterANumber"
@@ -15,6 +17,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Back",
         restart: "Restart",
         loadingStory: "Loading story...",
+        errorRunningStory: "An error occurred while running the story",
+        lineNumber: "Line {0}",
         you: "You",
         whatDoYouChoose: "What do you choose?",
         enterANumber: "Enter a number...",
@@ -25,6 +29,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Indietro",
         restart: "Ricomincia",
         loadingStory: "Caricamento della storia...",
+        errorRunningStory: "Si è verificato un errore durante l'esecuzione della storia",
+        lineNumber: "Riga {0}",
         you: "Tu",
         whatDoYouChoose: "Cosa scegli?",
         enterANumber: "Inserisci un numero...",
@@ -35,6 +41,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Назад",
         restart: "Заново",
         loadingStory: "Загрузка истории...",
+        errorRunningStory: "Произошла ошибка при выполнении истории",
+        lineNumber: "Строка {0}",
         you: "Вы",
         whatDoYouChoose: "Что вы выбираете?",
         enterANumber: "Введите число...",
@@ -45,6 +53,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "返回",
         restart: "重新开始",
         loadingStory: "正在加载故事…",
+        errorRunningStory: "运行故事时发生错误",
+        lineNumber: "第 {0} 行",
         you: "你",
         whatDoYouChoose: "你选择什么?",
         enterANumber: "输入一个数字…",
@@ -55,6 +65,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "戻る",
         restart: "最初から",
         loadingStory: "物語を読み込み中…",
+        errorRunningStory: "物語の実行中にエラーが発生しました",
+        lineNumber: "{0} 行目",
         you: "あなた",
         whatDoYouChoose: "どちらを選びますか?",
         enterANumber: "数字を入力してください…",
@@ -65,6 +77,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Atrás",
         restart: "Reiniciar",
         loadingStory: "Cargando historia...",
+        errorRunningStory: "Se produjo un error al ejecutar la historia",
+        lineNumber: "Línea {0}",
         you: "Tú",
         whatDoYouChoose: "¿Qué eliges?",
         enterANumber: "Introduce un número...",
@@ -75,6 +89,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Retour",
         restart: "Recommencer",
         loadingStory: "Chargement de l'histoire...",
+        errorRunningStory: "Une erreur s'est produite lors de l'exécution de l'histoire",
+        lineNumber: "Ligne {0}",
         you: "Vous",
         whatDoYouChoose: "Que choisissez-vous ?",
         enterANumber: "Entrez un nombre...",
@@ -85,6 +101,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "뒤로",
         restart: "다시 시작",
         loadingStory: "이야기를 불러오는 중…",
+        errorRunningStory: "이야기를 실행하는 중 오류가 발생했습니다",
+        lineNumber: "{0}번째 줄",
         you: "당신",
         whatDoYouChoose: "무엇을 선택하시겠습니까?",
         enterANumber: "숫자를 입력하세요...",
@@ -95,6 +113,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         back: "Zurück",
         restart: "Neu starten",
         loadingStory: "Geschichte wird geladen ...",
+        errorRunningStory: "Beim Ausführen der Geschichte ist ein Fehler aufgetreten",
+        lineNumber: "Zeile {0}",
         you: "Du",
         whatDoYouChoose: "Was wählst du?",
         enterANumber: "Gib eine Zahl ein...",
@@ -115,6 +135,7 @@ export function resolveLocale(raw: string | undefined): Locale {
     return base in dictionaries ? (base as Locale) : "en";
 }
 
-export function t(locale: Locale, key: Key): string {
-    return dictionaries[locale]?.[key] ?? dictionaries.en[key];
+export function t(locale: Locale, key: Key, ...args: (string | number)[]): string {
+    const template = dictionaries[locale]?.[key] ?? dictionaries.en[key];
+    return args.reduce((str: string, arg, i) => str.replace(`{${i}}`, String(arg)), template);
 }
