@@ -20,7 +20,7 @@ import {
 } from "vscode";
 import { checkIncludes, checkPixiVnUnimplementedFunctions, updateDiagnostics } from "./diagnostics";
 import { inkFoldingRangeProvider } from "./folding";
-import { findMarkdownTokenRanges } from "./markdown";
+import { findMarkdownTokenRanges, type MarkdownRange } from "./markdown";
 import { BUILTIN_FUNCTIONS, isBuiltinFunctionCallContext } from "./utils/builtin-functions";
 import { collectCommentAbove } from "./utils/comments";
 import {
@@ -251,11 +251,18 @@ export function activate(context: ExtensionContext) {
         fontWeight: "bold",
         rangeBehavior: DecorationRangeBehavior.ClosedClosed,
     });
-    const markdownNewlineDecoration = window.createTextEditorDecorationType({
-        color: new ThemeColor("symbolIcon.constantForeground"),
+    // Shared by every markdown "symbol" token embedded as literal ink text (visible `\n`
+    // escapes, escaped heading markers, ...) — one distinct colour so they read as markdown
+    // syntax rather than ordinary narrative text or ink's own keywords/tags/diverts.
+    // `symbolIcon.constantForeground` was tried first but it (like most `symbolIcon.*`
+    // colours) defaults to plain `foreground` unless a theme overrides it, making the
+    // decoration invisible in practice. `symbolIcon.constructorForeground` ships with a
+    // real, distinct purple in every built-in theme and isn't used anywhere else here.
+    const markdownSymbolDecoration = window.createTextEditorDecorationType({
+        color: new ThemeColor("symbolIcon.constructorForeground"),
         rangeBehavior: DecorationRangeBehavior.ClosedClosed,
     });
-    context.subscriptions.push(markdownItalicDecoration, markdownBoldDecoration, markdownNewlineDecoration);
+    context.subscriptions.push(markdownItalicDecoration, markdownBoldDecoration, markdownSymbolDecoration);
 
     const refreshMarkdownDecorations = (editor?: TextEditor) => {
         if (editor?.document.languageId !== "ink") return;
@@ -264,13 +271,13 @@ export function activate(context: ExtensionContext) {
         if (markup !== "Markdown") {
             editor.setDecorations(markdownItalicDecoration, []);
             editor.setDecorations(markdownBoldDecoration, []);
-            editor.setDecorations(markdownNewlineDecoration, []);
+            editor.setDecorations(markdownSymbolDecoration, []);
             return;
         }
 
         const italicRanges: Range[] = [];
         const boldRanges: Range[] = [];
-        const newlineRanges: DecorationOptions[] = [];
+        const symbolRanges: DecorationOptions[] = [];
         let inBlockComment = false;
 
         for (let i = 0; i < editor.document.lineCount; i++) {
@@ -289,38 +296,50 @@ export function activate(context: ExtensionContext) {
 
             const absoluteScanStart = firstSeg.offset + scanStart;
 
+            // Only the very first segment can start the line's narrative text — heading
+            // markers are only meaningful there, never in a segment resuming after an
+            // inline block comment closes mid-line.
+            let isFirstSegment = true;
             for (const { text: segmentText, offset } of segments) {
                 const localScanStart = Math.max(0, absoluteScanStart - offset);
-                if (localScanStart >= segmentText.length) continue;
+                if (localScanStart >= segmentText.length) {
+                    isFirstSegment = false;
+                    continue;
+                }
 
-                const markdownRanges = findMarkdownTokenRanges(segmentText.substring(localScanStart));
+                const markdownRanges = findMarkdownTokenRanges(segmentText.substring(localScanStart), isFirstSegment);
+                isFirstSegment = false;
+
+                const toDocRange = (range: MarkdownRange) =>
+                    new Range(i, offset + localScanStart + range.start, i, offset + localScanStart + range.end);
+                const pushSymbol = (range: MarkdownRange, hoverText: string) => {
+                    symbolRanges.push({ range: toDocRange(range), hoverMessage: new MarkdownString(hoverText) });
+                };
+
                 for (const range of markdownRanges.italic) {
-                    italicRanges.push(
-                        new Range(i, offset + localScanStart + range.start, i, offset + localScanStart + range.end),
-                    );
+                    italicRanges.push(toDocRange(range));
                 }
                 for (const range of markdownRanges.bold) {
-                    boldRanges.push(
-                        new Range(i, offset + localScanStart + range.start, i, offset + localScanStart + range.end),
-                    );
+                    boldRanges.push(toDocRange(range));
                 }
                 for (const range of markdownRanges.newlines) {
-                    newlineRanges.push({
-                        range: new Range(
-                            i,
-                            offset + localScanStart + range.start,
-                            i,
-                            offset + localScanStart + range.end,
-                        ),
-                        hoverMessage: new MarkdownString(l10n.t("`\\n`: inserts a line break.")),
-                    });
+                    pushSymbol(range, l10n.t("`\\\\n`: inserts a line break."));
+                }
+                for (const range of markdownRanges.headers) {
+                    pushSymbol(range, l10n.t("Markdown heading marker."));
+                }
+                for (const range of markdownRanges.listMarkers) {
+                    pushSymbol(range, l10n.t("Markdown list marker."));
+                }
+                for (const range of markdownRanges.emphasisMarkers) {
+                    pushSymbol(range, l10n.t("Markdown emphasis marker (italic/bold)."));
                 }
             }
         }
 
         editor.setDecorations(markdownItalicDecoration, italicRanges);
         editor.setDecorations(markdownBoldDecoration, boldRanges);
-        editor.setDecorations(markdownNewlineDecoration, newlineRanges);
+        editor.setDecorations(markdownSymbolDecoration, symbolRanges);
     };
 
     const refreshVisibleMarkdownDecorations = () => {
