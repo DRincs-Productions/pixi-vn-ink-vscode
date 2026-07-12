@@ -1,5 +1,7 @@
 TEST =
 
+-> knot1
+
 /**
  * Example Ink file
  */
