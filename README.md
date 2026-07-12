@@ -35,6 +35,7 @@ This extension provides **syntax highlighting**, support for **variables, consta
   - Tags (`#`) are aligned to the right and styled differently
   - Preview **updates live** when the file is saved
   - Fully respects **dark/light theme** of VSCode
+  - **Run from here**: a `$(play) Run from here` CodeLens above every top-level knot lets you preview the story starting from that knot, without editing the source file
 
 - **Integrated error checking**:
   - Real-time analysis powered by [inkjs](https://github.com/y-lohse/inkjs)

@@ -1,8 +1,9 @@
 import { Game, narration, RegisteredCharacters } from "@drincs/pixi-vn";
 import { convertInkToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
+import { ErrorType } from "inkjs/engine/Error";
 import { ArrowLeft, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -29,6 +30,30 @@ type InputRequest = {
     type: "text" | "number";
     input?: string | number;
 };
+
+type RuntimeError = {
+    message: string;
+    line?: number;
+};
+
+function parseRuntimeErrorLine(message: string): number | undefined {
+    const match = message.match(/line (\d+)/);
+    return match ? parseInt(match[1], 10) : undefined;
+}
+
+// inkjs reports runtime errors (out-of-bound divert, missing content, etc.) via
+// `story.onError` instead of throwing, so callers must inspect the returned
+// errors after each step rather than relying solely on try/catch.
+function runInkAction<T>(story: Story, action: () => T): { result: T; error?: RuntimeError } {
+    let error: RuntimeError | undefined;
+    story.onError = (message, type) => {
+        if (type === ErrorType.Error && !error) {
+            error = { message, line: parseRuntimeErrorLine(message) };
+        }
+    };
+    const result = action();
+    return { result, error };
+}
 
 function nextChoices(
     story: Story,
@@ -149,6 +174,7 @@ export default function NarrationView() {
     const [log, setLog] = useState<{ text: string; data?: any }>();
     const [story, setStory] = useState<Story>();
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [error, setError] = useState<RuntimeError>();
     const [inputValue, setInputValue] = useState<string | number>();
     const [oldChoices, setOldChoices] = useState<
         (number | { type: "input"; value: string | number })[]
@@ -158,6 +184,22 @@ export default function NarrationView() {
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
     const [locale, setLocale] = useState<Locale>("en");
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // The extension host can't see the exact runtime error line: the compiled JSON
+    // handed to this webview has no DebugMetadata (inkjs strips it on serialization), so
+    // `story.onError` here never carries a line number. It replays the same choice path
+    // against an in-memory (non-JSON) compile of the source, which does keep line info.
+    const reportRuntimeError = useCallback(
+        (runtimeError?: RuntimeError, choicePath: number[] = []) => {
+            setError(runtimeError);
+            vscode.postMessage({
+                type: "runtime-error-line",
+                hasError: !!runtimeError,
+                choices: choicePath,
+            });
+        },
+        [],
+    );
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls to bottom whenever history changes
     useEffect(() => {
@@ -193,6 +235,7 @@ export default function NarrationView() {
                     ? JSON.parse(event.data.characters)
                     : undefined;
                 setEngine(engine);
+                reportRuntimeError(undefined);
                 switch (engine) {
                     case "pixi-vn": {
                         try {
@@ -219,21 +262,33 @@ export default function NarrationView() {
                             setHistory(history);
                             setLog({ text: "Pixi-VN story loaded" });
                         } catch (e) {
-                            setLog({
-                                text: "Error loading Pixi-VN story",
-                                data: (e as any).toString(),
-                            });
+                            const message = (e as any).toString();
+                            setLog({ text: "Error loading Pixi-VN story", data: message });
+                            reportRuntimeError({ message });
                         }
                         break;
                     }
                     default: {
-                        const story = new Story(storyJson);
-                        setStory(story);
                         const tempChoices = oldChoices
                             .map((c) => (typeof c === "number" ? c : undefined))
                             .filter((c): c is number => c !== undefined);
-                        const history: HistoryItem[] = nextChoices(story, [], tempChoices);
-                        setHistory(history);
+                        try {
+                            const story = new Story(storyJson);
+                            setStory(story);
+                            const { result: history, error: runtimeError } = runInkAction(
+                                story,
+                                () => nextChoices(story, [], tempChoices),
+                            );
+                            setHistory(history);
+                            reportRuntimeError(runtimeError, tempChoices);
+                        } catch (e) {
+                            const message = (e as any).toString();
+                            setLog({ text: "Error running Ink story", data: message });
+                            reportRuntimeError(
+                                { message, line: parseRuntimeErrorLine(message) },
+                                tempChoices,
+                            );
+                        }
                         break;
                     }
                 }
@@ -242,7 +297,7 @@ export default function NarrationView() {
         window.addEventListener("message", handler);
         vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
-    }, [oldChoices]);
+    }, [oldChoices, reportRuntimeError]);
 
     useEffect(() => {
         vscode.postMessage({ type: "log", message: log?.text, data: log?.data });
@@ -264,11 +319,26 @@ export default function NarrationView() {
             }
             default: {
                 if (!story) return;
-                let newHistory = [...history];
-                story.ChooseChoiceIndex(choice.index);
-                setOldChoices((oldChoices) => [...oldChoices, choice.index]);
-                newHistory = nextChoices(story, newHistory);
-                setHistory(newHistory);
+                const choicePath = [
+                    ...oldChoices.filter((c): c is number => typeof c === "number"),
+                    choice.index,
+                ];
+                try {
+                    const newHistory = [...history];
+                    story.ChooseChoiceIndex(choice.index);
+                    setOldChoices((oldChoices) => [...oldChoices, choice.index]);
+                    const { result, error: runtimeError } = runInkAction(story, () =>
+                        nextChoices(story, newHistory),
+                    );
+                    setHistory(result);
+                    reportRuntimeError(runtimeError, choicePath);
+                } catch (e) {
+                    const message = (e as any).toString();
+                    reportRuntimeError(
+                        { message, line: parseRuntimeErrorLine(message) },
+                        choicePath,
+                    );
+                }
             }
         }
     };
@@ -309,14 +379,24 @@ export default function NarrationView() {
             default: {
                 if (!story || history.length === 0) return;
 
-                story.ResetState();
                 oldChoices.pop();
                 const tempChoices = oldChoices
                     .map((c) => (typeof c === "number" ? c : undefined))
                     .filter((c): c is number => c !== undefined);
-                const newHistory = nextChoices(story, [], tempChoices);
-
-                setHistory(newHistory);
+                try {
+                    story.ResetState();
+                    const { result: newHistory, error: runtimeError } = runInkAction(story, () =>
+                        nextChoices(story, [], tempChoices),
+                    );
+                    setHistory(newHistory);
+                    reportRuntimeError(runtimeError, tempChoices);
+                } catch (e) {
+                    const message = (e as any).toString();
+                    reportRuntimeError(
+                        { message, line: parseRuntimeErrorLine(message) },
+                        tempChoices,
+                    );
+                }
             }
         }
     };
@@ -334,10 +414,19 @@ export default function NarrationView() {
                 break;
             }
             default: {
-                story?.ResetState();
-                const newHistory = nextChoices(story!);
-                setHistory(newHistory);
-                setOldChoices([]);
+                if (!story) return;
+                try {
+                    story.ResetState();
+                    const { result: newHistory, error: runtimeError } = runInkAction(story, () =>
+                        nextChoices(story),
+                    );
+                    setHistory(newHistory);
+                    setOldChoices([]);
+                    reportRuntimeError(runtimeError, []);
+                } catch (e) {
+                    const message = (e as any).toString();
+                    reportRuntimeError({ message, line: parseRuntimeErrorLine(message) }, []);
+                }
             }
         }
     };
@@ -391,85 +480,122 @@ export default function NarrationView() {
                 }}
             >
                 {history.length === 0 ? (
-                    // Loader
-                    <div
-                        className="flex justify-center items-center w-full h-full"
-                        style={{
-                            color: "var(--vscode-editorHint-foreground)",
-                            fontStyle: "italic",
-                        }}
-                    >
-                        {t(locale, "loadingStory")}
-                    </div>
-                ) : (
-                    history.map((item, idx) => (
+                    error ? (
+                        // Error (nothing rendered yet, e.g. failure on initial load)
                         <div
-                            key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
-                            className="animate-in fade-in slide-in-from-bottom duration-500"
+                            className="flex flex-col justify-center items-center w-full h-full text-center gap-2"
+                            style={{
+                                color: "var(--vscode-errorForeground)",
+                            }}
                         >
-                            {item.tags?.map((tag, tIdx) => (
-                                <div
-                                    key={`tag-${idx}-${tIdx}`}
-                                    style={{
-                                        color: "var(--vscode-editorHint-foreground)",
-                                        textAlign: "right",
-                                        fontStyle: "italic",
-                                    }}
-                                >
-                                    {tag}
-                                </div>
-                            ))}
-
-                            {item.dialogue?.trim() && (
-                                <div
-                                    key={`dialogue-${idx}`}
-                                    style={{
-                                        color: "var(--vscode-editor-foreground)",
-                                        textAlign: "left",
-                                        fontStyle: "normal",
-                                        display: "flex",
-                                        flexDirection: "row", // affianca chip e testo
-                                        gap: "8px",
-                                        alignItems: "flex-start",
-                                    }}
-                                >
-                                    {/* Character chip */}
-                                    {item.character && (
-                                        <span
-                                            style={{
-                                                display: "inline-block",
-                                                backgroundColor: "var(--vscode-button-background)",
-                                                color: "var(--vscode-button-foreground)",
-                                                padding: "2px 6px",
-                                                borderRadius: "12px",
-                                                fontSize: "0.75rem",
-                                                fontWeight: "bold",
-                                                flexShrink: 0,
-                                            }}
-                                        >
-                                            {item.character}
-                                        </span>
-                                    )}
-
-                                    {/* Dialogue text */}
-                                    <Text markup={markup}>{item.dialogue}</Text>
-                                </div>
+                            <div style={{ fontWeight: "bold" }}>
+                                {t(locale, "errorRunningStory")}
+                            </div>
+                            {error.line !== undefined && (
+                                <div>{t(locale, "lineNumber", error.line)}</div>
                             )}
-
-                            {item.inputRequest?.input !== undefined && (
-                                <div
-                                    key={`input-${idx}`}
-                                    style={{
-                                        color: "var(--vscode-editor-foreground)",
-                                        textAlign: "left",
-                                        fontWeight: "bold",
-                                    }}
-                                >
-                                    {t(locale, "you")}: {item.inputRequest.input}
-                                </div>
-                            )}
+                            <div style={{ fontStyle: "italic" }}>{error.message}</div>
                         </div>
-                    ))
+                    ) : (
+                        // Loader
+                        <div
+                            className="flex justify-center items-center w-full h-full"
+                            style={{
+                                color: "var(--vscode-editorHint-foreground)",
+                                fontStyle: "italic",
+                            }}
+                        >
+                            {t(locale, "loadingStory")}
+                        </div>
+                    )
+                ) : (
+                    <>
+                        {history.map((item, idx) => (
+                            <div
+                                key={`block-${idx}-${item.dialogue}-${item.tags?.join("-")}`}
+                                className="animate-in fade-in slide-in-from-bottom duration-500"
+                            >
+                                {item.tags?.map((tag, tIdx) => (
+                                    <div
+                                        key={`tag-${idx}-${tIdx}`}
+                                        style={{
+                                            color: "var(--vscode-editorHint-foreground)",
+                                            textAlign: "right",
+                                            fontStyle: "italic",
+                                        }}
+                                    >
+                                        {tag}
+                                    </div>
+                                ))}
+
+                                {item.dialogue?.trim() && (
+                                    <div
+                                        key={`dialogue-${idx}`}
+                                        style={{
+                                            color: "var(--vscode-editor-foreground)",
+                                            textAlign: "left",
+                                            fontStyle: "normal",
+                                            display: "flex",
+                                            flexDirection: "row", // affianca chip e testo
+                                            gap: "8px",
+                                            alignItems: "flex-start",
+                                        }}
+                                    >
+                                        {/* Character chip */}
+                                        {item.character && (
+                                            <span
+                                                style={{
+                                                    display: "inline-block",
+                                                    backgroundColor:
+                                                        "var(--vscode-button-background)",
+                                                    color: "var(--vscode-button-foreground)",
+                                                    padding: "2px 6px",
+                                                    borderRadius: "12px",
+                                                    fontSize: "0.75rem",
+                                                    fontWeight: "bold",
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                {item.character}
+                                            </span>
+                                        )}
+
+                                        {/* Dialogue text */}
+                                        <Text markup={markup}>{item.dialogue}</Text>
+                                    </div>
+                                )}
+
+                                {item.inputRequest?.input !== undefined && (
+                                    <div
+                                        key={`input-${idx}`}
+                                        style={{
+                                            color: "var(--vscode-editor-foreground)",
+                                            textAlign: "left",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        {t(locale, "you")}: {item.inputRequest.input}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {error && (
+                            <div
+                                className="text-center"
+                                style={{
+                                    color: "var(--vscode-errorForeground)",
+                                }}
+                            >
+                                <div style={{ fontWeight: "bold" }}>
+                                    {t(locale, "errorRunningStory")}
+                                </div>
+                                {error.line !== undefined && (
+                                    <div>{t(locale, "lineNumber", error.line)}</div>
+                                )}
+                                <div style={{ fontStyle: "italic" }}>{error.message}</div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

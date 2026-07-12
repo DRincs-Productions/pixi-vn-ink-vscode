@@ -4,6 +4,12 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- "Run from here" CodeLens above every top-level knot (not stitches or functions, and not a knot whose header takes parameters) — opens the preview starting from that knot instead of the top of the file, via a `-> knot` divert prepended only for the preview and never written back to the source file.
+
 ## [0.5.9] - 2026-07-11
 
 ### Added

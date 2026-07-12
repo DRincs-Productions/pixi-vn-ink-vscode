@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "Cartella radice contenente i file .ink da caricare. Se vuota, non viene definita alcuna cartella radice.",
   "ink.port.description": "Porta usata dal motore per le connessioni su localhost.",
   "ink.preview.title": "Anteprima del file corrente",
-  "ink.runProject.title": "Esegui il progetto ink"
+  "ink.runProject.title": "Esegui il progetto ink",
+  "ink.runFromKnot.title": "Esegui il progetto ink da questo knot"
 }

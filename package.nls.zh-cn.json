@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "包含待加载 .ink 文件的根文件夹。留空则表示未定义根文件夹。",
   "ink.port.description": "引擎用于 localhost 连接的端口。",
   "ink.preview.title": "当前文件的预览",
-  "ink.runProject.title": "运行 ink 项目"
+  "ink.runProject.title": "运行 ink 项目",
+  "ink.runFromKnot.title": "从此 knot 运行 ink 项目"
 }

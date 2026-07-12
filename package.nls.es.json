@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "Carpeta raíz que contiene los archivos .ink que se van a cargar. Si está vacía, no se define ninguna carpeta raíz.",
   "ink.port.description": "Puerto usado por el motor para las conexiones a localhost.",
   "ink.preview.title": "Vista previa del archivo actual",
-  "ink.runProject.title": "Ejecutar el proyecto ink"
+  "ink.runProject.title": "Ejecutar el proyecto ink",
+  "ink.runFromKnot.title": "Ejecutar el proyecto ink desde este knot"
 }

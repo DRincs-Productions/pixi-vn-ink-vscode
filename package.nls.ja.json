@@ -8,5 +8,6 @@
   "ink.rootFolder.description": "読み込む .ink ファイルを含むルートフォルダ。空の場合、ルートフォルダは定義されません。",
   "ink.port.description": "エンジンが localhost 接続に使用するポート。",
   "ink.preview.title": "現在のファイルのプレビュー",
-  "ink.runProject.title": "ink プロジェクトを実行"
+  "ink.runProject.title": "ink プロジェクトを実行",
+  "ink.runFromKnot.title": "この knot から ink プロジェクトを実行"
 }
