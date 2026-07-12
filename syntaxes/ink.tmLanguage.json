@@ -979,7 +979,7 @@
       "patterns": [
         {
           "name": "punctuation.definition.tag.ink",
-          "begin": "#",
+          "begin": "(?<!\\\\)#",
           "beginCaptures": {
             "0": {
               "name": "punctuation.definition.tag.ink"
