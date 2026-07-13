@@ -1,10 +1,14 @@
 import { existsSync } from "node:fs";
+import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "node:path";
 import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, workspace } from "vscode";
 import { findPixiVnUnimplementedFunctionCalls, PIXI_VN_ISSUES_URL } from "./utils/builtin-functions";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors } from "./utils/ink-utility";
+import { getAllKnotDefinitions } from "./utils/knot-definitions";
+import { getProjectInkFiles } from "./utils/knot-utility";
+import { getPixiVnDevLabelNames } from "./utils/pixi-vn-dev-data";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
 
 export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) {
@@ -62,6 +66,40 @@ export function checkPixiVnUnimplementedFunctions(document: TextDocument, diagno
                 ),
             );
         }
+    }
+}
+
+/**
+ * Flags `-> target` diverts whose target isn't a knot/stitch anywhere in the project and
+ * isn't a label currently registered on the pixi-vn Vite dev server either — the same
+ * check `vitePluginInk` runs at build time, passing it the same "known labels" (dev-server
+ * labels + project knots) offered as knot-completion suggestions after `->`/`<-` (see
+ * knotCompletionProvider). Only runs when the dev server has actually returned some
+ * labels: without them there's no reliable way to tell a real typo from a label defined
+ * purely in JS, so — same as before this check existed — nothing is flagged.
+ */
+export async function checkPixiVnUnknownDivertTargets(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const pixiVnLabels = getPixiVnDevLabelNames();
+    if (pixiVnLabels.length === 0) return;
+
+    const projectFiles = await getProjectInkFiles(document);
+    const knotFullNames = getAllKnotDefinitions(projectFiles).map((def) => def.fullName);
+    const knownLabels = [...new Set([...knotFullNames, ...pixiVnLabels])];
+
+    for (const occurrence of InkCompiler.getUnknownDivertTargets(document.getText(), knownLabels)) {
+        const lineIndex = occurrence.line - 1;
+        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
+
+        diagnostics.push(
+            new Diagnostic(
+                document.lineAt(lineIndex).range,
+                l10n.t('Divert target "{0}" not found in any known label source.', occurrence.target),
+                DiagnosticSeverity.Warning,
+            ),
+        );
     }
 }
 

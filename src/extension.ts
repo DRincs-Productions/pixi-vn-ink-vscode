@@ -17,7 +17,7 @@ import {
     window,
     workspace,
 } from "vscode";
-import { checkIncludes, checkPixiVnUnimplementedFunctions, updateDiagnostics } from "./diagnostics";
+import { checkIncludes, checkPixiVnUnimplementedFunctions, checkPixiVnUnknownDivertTargets, updateDiagnostics } from "./diagnostics";
 import { inkFoldingRangeProvider } from "./folding";
 import { findMarkdownTokenRanges, type MarkdownRange } from "./markdown";
 import { BUILTIN_FUNCTIONS, isBuiltinFunctionCallContext } from "./utils/builtin-functions";
@@ -356,17 +356,18 @@ export function activate(context: ExtensionContext) {
     const diagnostics = languages.createDiagnosticCollection("ink");
     context.subscriptions.push(diagnostics);
 
-    const refreshDiagnostics = (doc: TextDocument) => {
+    const refreshDiagnostics = async (doc: TextDocument) => {
         const list: Diagnostic[] = [];
         updateDiagnostics(doc, list);
         checkIncludes(doc, list);
         checkPixiVnUnimplementedFunctions(doc, list);
+        await checkPixiVnUnknownDivertTargets(doc, list);
         diagnostics.set(doc.uri, list);
     };
 
     for (const doc of workspace.textDocuments) {
         if (doc.languageId === "ink") {
-            refreshDiagnostics(doc);
+            void refreshDiagnostics(doc);
         }
     }
 
@@ -379,7 +380,7 @@ export function activate(context: ExtensionContext) {
             onDidChangeSemanticTokensEmitter.fire();
             for (const doc of workspace.textDocuments) {
                 if (doc.languageId === "ink") {
-                    refreshDiagnostics(doc);
+                    void refreshDiagnostics(doc);
                 }
             }
         }
@@ -392,13 +393,13 @@ export function activate(context: ExtensionContext) {
 
     workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
-            refreshDiagnostics(doc);
+            void refreshDiagnostics(doc);
         }
     });
 
     workspace.onDidChangeTextDocument((e) => {
         if (e.document.languageId === "ink") {
-            refreshDiagnostics(e.document);
+            void refreshDiagnostics(e.document);
 
             for (const editor of window.visibleTextEditors) {
                 if (editor.document === e.document) {

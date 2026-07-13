@@ -70,5 +70,6 @@
   "**Parameter passed by reference (`ref`)**: Written immediately before a parameter's name, it lets the knot/stitch/function alter the caller's actual variable directly, instead of receiving a temporary copy of its value.\n\nExample:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```": "**参照渡しのパラメータ（`ref`）**: パラメータ名の直前に書くことで、値の一時的なコピーを受け取る代わりに、knot/stitch/function が呼び出し元の実際の変数を直接変更できるようになります。\n\n例:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```",
   "Run from here": "ここから実行",
   "{0} (Preview from {1})": "{0}({1} からのプレビュー)",
-  "Pixi'VN label": "Pixi'VN ラベル"
+  "Pixi'VN label": "Pixi'VN ラベル",
+  "Divert target \"{0}\" not found in any known label source.": "ダイバートの対象 \"{0}\" が、既知のラベルのいずれにも見つかりませんでした。"
 }
