@@ -38,7 +38,7 @@ import {
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { knotRunCodeLensProvider } from "./utils/knot-codelens";
 import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
-import { schedulePixiVnDevDataPolling } from "./utils/pixi-vn-dev-data";
+import { getPixiVnDevCharacterIds, schedulePixiVnDevDataPolling } from "./utils/pixi-vn-dev-data";
 import { previewCommand, runFromKnotCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
@@ -54,9 +54,13 @@ export {
     isTunnelReturnArrow,
 } from "./utils/divert-context";
 
-// Legend for the pixi-vn bracket semantic tokens (uses the built-in "keyword" type so it
-// shares the theme colour already used by choice brackets in the TextMate grammar).
-const bracketTokenLegend = new SemanticTokensLegend(["keyword"], []);
+// Legend for the pixi-vn engine's semantic tokens: matched [ ] pairs in normal text use
+// the built-in "keyword" type (shares the theme colour already used by choice brackets in
+// the TextMate grammar), and a recognized "characterId: " dialogue speaker prefix uses
+// "function" (shares the colour already used for knot/stitch/divert names).
+const PIXI_VN_BRACKET_TOKEN_TYPE = 0;
+const PIXI_VN_CHARACTER_TOKEN_TYPE = 1;
+const pixiVnSemanticTokenLegend = new SemanticTokensLegend(["keyword", "function"], []);
 const declaredSymbolRegexCache = new Map<string, RegExp>();
 
 // Hover text for the VAR / CONST / LIST declaration keywords, documented in
@@ -459,6 +463,30 @@ export function activate(context: ExtensionContext) {
 
                 // Normal word/symbol detection (END, DONE, ->, <>, identifiers)
                 const line = document.lineAt(position.line).text;
+
+                // Hover for a "characterId: " dialogue speaker prefix recognized by pixi-vn
+                // (see findPixiVnCharacterPrefixRange) — checked directly against the line
+                // rather than through the generic word/range detection below so it also
+                // triggers when hovering the `:` itself, matching the coloured span.
+                if (engine === "pixi-vn" && isNormalTextLine(line)) {
+                    const pixiVnCharacterIds = new Set(getPixiVnDevCharacterIds());
+                    if (pixiVnCharacterIds.size > 0) {
+                        const prefixRange = findPixiVnCharacterPrefixRange(line, pixiVnCharacterIds);
+                        if (prefixRange && position.character >= prefixRange.start && position.character < prefixRange.end) {
+                            const characterId = line.substring(prefixRange.start, prefixRange.end - 1);
+                            return new Hover(
+                                new MarkdownString(
+                                    l10n.t(
+                                        "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```",
+                                        characterId,
+                                    ),
+                                ),
+                                new Range(position.line, prefixRange.start, position.line, prefixRange.end),
+                            );
+                        }
+                    }
+                }
+
                 let word: string | undefined;
                 let range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]+|->|<>|<-|\*|\+|-/);
 
@@ -713,7 +741,8 @@ export function activate(context: ExtensionContext) {
         }),
     );
 
-    // Semantic token provider: color matched [ ] pairs in normal text when engine is pixi-vn
+    // Semantic token provider: color matched [ ] pairs and recognized "characterId: " speaker
+    // prefixes in normal text when engine is pixi-vn
     context.subscriptions.push(
         languages.registerDocumentSemanticTokensProvider(
             { language: "ink" },
@@ -721,10 +750,15 @@ export function activate(context: ExtensionContext) {
                 onDidChangeSemanticTokens: onDidChangeSemanticTokensEmitter.event,
                 provideDocumentSemanticTokens(document) {
                     const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
-                    const builder = new SemanticTokensBuilder(bracketTokenLegend);
+                    const builder = new SemanticTokensBuilder(pixiVnSemanticTokenLegend);
                     if (engine !== "pixi-vn") {
                         return builder.build();
                     }
+
+                    // Only known once the dev server has actually returned some characters —
+                    // without that, there's no reliable way to tell a real speaker prefix from
+                    // narrative text that merely happens to contain "word: ", so none are coloured.
+                    const characterIds = new Set(getPixiVnDevCharacterIds());
 
                     let inBlockComment = false;
                     for (let i = 0; i < document.lineCount; i++) {
@@ -745,14 +779,27 @@ export function activate(context: ExtensionContext) {
                         for (const { text: segmentText, offset } of segments) {
                             const positions = findMatchingBracketsInNormalText(segmentText);
                             for (const pos of positions) {
-                                builder.push(i, offset + pos, 1, 0, 0);
+                                builder.push(i, offset + pos, 1, PIXI_VN_BRACKET_TOKEN_TYPE, 0);
+                            }
+                        }
+
+                        if (characterIds.size > 0) {
+                            const characterPrefix = findPixiVnCharacterPrefixRange(firstSeg.text, characterIds);
+                            if (characterPrefix) {
+                                builder.push(
+                                    i,
+                                    firstSeg.offset + characterPrefix.start,
+                                    characterPrefix.end - characterPrefix.start,
+                                    PIXI_VN_CHARACTER_TOKEN_TYPE,
+                                    0,
+                                );
                             }
                         }
                     }
                     return builder.build();
                 },
             },
-            bracketTokenLegend,
+            pixiVnSemanticTokenLegend,
         ),
     );
 
@@ -1050,6 +1097,33 @@ function getMarkdownScanStart(line: string): number | null {
     }
 
     return 0;
+}
+
+/**
+ * Returns the `[start, end)` range (relative to `segmentText`) of a "characterId: "
+ * dialogue speaker prefix at the start of a normal-text segment, when `characterId` is a
+ * known pixi-vn character id — mirroring pixi-vn-ink's own `getDialog()` split
+ * (adding-elements.ts): the first literal `": "` in the text is the split point, and the
+ * prefix up to it (after any leading whitespace) is checked, verbatim (no identifier-shape
+ * requirement), against the known ids. `end` covers the `:` itself but not the trailing
+ * space. Returns `undefined` when there's no `": "`, or the prefix isn't a known character
+ * id — callers are expected to have already excluded choice/comment/knot/declaration/logic
+ * lines (see isNormalTextLine).
+ */
+export function findPixiVnCharacterPrefixRange(
+    segmentText: string,
+    characterIds: ReadonlySet<string>,
+): { start: number; end: number } | undefined {
+    const leadingWhitespace = segmentText.match(/^\s*/)?.[0].length ?? 0;
+    const rest = segmentText.substring(leadingWhitespace);
+
+    const separatorIndex = rest.indexOf(": ");
+    if (separatorIndex < 0) return undefined;
+
+    const candidate = rest.substring(0, separatorIndex);
+    if (!characterIds.has(candidate)) return undefined;
+
+    return { start: leadingWhitespace, end: leadingWhitespace + separatorIndex + 1 };
 }
 
 /**

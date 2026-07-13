@@ -71,5 +71,6 @@
   "Run from here": "Запустить отсюда",
   "{0} (Preview from {1})": "{0} (Предпросмотр с {1})",
   "Pixi'VN label": "Метка Pixi'VN",
-  "Divert target \"{0}\" not found in any known label source.": "Цель divert \"{0}\" не найдена ни в одном известном источнике меток."
+  "Divert target \"{0}\" not found in any known label source.": "Цель divert \"{0}\" не найдена ни в одном известном источнике меток.",
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: распознан pixi-vn как id персонажа — эта строка является репликой, произносимой `{0}`, зарегистрированным на dev-сервере pixi-vn.\n\nПример:\n```ink\n{0}: Привет!\n```"
 }

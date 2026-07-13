@@ -71,5 +71,6 @@
   "Run from here": "ここから実行",
   "{0} (Preview from {1})": "{0}({1} からのプレビュー)",
   "Pixi'VN label": "Pixi'VN ラベル",
-  "Divert target \"{0}\" not found in any known label source.": "ダイバートの対象 \"{0}\" が、既知のラベルのいずれにも見つかりませんでした。"
+  "Divert target \"{0}\" not found in any known label source.": "ダイバートの対象 \"{0}\" が、既知のラベルのいずれにも見つかりませんでした。",
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: pixi-vn によってキャラクター ID として認識されています — この行は pixi-vn 開発サーバーに登録されている `{0}` が話すセリフです。\n\n例:\n```ink\n{0}: こんにちは!\n```"
 }

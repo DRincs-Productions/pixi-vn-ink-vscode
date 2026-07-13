@@ -71,5 +71,6 @@
   "Run from here": "Exécuter à partir d'ici",
   "{0} (Preview from {1})": "{0} (Aperçu depuis {1})",
   "Pixi'VN label": "Label Pixi'VN",
-  "Divert target \"{0}\" not found in any known label source.": "La cible du divert \"{0}\" n'a été trouvée dans aucune source de labels connue."
+  "Divert target \"{0}\" not found in any known label source.": "La cible du divert \"{0}\" n'a été trouvée dans aucune source de labels connue.",
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: reconnu par pixi-vn comme un id de personnage — cette ligne est un dialogue parlé par `{0}`, enregistré sur le serveur de développement pixi-vn.\n\nExemple :\n```ink\n{0}: Bonjour !\n```"
 }

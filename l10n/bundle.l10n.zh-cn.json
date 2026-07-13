@@ -71,5 +71,6 @@
   "Run from here": "从这里运行",
   "{0} (Preview from {1})": "{0}(从 {1} 预览)",
   "Pixi'VN label": "Pixi'VN 标签",
-  "Divert target \"{0}\" not found in any known label source.": "在任何已知的标签来源中都未找到转向目标 \"{0}\"。"
+  "Divert target \"{0}\" not found in any known label source.": "在任何已知的标签来源中都未找到转向目标 \"{0}\"。",
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**：被 pixi-vn 识别为角色 id —— 此行是由已在 pixi-vn 开发服务器上注册的 `{0}` 说出的对话。\n\n示例：\n```ink\n{0}: 你好！\n```"
 }

@@ -36,26 +36,37 @@ async function fetchDevApi(port: number, apiPath: string): Promise<unknown> {
 const SYNTHETIC_LABEL_MARKER = "_|_";
 
 /**
- * Normalizes the cached pixi-vn labels response into a deduplicated list of
- * label names. The dev server's exact wire format isn't part of its public
- * type surface, so this tolerates both a bare `string[]` and an array of
- * `{ id }` / `{ name }` objects (mirroring how registered characters are
- * shaped elsewhere in the plugin's API).
+ * Normalizes a dev-server response into a deduplicated list of ids. The dev server's
+ * exact wire format isn't part of its public type surface, so this tolerates both a
+ * bare `string[]` and an array of `{ id }` / `{ name }` objects.
  */
-export function getPixiVnDevLabelNames(): string[] {
-    const data = pixiVnDevData.labels;
+function normalizeDevApiIds(data: unknown): string[] {
     if (!Array.isArray(data)) return [];
 
-    const names = new Set<string>();
+    const ids = new Set<string>();
     for (const entry of data) {
         if (typeof entry === "string") {
-            names.add(entry);
+            ids.add(entry);
         } else if (entry && typeof entry === "object") {
             const id = (entry as { id?: unknown }).id ?? (entry as { name?: unknown }).name;
-            if (typeof id === "string") names.add(id);
+            if (typeof id === "string") ids.add(id);
         }
     }
-    return [...names].filter((name) => !name.includes(SYNTHETIC_LABEL_MARKER));
+    return [...ids];
+}
+
+/**
+ * Normalizes the cached pixi-vn labels response into a deduplicated list of label names.
+ */
+export function getPixiVnDevLabelNames(): string[] {
+    return normalizeDevApiIds(pixiVnDevData.labels).filter((name) => !name.includes(SYNTHETIC_LABEL_MARKER));
+}
+
+/**
+ * Normalizes the cached pixi-vn characters response into a deduplicated list of character ids.
+ */
+export function getPixiVnDevCharacterIds(): string[] {
+    return normalizeDevApiIds(pixiVnDevData.characters);
 }
 
 let lastLabelsQuickFetchAt = 0;
