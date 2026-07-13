@@ -73,5 +73,6 @@
   "Pixi'VN label": "Etiqueta de Pixi'VN",
   "Divert target \"{0}\" not found in any known label source.": "El destino del divert \"{0}\" no se encontró en ninguna fuente de etiquetas conocida.",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: reconocido por pixi-vn como un id de personaje — esta línea es un diálogo hablado por `{0}`, registrado en el servidor de desarrollo de pixi-vn.\n\nEjemplo:\n```ink\n{0}: ¡Hola!\n```",
-  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "El servidor de desarrollo de pixi-vn en ejecución usa una versión de @drincs/pixi-vn-ink anterior a {0}, que puede no admitir todas las funciones de esta extensión. Actualízala a {0} o posterior para obtener compatibilidad completa."
+  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "El servidor de desarrollo de pixi-vn en ejecución usa una versión de @drincs/pixi-vn-ink anterior a {0}, que puede no admitir todas las funciones de esta extensión. Actualízala a {0} o posterior para obtener compatibilidad completa.",
+  "**{0}** (replaced by pixi-vn)": "**{0}** (reemplazado por pixi-vn)"
 }

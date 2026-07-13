@@ -73,5 +73,6 @@
   "Pixi'VN label": "Метка Pixi'VN",
   "Divert target \"{0}\" not found in any known label source.": "Цель divert \"{0}\" не найдена ни в одном известном источнике меток.",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: распознан pixi-vn как id персонажа — эта строка является репликой, произносимой `{0}`, зарегистрированным на dev-сервере pixi-vn.\n\nПример:\n```ink\n{0}: Привет!\n```",
-  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "Запущенный dev-сервер pixi-vn использует версию @drincs/pixi-vn-ink старше {0}, которая может не поддерживать все функции этого расширения. Обновите её до версии {0} или новее для полной поддержки."
+  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "Запущенный dev-сервер pixi-vn использует версию @drincs/pixi-vn-ink старше {0}, которая может не поддерживать все функции этого расширения. Обновите её до версии {0} или новее для полной поддержки.",
+  "**{0}** (replaced by pixi-vn)": "**{0}** (заменяется pixi-vn)"
 }

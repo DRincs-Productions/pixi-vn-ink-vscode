@@ -1,10 +1,11 @@
-import { PIXIVN_DEV_API_ASSETS_MANIFEST, PIXIVN_DEV_API_CHARACTERS, PIXIVN_DEV_API_LABELS } from "@drincs/pixi-vn/vite";
 import {
     INK_DEV_API_HASHTAG_COMMANDS,
     INK_DEV_API_INFO,
     INK_DEV_API_TEXT_REPLACES,
     type InkLibraryInfo,
+    type InkTextReplaceInfo,
 } from "@drincs/pixi-vn-ink/dev-api";
+import { PIXIVN_DEV_API_ASSETS_MANIFEST, PIXIVN_DEV_API_CHARACTERS, PIXIVN_DEV_API_LABELS } from "@drincs/pixi-vn/vite";
 import type { ExtensionContext } from "vscode";
 import { l10n, window, workspace } from "vscode";
 
@@ -179,6 +180,18 @@ export function getPixiVnDevLabelNames(): string[] {
  */
 export function getPixiVnDevCharacterIds(): string[] {
     return normalizeDevApiIds(pixiVnDevData.characters);
+}
+
+/**
+ * Returns the registered text-replace handlers, tolerating anything malformed in the cached
+ * response (the dev server's wire format for this endpoint isn't part of its typed surface).
+ */
+export function getPixiVnDevTextReplaces(): InkTextReplaceInfo[] {
+    if (!Array.isArray(pixiVnDevData.textReplaces)) return [];
+    return pixiVnDevData.textReplaces.filter(
+        (entry): entry is InkTextReplaceInfo =>
+            Boolean(entry) && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string",
+    );
 }
 
 let lastLabelsQuickFetchAt = 0;

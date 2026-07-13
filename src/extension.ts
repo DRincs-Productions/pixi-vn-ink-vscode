@@ -38,7 +38,12 @@ import {
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { knotRunCodeLensProvider } from "./utils/knot-codelens";
 import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
-import { getPixiVnDevCharacterIds, schedulePixiVnDevDataPolling } from "./utils/pixi-vn-dev-data";
+import {
+    getPixiVnDevCharacterIds,
+    getPixiVnDevTextReplaces,
+    schedulePixiVnDevDataPolling,
+} from "./utils/pixi-vn-dev-data";
+import { findMatchingTextReplace } from "./utils/pixi-vn-text-replace";
 import { previewCommand, runFromKnotCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
@@ -485,6 +490,33 @@ export function activate(context: ExtensionContext) {
                             );
                         }
                     }
+
+                    // Hover for a "[...]" span whose content validates against a text-replace
+                    // handler registered on the pixi-vn dev server — same handler the semantic
+                    // token provider used to decide whether to colour this exact span.
+                    const textReplaces = getPixiVnDevTextReplaces();
+                    if (textReplaces.length > 0) {
+                        const positions = findMatchingBracketsInNormalText(line);
+                        for (let p = 0; p < positions.length; p += 2) {
+                            const openPos = positions[p];
+                            const closePos = positions[p + 1];
+                            if (position.character < openPos || position.character > closePos) continue;
+
+                            const content = line.substring(openPos + 1, closePos);
+                            const replace = findMatchingTextReplace(content, textReplaces, pixiVnCharacterIds);
+                            if (!replace) continue;
+
+                            // `replace.description` is arbitrary text supplied by the project's own
+                            // dev server, not authored by this extension — appended as-is rather
+                            // than folded into the l10n template, since it can't be translated here.
+                            const header = l10n.t("**{0}** (replaced by pixi-vn)", replace.name);
+                            const body = replace.description ? `\n\n${replace.description}` : "";
+                            return new Hover(
+                                new MarkdownString(header + body),
+                                new Range(position.line, openPos, position.line, closePos + 1),
+                            );
+                        }
+                    }
                 }
 
                 let word: string | undefined;
@@ -759,6 +791,11 @@ export function activate(context: ExtensionContext) {
                     // without that, there's no reliable way to tell a real speaker prefix from
                     // narrative text that merely happens to contain "word: ", so none are coloured.
                     const characterIds = new Set(getPixiVnDevCharacterIds());
+                    // Once the dev server has registered text-replace handlers, only a `[...]`
+                    // whose content actually validates against one of them is coloured — the same
+                    // narrowing the popup below applies (see findMatchingTextReplace's caller).
+                    // With no handlers known yet, every matched bracket pair is coloured, as before.
+                    const textReplaces = getPixiVnDevTextReplaces();
 
                     let inBlockComment = false;
                     for (let i = 0; i < document.lineCount; i++) {
@@ -778,8 +815,15 @@ export function activate(context: ExtensionContext) {
 
                         for (const { text: segmentText, offset } of segments) {
                             const positions = findMatchingBracketsInNormalText(segmentText);
-                            for (const pos of positions) {
-                                builder.push(i, offset + pos, 1, PIXI_VN_BRACKET_TOKEN_TYPE, 0);
+                            for (let p = 0; p < positions.length; p += 2) {
+                                const openPos = positions[p];
+                                const closePos = positions[p + 1];
+                                if (textReplaces.length > 0) {
+                                    const content = segmentText.substring(openPos + 1, closePos);
+                                    if (!findMatchingTextReplace(content, textReplaces, characterIds)) continue;
+                                }
+                                builder.push(i, offset + openPos, 1, PIXI_VN_BRACKET_TOKEN_TYPE, 0);
+                                builder.push(i, offset + closePos, 1, PIXI_VN_BRACKET_TOKEN_TYPE, 0);
                             }
                         }
 
