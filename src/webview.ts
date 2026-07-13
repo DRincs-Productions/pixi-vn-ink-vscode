@@ -15,8 +15,8 @@ import {
     window,
     workspace,
 } from "vscode";
-import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
-import { compile, getRuntimeError } from "./utils/ink-utility";
+import { getInkRootFolder } from "./utils/include-utility";
+import { buildProjectAwareSource, compile, getRuntimeError } from "./utils/ink-utility";
 import { getPixiVnDevCharacterIds } from "./utils/pixi-vn-dev-data";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
 
@@ -116,16 +116,22 @@ export async function openWebview(
     const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
     const markup = config.get<string | null>("markup", null);
     const characterIds = new Set(getPixiVnDevCharacterIds());
+    // pixi-vn-ink's `convertInkToJson` has no `LoadInkFileContents` hook of its own, so the
+    // pixi-vn engine can't be made mainFile-aware the same way — only the Inky engine below is.
+    const mainFileSetting = config.get<string>("mainFile", "");
+    const getInkySource = (sourceText: string) =>
+        buildProjectAwareSource(sourceText, uri.fsPath, rootFolderSetting, mainFileSetting, entryKnot);
 
     let compiled: string | undefined;
+    let lineOffset = entryKnot ? 1 : 0;
     try {
         if (engine === "pixi-vn") {
             const pixiVnJson = compilePixiVN(withEntryKnot(text), characterIds);
             compiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
         } else {
-            compiled = compile(withEntryKnot(text), {
-                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            }).ToJson() ?? undefined;
+            const { source, fileHandler, lineOffset: offset } = getInkySource(text);
+            lineOffset = offset;
+            compiled = compile(source, fileHandler).ToJson() ?? undefined;
         }
     } catch (err: any) {
         window.showErrorMessage(l10n.t("Ink compilation failed: {0}", err.message));
@@ -153,10 +159,10 @@ export async function openWebview(
     // ✅ Pass the title to getWebviewHtml
     panel.webview.html = getWebviewHtml(scriptUri, styleUri, panelTitle);
 
-    // Highlights the source line a runtime error was reported on. The `-> entryKnot`
-    // divert prepended by withEntryKnot shifts every reported line down by one, so it
-    // must be subtracted back out to map onto the real (unmodified) document.
-    const lineOffset = entryKnot ? 1 : 0;
+    // Highlights the source line a runtime error was reported on. `lineOffset` (set above) is how
+    // many lines were prepended to the real source before compiling — either just the `-> entryKnot`
+    // divert, or, when mainFile-aware, that divert plus the `INCLUDE`/synthetic-knot header too —
+    // and must be subtracted back out to map onto the real (unmodified) document.
     const errorLineDecoration = window.createTextEditorDecorationType({
         isWholeLine: true,
         backgroundColor: new ThemeColor("inputValidation.errorBackground"),
@@ -201,12 +207,11 @@ export async function openWebview(
         }
         if (message.type === "runtime-error-line") {
             const choices: number[] = Array.isArray(message.choices) ? message.choices : [];
-            const runtimeError =
-                message.hasError && engine !== "pixi-vn"
-                    ? getRuntimeError(withEntryKnot((await getCurrentDocument()).getText()), choices, {
-                          LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                      })
-                    : undefined;
+            let runtimeError: { message: string; line?: number } | undefined;
+            if (message.hasError && engine !== "pixi-vn") {
+                const { source, fileHandler } = getInkySource((await getCurrentDocument()).getText());
+                runtimeError = getRuntimeError(source, choices, fileHandler);
+            }
             if (runtimeError?.line !== undefined) {
                 await highlightErrorLine(runtimeError.line);
             } else {
@@ -244,9 +249,8 @@ export async function openWebview(
                     const pixiVnJson = compilePixiVN(withEntryKnot(newText), characterIds);
                     updatedCompiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
                 } else {
-                    updatedCompiled = compile(withEntryKnot(newText), {
-                        LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                    }).ToJson() ?? undefined;
+                    const { source, fileHandler } = getInkySource(newText);
+                    updatedCompiled = compile(source, fileHandler).ToJson() ?? undefined;
                 }
 
                 panel.webview.postMessage({

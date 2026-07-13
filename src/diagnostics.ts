@@ -5,7 +5,7 @@ import path from "node:path";
 import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, workspace } from "vscode";
 import { findPixiVnUnimplementedFunctionCalls, PIXI_VN_ISSUES_URL } from "./utils/builtin-functions";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
-import { getErrors } from "./utils/ink-utility";
+import { getErrors, getProjectErrors } from "./utils/ink-utility";
 import { getAllKnotDefinitions } from "./utils/knot-definitions";
 import { getProjectInkFiles } from "./utils/knot-utility";
 import { getPixiVnDevLabelNames } from "./utils/pixi-vn-dev-data";
@@ -21,9 +21,12 @@ export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) 
     if (engine === "pixi-vn") {
         errors = getErrorsPixiVN(doc.getText());
     } else {
-        errors = getErrors(doc.getText(), {
-            LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-        });
+        const mainFileSetting = config.get<string>("mainFile", "");
+        errors = mainFileSetting
+            ? getProjectErrors(doc.getText(), doc.uri.fsPath, mainFileSetting, rootFolderSetting)
+            : getErrors(doc.getText(), {
+                  LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
+              });
     }
 
     for (const issue of errors) {
