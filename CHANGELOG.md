@@ -4,6 +4,13 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Background polling of the pixi-vn Vite dev server (`ink.port`) for characters, narration labels, and the assets manifest — fetched immediately, again after 1 and 4 minutes, then every 10 minutes, plus once each time an `.ink` file is opened. Only active when `ink.engine` is `pixi-vn`; a failed fetch is silently ignored and the last known-good data is kept.
+- **pixi-vn engine only**: knot autocompletion after a divert (`->`) or thread (`<-`) arrow now also suggests narration labels registered on the pixi-vn dev server — which may already include some of the project's own knots, so the two lists are merged with duplicates removed. A quick, short-timeout request to the dev server is attempted right before showing the suggestions so they're as fresh as possible. Labels containing pixi-vn-ink's internal `_|_` separator (used for synthetic, generated labels) are excluded.
+
 ## [0.5.10] - 2026-07-12
 
 ### Added

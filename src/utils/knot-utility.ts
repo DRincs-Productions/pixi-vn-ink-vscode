@@ -12,6 +12,7 @@ import {
     Uri,
     WorkspaceEdit,
     commands,
+    l10n,
     workspace,
 } from "vscode";
 import {
@@ -24,6 +25,7 @@ import {
     isVariableReferenceContext,
 } from "./divert-context";
 import { getInkRootFolder, loadInkFolder } from "./include-utility";
+import { ensureFreshPixiVnLabels, getPixiVnDevLabelNames } from "./pixi-vn-dev-data";
 import {
     type KnotDefinition,
     type LabelDefinition,
@@ -369,7 +371,8 @@ export function knotCompletionProvider(): CompletionItemProvider {
                 );
 
                 const projectFiles = await getProjectInkFiles(document);
-                const definitions = getAllKnotDefinitions(projectFiles).filter((def) =>
+                const allKnotDefinitions = getAllKnotDefinitions(projectFiles);
+                const definitions = allKnotDefinitions.filter((def) =>
                     def.fullName.toLowerCase().startsWith(typedPrefix.toLowerCase()),
                 );
                 const knotItems = definitions.map((def) => {
@@ -381,6 +384,28 @@ export function knotCompletionProvider(): CompletionItemProvider {
                     return item;
                 });
 
+                // In the pixi-vn engine, a divert corresponds to a jump to a label (see
+                // PIXI_VN_DIVERT_NOTE in extension.ts), so the dev server's registered
+                // labels — which may already include some of the project's own knots —
+                // are offered too, skipping anything already covered by `knotItems`.
+                let pixiVnLabelItems: CompletionItem[] = [];
+                const engine = workspace.getConfiguration("ink", document.uri).get<"Inky" | "pixi-vn">("engine", "Inky");
+                if (engine === "pixi-vn") {
+                    await ensureFreshPixiVnLabels();
+                    const knownFullNames = new Set(allKnotDefinitions.map((def) => def.fullName));
+                    pixiVnLabelItems = getPixiVnDevLabelNames()
+                        .filter(
+                            (name) => !knownFullNames.has(name) && name.toLowerCase().startsWith(typedPrefix.toLowerCase()),
+                        )
+                        .map((name) => {
+                            const item = new CompletionItem(name, CompletionItemKind.Reference);
+                            item.insertText = name;
+                            item.range = range;
+                            item.detail = l10n.t("Pixi'VN label");
+                            return item;
+                        });
+                }
+
                 // Labels are only ever local to the current file (see
                 // knotDefinitionProvider's doc comment), so they're sourced
                 // straight from `document` rather than getProjectInkFiles.
@@ -388,7 +413,7 @@ export function knotCompletionProvider(): CompletionItemProvider {
                     .filter((def) => def.labelName.toLowerCase().startsWith(typedPrefix.toLowerCase()))
                     .map((def) => labelCompletionItem(def, range));
 
-                return [...knotItems, ...labelItems];
+                return [...knotItems, ...pixiVnLabelItems, ...labelItems];
             }
 
             // Not right after a divert/thread arrow — try a dotted `list.item`

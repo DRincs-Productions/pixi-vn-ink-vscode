@@ -1,3 +1,4 @@
 {
     "ink.markup": "Markdown",
+    "ink.engine": "pixi-vn"
 }

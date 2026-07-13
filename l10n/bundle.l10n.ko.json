@@ -69,5 +69,6 @@
   "**LIST_INVERT(list)**: Returns the inverse of the list — every possible item that is *not* currently in it. Returns `null` if the list is empty and its origin list can't be inferred.\n\nExample:\n```ink\n~ GuardsOnDuty = LIST_INVERT(GuardsOnDuty)\n```": "**LIST_INVERT(list)**: 리스트의 역을 반환합니다 — 현재 리스트에 *포함되지 않은* 모든 가능한 항목입니다. 리스트가 비어 있고 원본 리스트를 추론할 수 없는 경우 `null`을 반환합니다.\n\n예시:\n```ink\n~ GuardsOnDuty = LIST_INVERT(GuardsOnDuty)\n```",
   "**Parameter passed by reference (`ref`)**: Written immediately before a parameter's name, it lets the knot/stitch/function alter the caller's actual variable directly, instead of receiving a temporary copy of its value.\n\nExample:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```": "**참조로 전달되는 매개변수 (`ref`)**: 매개변수 이름 바로 앞에 작성하며, knot/stitch/function이 값의 임시 복사본을 받는 대신 호출자의 실제 변수를 직접 변경할 수 있게 합니다.\n\n예시:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```",
   "Run from here": "여기서 실행",
-  "{0} (Preview from {1})": "{0} ({1}부터 미리보기)"
+  "{0} (Preview from {1})": "{0} ({1}부터 미리보기)",
+  "Pixi'VN label": "Pixi'VN 레이블"
 }

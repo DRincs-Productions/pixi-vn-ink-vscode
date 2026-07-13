@@ -69,5 +69,6 @@
   "**LIST_INVERT(list)**: Returns the inverse of the list — every possible item that is *not* currently in it. Returns `null` if the list is empty and its origin list can't be inferred.\n\nExample:\n```ink\n~ GuardsOnDuty = LIST_INVERT(GuardsOnDuty)\n```": "**LIST_INVERT(list)**: Restituisce l'inverso della list — tutti i possibili elementi che *non* sono attualmente presenti in essa. Restituisce `null` se la list è vuota e non è possibile risalire alla list di origine.\n\nEsempio:\n```ink\n~ GuardsOnDuty = LIST_INVERT(GuardsOnDuty)\n```",
   "**Parameter passed by reference (`ref`)**: Written immediately before a parameter's name, it lets the knot/stitch/function alter the caller's actual variable directly, instead of receiving a temporary copy of its value.\n\nExample:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```": "**Parametro passato per riferimento (`ref`)**: Scritto subito prima del nome di un parametro, permette al knot/stitch/function di modificare direttamente la variabile reale del chiamante, invece di riceverne una copia temporanea.\n\nEsempio:\n```ink\n=== function alter(ref x, k) ===\n~ x = x + k\n```\n```ink\n~ gold = gold + 7\n~ alter(gold, 7)\n```",
   "Run from here": "Esegui da qui",
-  "{0} (Preview from {1})": "{0} (Anteprima da {1})"
+  "{0} (Preview from {1})": "{0} (Anteprima da {1})",
+  "Pixi'VN label": "Label Pixi'VN"
 }
