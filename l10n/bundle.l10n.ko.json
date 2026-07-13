@@ -72,5 +72,6 @@
   "{0} (Preview from {1})": "{0} ({1}부터 미리보기)",
   "Pixi'VN label": "Pixi'VN 레이블",
   "Divert target \"{0}\" not found in any known label source.": "다이버트 대상 \"{0}\"을(를) 알려진 레이블 소스에서 찾을 수 없습니다.",
-  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: pixi-vn에서 캐릭터 id로 인식됩니다 — 이 줄은 pixi-vn 개발 서버에 등록된 `{0}`이(가) 말하는 대화입니다.\n\n예시:\n```ink\n{0}: 안녕!\n```"
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: pixi-vn에서 캐릭터 id로 인식됩니다 — 이 줄은 pixi-vn 개발 서버에 등록된 `{0}`이(가) 말하는 대화입니다.\n\n예시:\n```ink\n{0}: 안녕!\n```",
+  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "실행 중인 pixi-vn 개발 서버가 {0}보다 오래된 버전의 @drincs/pixi-vn-ink를 사용하고 있어 이 확장 프로그램의 일부 기능을 지원하지 않을 수 있습니다. 완전한 지원을 받으려면 버전 {0} 이상으로 업데이트하세요."
 }

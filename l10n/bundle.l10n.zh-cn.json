@@ -72,5 +72,6 @@
   "{0} (Preview from {1})": "{0}(从 {1} 预览)",
   "Pixi'VN label": "Pixi'VN 标签",
   "Divert target \"{0}\" not found in any known label source.": "在任何已知的标签来源中都未找到转向目标 \"{0}\"。",
-  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**：被 pixi-vn 识别为角色 id —— 此行是由已在 pixi-vn 开发服务器上注册的 `{0}` 说出的对话。\n\n示例：\n```ink\n{0}: 你好！\n```"
+  "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**：被 pixi-vn 识别为角色 id —— 此行是由已在 pixi-vn 开发服务器上注册的 `{0}` 说出的对话。\n\n示例：\n```ink\n{0}: 你好！\n```",
+  "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "正在运行的 pixi-vn 开发服务器使用的 @drincs/pixi-vn-ink 版本低于 {0}，可能不支持此扩展的全部功能。请更新到 {0} 或更高版本以获得完整支持。"
 }
