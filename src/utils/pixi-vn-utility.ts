@@ -1,130 +1,38 @@
-import { Compiler } from "inkjs/compiler/Compiler";
-import type { IFileHandler } from "inkjs/compiler/IFileHandler";
+import { convertInkToJson } from "@drincs/pixi-vn-ink/converter";
+import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
 import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
 
-export function getErrorsPixiVN(text: string, labelToRemove: string[] = [], initialVarsToRemove: string[] = []) {
-    const issues: { message: string; type: ErrorType; line: number }[] = [];
-    try {
-        const compiler = new Compiler(text, {
-            errorHandler: (message: string, type: ErrorType) => {
-                const cleanedMsg = message.replace(/^[A-Z]+: line \d+: ?/, "");
-                const lineMatch = message.match(/line (\d+)/);
-                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1], 10) : -1 });
-            },
-            countAllVisits: true,
-            fileHandler: null,
-            pluginNames: [],
-            sourceFilename: null,
-        });
-        compiler.Compile();
-        return issues;
-    } catch (_e) {
-        const error = issues.find((em) => em.type === ErrorType.Error);
-        if (error) {
-            if (error.message.includes("Divert target not found")) {
-                const match = error.message.match(/Divert target not found: '-> (\w+)'/);
-                if (match?.[1]) {
-                    const label = match[1];
-                    const textToAdd = `\n\n=== ${label} ===\n\n# run ${label}\n\n-> DONE`;
-                    text = text.concat(textToAdd);
-                    return getErrorsPixiVN(text, [...labelToRemove, label], initialVarsToRemove);
-                }
-            }
-            if (error.message.includes("Unresolved variable")) {
-                const match = error.message.match(/Unresolved variable: (\w+)/);
-                if (match?.[1]) {
-                    const varName = match[1];
-                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
-                    text = textToAdd.concat(text);
-                    return getErrorsPixiVN(text, labelToRemove, [...initialVarsToRemove, varName]);
-                }
-            }
-            if (error.message.includes("Variable could not be found to assign to")) {
-                const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
-                if (match?.[1]) {
-                    const varName = match[1];
-                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
-                    text = textToAdd.concat(text);
-                    return getErrorsPixiVN(text, labelToRemove, [...initialVarsToRemove, varName]);
-                }
-            }
-        }
-        return issues;
-    }
+/**
+ * Returns every compile issue (error/warning/author note, with its line) for `text` under the
+ * pixi-vn engine — used for editor diagnostics. `InkCompiler.compile` already retries past a
+ * missing divert target, an unresolved variable, a LIST/read-count issue, a missing function,
+ * or a wrong argument count by stubbing in a minimal definition and recompiling (mirroring what
+ * `vitePluginInk` relies on for the same leniency), so this only ever needs one call.
+ */
+export function getErrorsPixiVN(text: string) {
+    return InkCompiler.compile(text).issues;
 }
 
-export function compilePixiVN(
-    text: string,
-    fileHandler: Partial<IFileHandler> = {},
-    labelToRemove: string[] = [],
-    initialVarsToRemove: string[] = [],
-) {
-    const issues: { message: string; type: ErrorType; line: number }[] = [];
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    try {
-        const compiler = new Compiler(text, {
-            errorHandler: (message: string, type: ErrorType) => {
-                const cleanedMsg = message.replace(/^[A-Z]+: line \d+: ?/, "");
-                const lineMatch = message.match(/line (\d+)/);
-                issues.push({ message: cleanedMsg, type, line: lineMatch ? parseInt(lineMatch[1], 10) : -1 });
-                if (type === ErrorType.Error) {
-                    errors.push(message);
-                } else {
-                    warnings.push(message);
-                }
-            },
-            countAllVisits: true,
-            fileHandler: {
-                LoadInkFileContents: (filename: string) => filename,
-                ResolveInkFilename: (filename: string) => filename,
-                ...fileHandler,
-            },
-            pluginNames: [],
-            sourceFilename: null,
-        });
-        const json = JSON.parse(compiler.Compile().ToJson()!);
-        if (json && "root" in json && json.root.length === 3) {
-            json.root[2] = {
-                __pixi_vn_start__: json.root[0],
-                ...json.root[2],
-            };
-        }
-        return json;
-    } catch (e) {
-        const error = issues.find((em) => em.type === ErrorType.Error);
-        if (error) {
-            if (error.message.includes("Divert target not found")) {
-                const match = error.message.match(/Divert target not found: '-> (\w+)'/);
-                if (match?.[1]) {
-                    const label = match[1];
-                    const textToAdd = `\n\n=== ${label} ===\n\n# run ${label}\n\n-> DONE`;
-                    text = text.concat(textToAdd);
-                    return compilePixiVN(text, fileHandler, [...labelToRemove, label], initialVarsToRemove);
-                }
-            }
-            if (error.message.includes("Unresolved variable")) {
-                const match = error.message.match(/Unresolved variable: (\w+)/);
-                if (match?.[1]) {
-                    const varName = match[1];
-                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
-                    text = textToAdd.concat(text);
-                    return compilePixiVN(text, fileHandler, labelToRemove, [...initialVarsToRemove, varName]);
-                }
-            }
-            if (error.message.includes("Variable could not be found to assign to")) {
-                const match = error.message.match(/Variable could not be found to assign to: (\w+)/);
-                if (match?.[1]) {
-                    const varName = match[1];
-                    const textToAdd = `VAR ${varName} = "${varName}_value"\n\n`;
-                    text = textToAdd.concat(text);
-                    return compilePixiVN(text, fileHandler, labelToRemove, [...initialVarsToRemove, varName]);
-                }
-            }
-        }
-        if (errors.length > 0) {
-            throw new Error(errors[0]);
-        }
-        throw e;
-    }
+// pixi-vn-ink's own mapper only turns *named* containers (knots) into PixiVNJson labels —
+// top-level content with no `=== knot ===` around it is silently dropped (confirmed by its own
+// "Empty file" test: prose with no knot maps to `labels: {}`). Wrapping the whole source in one
+// synthetic top-level knot guarantees there's always a real, addressable entry point — and it's
+// also the label the webview's `narration.call` starts every story from.
+export const PIXI_VN_START_LABEL = "__pixi_vn_start__";
+
+/**
+ * Compiles `text` for the pixi-vn engine straight into a `PixiVNJson` (a `labels` dictionary of
+ * dialogue/choice/etc. steps), ready for `@drincs/pixi-vn-ink`'s `importJson` — the same
+ * `convertInkToJson` pipeline `vitePluginInk` itself uses to turn a `.ink` file into JSON.
+ *
+ * Imported from `@drincs/pixi-vn-ink/converter` specifically, not its root export: the root also
+ * re-exports `importJson`/`VariableGetter`, which need `@drincs/pixi-vn`'s live canvas runtime —
+ * harmless in the webview's real DOM context, but pulling that into the extension host (a plain
+ * Node.js process with no `navigator`) crashes on activation the moment pixi.js's browser-only
+ * `DOMAdapter` gets touched. `/converter` only reaches the pure ink→JSON conversion.
+ */
+export function compilePixiVN(text: string, characterIds?: ReadonlySet<string>) {
+    return convertInkToJson(`=== ${PIXI_VN_START_LABEL} ===\n${text}`, {
+        characters: characterIds ? [...characterIds] : [],
+    });
 }

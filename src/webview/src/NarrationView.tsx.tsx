@@ -1,5 +1,5 @@
 import { Game, narration, RegisteredCharacters } from "@drincs/pixi-vn";
-import { convertInkToJson, importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
+import { importJson, onInkHashtagScript } from "@drincs/pixi-vn-ink";
 import { Story } from "inkjs/compiler/Compiler";
 import { ErrorType } from "inkjs/engine/Error";
 import { ArrowLeft, RotateCcw } from "lucide-react";
@@ -241,8 +241,11 @@ export default function NarrationView() {
                         try {
                             Game.clear();
                             RegisteredCharacters.add(characters || []);
-                            const json = convertInkToJson(storyJson);
-                            await importJson(json!);
+                            // storyJson is a JSON string of an already-mapped PixiVNJson
+                            // (compilePixiVN runs the ink → PixiVNJson conversion, including
+                            // character-dialogue splitting, on the extension host via
+                            // @drincs/pixi-vn-ink/converter) — just parse it.
+                            await importJson(JSON.parse(storyJson));
                             const tempChoices = oldChoices
                                 .map((c) => (typeof c === "number" ? c : undefined))
                                 .filter((c): c is number => c !== undefined);

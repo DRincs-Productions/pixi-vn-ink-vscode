@@ -17,6 +17,7 @@ import {
 } from "vscode";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { compile, getRuntimeError } from "./utils/ink-utility";
+import { getPixiVnDevCharacterIds } from "./utils/pixi-vn-dev-data";
 import { compilePixiVN } from "./utils/pixi-vn-utility";
 
 export function previewCommand(context: ExtensionContext) {
@@ -114,17 +115,17 @@ export async function openWebview(
     const config = workspace.getConfiguration("ink");
     const engine = config.get<"Inky" | "pixi-vn">("engine", "Inky");
     const markup = config.get<string | null>("markup", null);
+    const characterIds = new Set(getPixiVnDevCharacterIds());
 
     let compiled: string | undefined;
     try {
         if (engine === "pixi-vn") {
-            compiled = compilePixiVN(withEntryKnot(text), {
-                LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            });
+            const pixiVnJson = compilePixiVN(withEntryKnot(text), characterIds);
+            compiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
         } else {
             compiled = compile(withEntryKnot(text), {
                 LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-            }).ToJson();
+            }).ToJson() ?? undefined;
         }
     } catch (err: any) {
         window.showErrorMessage(l10n.t("Ink compilation failed: {0}", err.message));
@@ -214,17 +215,7 @@ export async function openWebview(
         }
         if (message.type === "ready") {
             console.log("Webview is ready, sending compiled story.");
-            let characters: string | undefined;
-            if (engine === "pixi-vn") {
-                const port = config.get<number>("port", 5173); // legge la porta dalle impostazioni
-                try {
-                    const res = await fetch(`http://localhost:${port}/pixi-vn/characters`);
-                    if (res.ok) {
-                        characters = await res.text();
-                        console.log("Fetched Pixi-VN characters:", characters);
-                    }
-                } catch (_err) {}
-            }
+            const characters = engine === "pixi-vn" && characterIds.size > 0 ? JSON.stringify([...characterIds]) : undefined;
             panel.webview.postMessage({
                 type: "compiled-story",
                 engine: engine,
@@ -250,13 +241,12 @@ export async function openWebview(
                 const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
                 let updatedCompiled: string | undefined;
                 if (engine === "pixi-vn") {
-                    updatedCompiled = compilePixiVN(withEntryKnot(newText), {
-                        LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                    });
+                    const pixiVnJson = compilePixiVN(withEntryKnot(newText), characterIds);
+                    updatedCompiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
                 } else {
                     updatedCompiled = compile(withEntryKnot(newText), {
                         LoadInkFileContents: (filename: string) => loadInkFileContent(filename, rootFolderSetting) || "",
-                    }).ToJson();
+                    }).ToJson() ?? undefined;
                 }
 
                 panel.webview.postMessage({
