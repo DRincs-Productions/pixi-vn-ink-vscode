@@ -1,6 +1,5 @@
 import { convertInkToJson } from "@drincs/pixi-vn-ink/converter";
 import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
-import { ErrorType } from "inkjs/compiler/Parser/ErrorType";
 
 /**
  * Returns every compile issue (error/warning/author note, with its line) for `text` under the
