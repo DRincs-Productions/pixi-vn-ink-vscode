@@ -1,4 +1,5 @@
 mc: Hello [world]!
+Hello [mc]!
 * Hello [back!] right back to you!
     Nice to hear from you!
  + [Eat another donut]
