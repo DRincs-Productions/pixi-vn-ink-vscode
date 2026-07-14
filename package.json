@@ -30,7 +30,9 @@
     "pixi-vn",
     "game development"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onWebviewPanel:inkPreview"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [

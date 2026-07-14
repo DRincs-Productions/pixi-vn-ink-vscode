@@ -255,6 +255,21 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(runProjectCommand(context));
     context.subscriptions.push(runFromKnotCommand(context));
 
+    // The preview webview is never actually restorable across a window reload — its content
+    // depends on a live compile of whichever .ink file/knot it was opened from, which isn't part
+    // of the panel's persisted state. Without a serializer, VS Code still tries to bring back the
+    // panel it remembers being open, showing an empty/black webview that never receives a
+    // "compiled-story" message (nothing re-runs `openWebview`'s message handlers for it). This
+    // just closes any such restored panel immediately instead — the user can reopen the preview
+    // normally from the file they want.
+    context.subscriptions.push(
+        window.registerWebviewPanelSerializer("inkPreview", {
+            async deserializeWebviewPanel(webviewPanel) {
+                webviewPanel.dispose();
+            },
+        }),
+    );
+
     // Keep the pixi-vn Vite dev-server data (characters, labels, assets manifest) cached
     // and refreshed in the background for upcoming pixi-vn-aware features.
     schedulePixiVnDevDataPolling(context);
