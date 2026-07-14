@@ -2,11 +2,15 @@ import { existsSync } from "node:fs";
 import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "node:path";
-import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, workspace } from "vscode";
-import { findPixiVnUnimplementedFunctionCalls, PIXI_VN_ISSUES_URL } from "./utils/builtin-functions";
+import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, Uri, workspace } from "vscode";
+import {
+    findPixiVnCustomFunctionCalls,
+    findPixiVnUnimplementedFunctionCalls,
+    PIXI_VN_ISSUES_URL,
+} from "./utils/builtin-functions";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors, getProjectErrors } from "./utils/ink-utility";
-import { getAllKnotDefinitions } from "./utils/knot-definitions";
+import { extractKnotDefinitions, getAllKnotDefinitions } from "./utils/knot-definitions";
 import { getProjectInkFiles } from "./utils/knot-utility";
 import { getPixiVnDevLabelNames } from "./utils/pixi-vn-dev-data";
 import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
@@ -68,6 +72,63 @@ export function checkPixiVnUnimplementedFunctions(document: TextDocument, diagno
                     DiagnosticSeverity.Warning,
                 ),
             );
+        }
+    }
+}
+
+const PIXI_VN_FUNCTIONS_DOC_URL = "https://pixi-vn.com/ink/functions";
+const PIXI_VN_HASHTAG_DOC_URL = "https://pixi-vn.com/ink/hashtag";
+
+/**
+ * Flags every `=== function ... ===` declaration under the pixi-vn engine: ink-native functions
+ * are silently ignored there ("if you define a function in ink, it will be ignored by Pixi'VN",
+ * {@link PIXI_VN_FUNCTIONS_DOC_URL}) — a function has to be defined in JavaScript/TypeScript
+ * (via `StepLabelProps`) instead, or, better, exposed as a Custom Hashtag Command
+ * ({@link PIXI_VN_HASHTAG_DOC_URL}).
+ */
+export function checkPixiVnInkFunctionDeclarations(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    for (const def of extractKnotDefinitions(document.uri.fsPath, document.getText())) {
+        if (!def.isFunction) continue;
+
+        const diagnostic = new Diagnostic(
+            new Range(def.line, def.column, def.line, def.column + def.knotName.length),
+            l10n.t(
+                'Functions can\'t be created directly in ink for the pixi-vn engine — "{0}" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.',
+                def.knotName,
+                PIXI_VN_FUNCTIONS_DOC_URL,
+            ),
+            DiagnosticSeverity.Warning,
+        );
+        // Clickable in the Problems panel/hover — the hashtag-command doc mentioned in the
+        // message text above; not repeated as a plain-text URL to avoid showing it twice.
+        diagnostic.code = { value: "pixi-vn.com/ink/hashtag", target: Uri.parse(PIXI_VN_HASHTAG_DOC_URL) };
+        diagnostics.push(diagnostic);
+    }
+}
+
+/**
+ * Hints, on every call to a function that isn't one of ink's own built-ins, that a Custom
+ * Hashtag Command ({@link PIXI_VN_HASHTAG_DOC_URL}) is the recommended way to trigger app-side
+ * behavior from ink under the pixi-vn engine, rather than calling a JavaScript function directly
+ * (`~ functionName(...)`, defined via `StepLabelProps` — see {@link PIXI_VN_FUNCTIONS_DOC_URL}).
+ */
+export function checkPixiVnFunctionCallHints(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    for (let i = 0; i < document.lineCount; i++) {
+        const line = document.lineAt(i).text;
+        for (const { name, start, end } of findPixiVnCustomFunctionCalls(line)) {
+            const diagnostic = new Diagnostic(
+                new Range(i, start, i, end),
+                l10n.t('Consider exposing "{0}" as a Custom Hashtag Command instead of as a function.', name),
+                DiagnosticSeverity.Information,
+            );
+            diagnostic.code = { value: "pixi-vn.com/ink/hashtag", target: Uri.parse(PIXI_VN_HASHTAG_DOC_URL) };
+            diagnostics.push(diagnostic);
         }
     }
 }

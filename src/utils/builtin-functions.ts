@@ -101,3 +101,39 @@ export function findPixiVnUnimplementedFunctionCalls(line: string): { name: stri
 
     return results.sort((a, b) => a.start - b.start);
 }
+
+// Ink keywords that can be immediately followed by `(` without being a function call —
+// `not`/`mod`/`and`/`or` are operators (e.g. `not (condition)`) and `return` can be followed
+// directly by a parenthesized expression (e.g. `~ return (x + y)`).
+const INK_NON_CALL_KEYWORDS = new Set(["not", "mod", "and", "or", "return"]);
+
+// A knot/stitch/function header (`== name ==`, possibly `function`) — kept identical to
+// HEADER_REGEX in knot-definitions.ts (not imported from there, to keep this module free of
+// any dependency beyond plain strings/regexes, matching the rest of this file).
+const DECLARATION_HEADER_REGEX = /^\s*(=+)\s*(function\s+)?([A-Za-z_][A-Za-z0-9_]*)/;
+
+/**
+ * Finds every call, on `line`, to a function that isn't one of ink's own built-ins (see
+ * {@link BUILTIN_FUNCTIONS} — those are implemented natively by the ink runtime, not defined by
+ * the app). Used to hint that a Custom Hashtag Command is the recommended way to trigger app-side
+ * behavior from ink under the pixi-vn engine, rather than calling a JavaScript function directly.
+ * Skips comments, knot/stitch/function declaration headers, and `EXTERNAL` declarations — none of
+ * those are calls.
+ */
+export function findPixiVnCustomFunctionCalls(line: string): { name: string; start: number; end: number }[] {
+    if (line.trimStart().startsWith("//")) return [];
+    if (DECLARATION_HEADER_REGEX.test(line)) return [];
+    if (/^\s*EXTERNAL\b/.test(line)) return [];
+
+    const results: { name: string; start: number; end: number }[] = [];
+    const callRegex = /\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+    let match: RegExpExecArray | null = callRegex.exec(line);
+    while (match !== null) {
+        const name = match[1];
+        if (!(name in BUILTIN_FUNCTIONS) && !INK_NON_CALL_KEYWORDS.has(name)) {
+            results.push({ name, start: match.index, end: match.index + name.length });
+        }
+        match = callRegex.exec(line);
+    }
+    return results;
+}

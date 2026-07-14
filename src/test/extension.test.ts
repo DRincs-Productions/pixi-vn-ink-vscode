@@ -34,6 +34,7 @@ import {
 import { computeInkFoldingRanges } from '../folding';
 import {
 	BUILTIN_FUNCTIONS,
+	findPixiVnCustomFunctionCalls,
 	findPixiVnUnimplementedFunctionCalls,
 	isBuiltinFunctionCallContext,
 } from '../utils/builtin-functions';
@@ -577,6 +578,42 @@ suite('Extension Test Suite', () => {
 
 		// Commented-out lines are ignored
 		assert.deepStrictEqual(findPixiVnUnimplementedFunctionCalls('// ~ SEED_RANDOM(235)'), []);
+	});
+
+	test('findPixiVnCustomFunctionCalls: locates calls to app-defined (non-built-in) functions', () => {
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('~ aa()'), [{ name: 'aa', start: 2, end: 4 }]);
+		assert.deepStrictEqual(
+			findPixiVnCustomFunctionCalls('~ navigate("/")'),
+			[{ name: 'navigate', start: 2, end: 10 }],
+		);
+		assert.deepStrictEqual(
+			findPixiVnCustomFunctionCalls('{myCustomFunc()}'),
+			[{ name: 'myCustomFunc', start: 1, end: 13 }],
+		);
+		assert.deepStrictEqual(
+			findPixiVnCustomFunctionCalls('~ foo() ~ bar()').map((c) => c.name),
+			['foo', 'bar'],
+		);
+
+		// Built-in ink functions (implemented or not) are never flagged — they're not app-defined
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('~ temp x = RANDOM(1, 6)'), []);
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('~ SEED_RANDOM(235)'), []);
+
+		// Not a call — no parenthesis
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('~ temp x = aa'), []);
+
+		// Commented-out lines are ignored
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('// ~ aa()'), []);
+
+		// A knot/function declaration header is not a call
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('=== function myfunction(x) ==='), []);
+
+		// An EXTERNAL declaration is not a call
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('EXTERNAL myfunction(x, y)'), []);
+
+		// `not (`/`return (` aren't calls — they're ink keywords immediately before a parenthesized expression
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('{ not (someCondition) }'), []);
+		assert.deepStrictEqual(findPixiVnCustomFunctionCalls('~ return (x + y)'), []);
 	});
 
 	test('computeInkFoldingRanges: folds knot bodies but keeps a trailing top-level divert visible', () => {

@@ -17,7 +17,14 @@ import {
     window,
     workspace,
 } from "vscode";
-import { checkIncludes, checkPixiVnUnimplementedFunctions, checkPixiVnUnknownDivertTargets, updateDiagnostics } from "./diagnostics";
+import {
+    checkIncludes,
+    checkPixiVnFunctionCallHints,
+    checkPixiVnInkFunctionDeclarations,
+    checkPixiVnUnimplementedFunctions,
+    checkPixiVnUnknownDivertTargets,
+    updateDiagnostics,
+} from "./diagnostics";
 import { inkFoldingRangeProvider } from "./folding";
 import { findMarkdownTokenRanges, type MarkdownRange } from "./markdown";
 import { BUILTIN_FUNCTIONS, isBuiltinFunctionCallContext } from "./utils/builtin-functions";
@@ -373,6 +380,8 @@ export function activate(context: ExtensionContext) {
         updateDiagnostics(doc, list);
         checkIncludes(doc, list);
         checkPixiVnUnimplementedFunctions(doc, list);
+        checkPixiVnInkFunctionDeclarations(doc, list);
+        checkPixiVnFunctionCallHints(doc, list);
         await checkPixiVnUnknownDivertTargets(doc, list);
         diagnostics.set(doc.uri, list);
     };

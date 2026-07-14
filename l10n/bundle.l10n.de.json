@@ -71,6 +71,8 @@
   "Run from here": "Von hier ausführen",
   "{0} (Preview from {1})": "{0} (Vorschau ab {1})",
   "Pixi'VN label": "Pixi'VN-Label",
+  "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.": "Funktionen können in der pixi-vn-Engine nicht direkt in ink erstellt werden — \"{0}\" wird ignoriert. Definiere sie stattdessen in JavaScript/TypeScript ({1}), oder, besser noch, stelle sie als Custom Hashtag Command bereit.",
+  "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.": "Erwäge, \"{0}\" als Custom Hashtag Command bereitzustellen, anstatt als Funktion.",
   "Divert target \"{0}\" not found in any known label source.": "Divert-Ziel \"{0}\" wurde in keiner bekannten Label-Quelle gefunden.",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: von pixi-vn als Character-ID erkannt — diese Zeile ist Dialog, gesprochen von `{0}`, registriert auf dem pixi-vn-Entwicklungsserver.\n\nBeispiel:\n```ink\n{0}: Hallo!\n```",
   "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "Der laufende pixi-vn-Entwicklungsserver verwendet eine Version von @drincs/pixi-vn-ink, die älter als {0} ist, und möglicherweise nicht alle Funktionen dieser Erweiterung unterstützt. Aktualisieren Sie sie auf {0} oder höher für volle Unterstützung.",
