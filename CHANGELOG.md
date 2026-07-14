@@ -4,6 +4,16 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Fixed
+
+- Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on ink tag content. A bare `#` always starts a tag in ink, never narrative text, but the editor decoration didn't know where a line's tag began — so a hashtag command containing an underscore (e.g. `# rename mc { input_value }`) had its `input_value` wrongly italicized. The markdown scan on a line now stops at the first unescaped `#`, whether the whole line is a tag or one follows some narrative text on the same line.
+
+### Changed
+
+- Tags shown in the interactive preview are now slightly smaller and semi-transparent, so they read more clearly as secondary/meta information alongside dialogue rather than competing with it.
+
 ## [0.6.0] - 2026-07-13
 
 ### Added

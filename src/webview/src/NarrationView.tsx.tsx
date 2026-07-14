@@ -525,6 +525,8 @@ export default function NarrationView() {
                                             color: "var(--vscode-editorHint-foreground)",
                                             textAlign: "right",
                                             fontStyle: "italic",
+                                            fontSize: "0.8em",
+                                            opacity: 0.7,
                                         }}
                                     >
                                         {tag}

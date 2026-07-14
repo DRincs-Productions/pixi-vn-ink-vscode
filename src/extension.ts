@@ -319,7 +319,10 @@ export function activate(context: ExtensionContext) {
                     continue;
                 }
 
-                const markdownRanges = findMarkdownTokenRanges(segmentText.substring(localScanStart), isFirstSegment);
+                const scannedText = segmentText.substring(localScanStart);
+                const tagStart = findTagStart(scannedText);
+                const narrativeText = tagStart === null ? scannedText : scannedText.substring(0, tagStart);
+                const markdownRanges = findMarkdownTokenRanges(narrativeText, isFirstSegment);
                 isFirstSegment = false;
 
                 const toDocRange = (range: MarkdownRange) =>
@@ -1124,6 +1127,21 @@ export function isNormalTextLine(line: string): boolean {
     // INCLUDE / VAR / CONST / LIST declarations
     if (/^(INCLUDE|VAR|CONST|LIST)\b/.test(trimmed)) return false;
     return true;
+}
+
+/**
+ * Index of the first unescaped `#` in `text`, or `null` if there is none. A bare `#`
+ * always starts an ink tag (never narrative text — see the `tags` rule in
+ * ink.tmLanguage.json), so everything from that point on is tag/hashtag-command
+ * content and must be excluded from markdown emphasis scanning: it's script metadata,
+ * not prose, and authors commonly write snake_case-like tokens there (e.g.
+ * `# rename mc { input_value }`) that must not be italicized just for containing `_`.
+ */
+export function findTagStart(text: string): number | null {
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === "#" && !isEscaped(text, i)) return i;
+    }
+    return null;
 }
 
 function getMarkdownScanStart(line: string): number | null {

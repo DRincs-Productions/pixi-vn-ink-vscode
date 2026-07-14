@@ -9,6 +9,7 @@ import {
 	DECLARATION_KEYWORD_DOCS,
 	findDeclaredSymbol,
 	findMatchingBracketsInNormalText,
+	findTagStart,
 	getDeclaredSymbolHoverText,
 	getDivertArrowHoverKind,
 	getMultilineBlockTypeKeywordAt,
@@ -297,6 +298,14 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(isNormalTextLine('VAR x = 0'),             false, 'VAR declaration');
 		assert.strictEqual(isNormalTextLine('CONST y = 1'),           false, 'CONST declaration');
 		assert.strictEqual(isNormalTextLine('LIST items = a, b'),     false, 'LIST declaration');
+	});
+
+	test('findTagStart: finds the first unescaped # (start of an ink tag), ignoring escaped ones', () => {
+		assert.strictEqual(findTagStart('# rename mc { input_value }'), 0,  'whole line is a tag');
+		assert.strictEqual(findTagStart('Hello there # a_tag'),         12, 'trailing tag after narrative text');
+		assert.strictEqual(findTagStart('Hello there'),                 null, 'no tag at all');
+		assert.strictEqual(findTagStart(String.raw`Escaped \# not a tag`), null, 'escaped # is not a tag start');
+		assert.strictEqual(findTagStart(String.raw`\# literal then # real tag`), 16, 'escaped # skipped, later real # found');
 	});
 
 	test('findMatchingBracketsInNormalText: returns positions of matched bracket pairs', () => {
