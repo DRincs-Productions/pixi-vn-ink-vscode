@@ -1,4 +1,6 @@
 {
-    "ink.markup": "Markdown",
-    "ink.engine": "pixi-vn"
+  "ink.engine": "pixi-vn",
+  "ink.rootFolder": "pixi-vn",
+  "ink.mainFile": "start.ink",
+  "ink.markup": "Markdown"
 }

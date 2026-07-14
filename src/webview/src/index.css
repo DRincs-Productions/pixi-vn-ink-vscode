@@ -3,6 +3,24 @@
 @import "tailwind-animations";
 @plugin "@tailwindcss/typography";
 
+/*
+ * Tailwind only generates CSS for a utility class if it finds that class name, literally, while
+ * scanning this project's own source files (.tsx, .ts, ...) — it never looks inside .ink files.
+ * Ink authors can embed raw HTML in dialogue text (e.g. `<span class="animate-bounce">Hey</span>`,
+ * rendered via rehype-raw when `ink.markup` is "Markdown"), and any class used only there would
+ * silently generate no CSS at all — the class gets applied to the element, but no matching rule
+ * exists, so nothing visibly happens. `@source inline(...)` forces Tailwind to generate these
+ * regardless of where they're actually used, so they're always available to dialogue text.
+ */
+@source inline("{inline,inline-block,block}");
+@source inline("animate-bounce animate-spin animate-ping animate-pulse animate-none");
+@source inline("animate-blink animate-blurred-fade-in animate-bounce-fade-in animate-bouncing animate-contract-horizontally animate-contract-vertically animate-dancing animate-expand-horizontally animate-expand-vertically animate-fade-in animate-fade-in-down animate-fade-in-left animate-fade-in-right animate-fade-in-up animate-fade-out animate-fade-out-down animate-fade-out-left animate-fade-out-right animate-fade-out-up animate-flash animate-flip-horizontal animate-flip-in-x animate-flip-in-y animate-flip-out-x animate-flip-out-y animate-flip-vertical animate-flip-x animate-flip-y animate-float animate-hang animate-heartbeat animate-horizontal-bounce animate-horizontal-vibration animate-impulse-rotation-left animate-impulse-rotation-right animate-jelly animate-jiggle animate-jump animate-pop animate-pulse-fade-in animate-pulsing animate-roll-in animate-roll-out animate-rotate-180 animate-rotate-360 animate-rotate-90 animate-rotate-in animate-rotate-out animate-rotational-wave animate-rubber-band animate-scale animate-shake animate-sink animate-skew animate-skew-right animate-slide-in-bottom animate-slide-in-left animate-slide-in-right animate-slide-in-top animate-slide-out-bottom animate-slide-out-left animate-slide-out-right animate-slide-out-top animate-slide-rotate-in animate-slide-rotate-out animate-slide-up-fade animate-spin-clockwise animate-spin-counter-clockwise animate-squeeze animate-sway animate-swing animate-swing-drop-in animate-tada animate-tilt animate-vertical-bounce animate-wobble animate-zoom-in animate-zoom-out");
+@source inline("{animation-duration,delay}-{0,75,100,150,200,300,500,700,1000}");
+@source inline("{running,paused}");
+/* tailwind-animations' own duration/delay/etc. modifiers (distinct from tw-animate-css's above). */
+@source inline("{animate-duration,animate-delay,animate-iteration-count}-{0,75,100,150,200,300,500,700,1000}");
+@source inline("animate-ease animate-ease-in animate-ease-out animate-ease-in-out animate-linear animate-direction-normal animate-direction-reverse animate-direction-alternate animate-direction-alternate-reverse animate-play-running animate-play-paused");
+
 html,
 body,
 #root {
