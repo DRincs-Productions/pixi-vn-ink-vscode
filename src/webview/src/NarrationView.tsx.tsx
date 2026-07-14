@@ -29,6 +29,8 @@ type Choice = {
 type InputRequest = {
     type: "text" | "number";
     input?: string | number;
+    /** The ink tag's `default ...` value, if any — pre-fills the editable field, but isn't itself a confirmed answer. */
+    defaultValue?: string | number;
 };
 
 type RuntimeError = {
@@ -87,10 +89,16 @@ function pushPixiHistory(history: HistoryItem[], tags: string[] | null) {
     if (Array.isArray(text)) {
         text = text.join("");
     }
+    // `narration.inputValue` may already hold the ink tag's `default ...` value the moment the
+    // pause happens (before the player has typed or submitted anything) — that's surfaced as
+    // `defaultValue` (to pre-fill the editable field), but left out of `input` so the "you
+    // answered X" line doesn't render before the player actually has. `input` is filled in once
+    // the answer is truly confirmed: by `submitInput` for a live answer, or by the replay branch
+    // below when replaying an already-answered input from history.
     const inputRequest = narration.isRequiredInput
         ? {
               type: narration.inputType as "text" | "number",
-              input: narration.inputValue as string | number | undefined,
+              defaultValue: narration.inputValue as string | number | undefined,
           }
         : undefined;
     history.push({ dialogue: text, choices, tags, inputRequest, character });
@@ -184,6 +192,14 @@ export default function NarrationView() {
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
     const [locale, setLocale] = useState<Locale>("en");
     const scrollRef = useRef<HTMLDivElement>(null);
+    // `Game`/`narration` are pixi-vn singletons, so two overlapping "compiled-story" loads (e.g.
+    // React StrictMode's dev-only double effect invocation, or a stray extra "ready"/save event)
+    // must never run their `Game.clear()` + `importJson()` + `nextChoicesPixi()` concurrently —
+    // that corrupts the shared engine state mid-run. `loadChainRef` serializes them one at a
+    // time; `loadTokenRef` lets a superseded run discard its result instead of overwriting a
+    // newer one that already finished.
+    const loadChainRef = useRef<Promise<void>>(Promise.resolve());
+    const loadTokenRef = useRef(0);
 
     // The extension host can't see the exact runtime error line: the compiled JSON
     // handed to this webview has no DebugMetadata (inkjs strips it on serialization), so
@@ -212,6 +228,13 @@ export default function NarrationView() {
         }
     }, [history]);
 
+    // Clears any leftover typed value from a previous input request whenever a new one appears,
+    // so the new request's own default (rendered as a fallback below) shows instead of stale text.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-runs only when inputRequest changes, not on every render
+    useEffect(() => {
+        setInputValue(undefined);
+    }, [inputRequest]);
+
     useEffect(() => {
         const handler = (event: MessageEvent) => {
             if (event.data.type === "set-markup") {
@@ -227,78 +250,105 @@ export default function NarrationView() {
     }, []);
 
     useEffect(() => {
-        const handler = async (event: MessageEvent) => {
-            if (event.data.type === "compiled-story") {
-                const storyJson = event.data.data;
-                const engine: "Inky" | "pixi-vn" = event.data.engine;
-                const characters: any[] | undefined = event.data.characters
-                    ? JSON.parse(event.data.characters)
-                    : undefined;
-                setEngine(engine);
-                reportRuntimeError(undefined);
-                switch (engine) {
-                    case "pixi-vn": {
-                        try {
-                            Game.clear();
-                            RegisteredCharacters.add(characters || []);
-                            // storyJson is a JSON string of an already-mapped PixiVNJson
-                            // (compilePixiVN runs the ink → PixiVNJson conversion, including
-                            // character-dialogue splitting, on the extension host via
-                            // @drincs/pixi-vn-ink/converter) — just parse it.
-                            await importJson(JSON.parse(storyJson));
+        const handler = (event: MessageEvent) => {
+            if (event.data.type !== "compiled-story") return;
+
+            const myToken = ++loadTokenRef.current;
+            const isStale = () => myToken !== loadTokenRef.current;
+
+            // Chained onto the previous run (not just awaited) so two overlapping
+            // "compiled-story" messages still touch the shared pixi-vn `Game`/`narration`
+            // singleton one at a time, never concurrently.
+            loadChainRef.current = loadChainRef.current
+                .then(async () => {
+                    const storyJson = event.data.data;
+                    const engine: "Inky" | "pixi-vn" = event.data.engine;
+                    const characters: any[] | undefined = event.data.characters
+                        ? JSON.parse(event.data.characters)
+                        : undefined;
+                    if (isStale()) return;
+                    setEngine(engine);
+                    reportRuntimeError(undefined);
+                    switch (engine) {
+                        case "pixi-vn": {
+                            try {
+                                Game.clear();
+                                RegisteredCharacters.add(characters || []);
+                                // storyJson is a JSON string of an already-mapped PixiVNJson
+                                // (compilePixiVN runs the ink → PixiVNJson conversion, including
+                                // character-dialogue splitting, on the extension host via
+                                // @drincs/pixi-vn-ink/converter) — just parse it.
+                                await importJson(JSON.parse(storyJson));
+                                const tempChoices = oldChoices
+                                    .map((c) => (typeof c === "number" ? c : undefined))
+                                    .filter((c): c is number => c !== undefined);
+                                const tempInputs = oldChoices
+                                    .map((c) =>
+                                        typeof c === "object" && c.type === "input"
+                                            ? c.value
+                                            : undefined,
+                                    )
+                                    .filter((c): c is string | number => c !== undefined);
+                                const history: HistoryItem[] = await nextChoicesPixi(
+                                    () => narration.call("__pixi_vn_start__", {}),
+                                    [],
+                                    tempChoices,
+                                    tempInputs,
+                                );
+                                if (isStale()) return;
+                                setHistory(history);
+                                setLog({ text: "Pixi-VN story loaded" });
+                            } catch (e) {
+                                if (isStale()) return;
+                                const message = (e as any).toString();
+                                setLog({ text: "Error loading Pixi-VN story", data: message });
+                                reportRuntimeError({ message });
+                            }
+                            break;
+                        }
+                        default: {
                             const tempChoices = oldChoices
                                 .map((c) => (typeof c === "number" ? c : undefined))
                                 .filter((c): c is number => c !== undefined);
-                            const tempInputs = oldChoices
-                                .map((c) =>
-                                    typeof c === "object" && c.type === "input"
-                                        ? c.value
-                                        : undefined,
-                                )
-                                .filter((c): c is string | number => c !== undefined);
-                            const history: HistoryItem[] = await nextChoicesPixi(
-                                () => narration.call("__pixi_vn_start__", {}),
-                                [],
-                                tempChoices,
-                                tempInputs,
-                            );
-                            setHistory(history);
-                            setLog({ text: "Pixi-VN story loaded" });
-                        } catch (e) {
-                            const message = (e as any).toString();
-                            setLog({ text: "Error loading Pixi-VN story", data: message });
-                            reportRuntimeError({ message });
+                            try {
+                                const story = new Story(storyJson);
+                                if (isStale()) return;
+                                setStory(story);
+                                const { result: history, error: runtimeError } = runInkAction(
+                                    story,
+                                    () => nextChoices(story, [], tempChoices),
+                                );
+                                setHistory(history);
+                                reportRuntimeError(runtimeError, tempChoices);
+                            } catch (e) {
+                                if (isStale()) return;
+                                const message = (e as any).toString();
+                                setLog({ text: "Error running Ink story", data: message });
+                                reportRuntimeError(
+                                    { message, line: parseRuntimeErrorLine(message) },
+                                    tempChoices,
+                                );
+                            }
+                            break;
                         }
-                        break;
                     }
-                    default: {
-                        const tempChoices = oldChoices
-                            .map((c) => (typeof c === "number" ? c : undefined))
-                            .filter((c): c is number => c !== undefined);
-                        try {
-                            const story = new Story(storyJson);
-                            setStory(story);
-                            const { result: history, error: runtimeError } = runInkAction(
-                                story,
-                                () => nextChoices(story, [], tempChoices),
-                            );
-                            setHistory(history);
-                            reportRuntimeError(runtimeError, tempChoices);
-                        } catch (e) {
-                            const message = (e as any).toString();
-                            setLog({ text: "Error running Ink story", data: message });
-                            reportRuntimeError(
-                                { message, line: parseRuntimeErrorLine(message) },
-                                tempChoices,
-                            );
-                        }
-                        break;
-                    }
-                }
-            }
+                })
+                .catch((e) => {
+                    // A rejection here would otherwise permanently wedge `loadChainRef` — every
+                    // future "compiled-story" message chains off of it and a `.then()` callback
+                    // never runs once its predecessor has rejected.
+                    console.error("Failed to handle compiled-story message", e);
+                });
         };
+        // No `vscode.postMessage({ type: "ready" })` here: the effect above already sends it
+        // once on mount. This effect re-runs on every `oldChoices` change (i.e. after every
+        // choice/input the player makes) only to keep the listener's closure fresh — sending
+        // "ready" again here would make the extension host re-post "compiled-story" after every
+        // single interaction, racing this handler's own `Game.clear()` + `importJson()` +
+        // `nextChoicesPixi()` against whichever of `makeChoice`/`submitInput` triggered the
+        // re-run, corrupting the shared pixi-vn `narration`/`Game` singleton state — this is
+        // what caused the preview to intermittently stop partway through a story.
         window.addEventListener("message", handler);
-        vscode.postMessage({ type: "ready" });
         return () => window.removeEventListener("message", handler);
     }, [oldChoices, reportRuntimeError]);
 
@@ -350,6 +400,13 @@ export default function NarrationView() {
         switch (engine) {
             case "pixi-vn": {
                 let newHistory = [...history];
+                const lastItem = newHistory[newHistory.length - 1];
+                if (lastItem?.inputRequest) {
+                    newHistory[newHistory.length - 1] = {
+                        ...lastItem,
+                        inputRequest: { type: lastItem.inputRequest.type, input: value },
+                    };
+                }
                 narration.inputValue = value;
                 setOldChoices((values) => [...values, { type: "input", value: value }]);
                 newHistory = await nextChoicesPixi(() => narration.continue({}), newHistory);
@@ -633,39 +690,51 @@ export default function NarrationView() {
             )}
 
             {/* Input text */}
-            {inputRequest && (
-                <div className="mt-3 flex gap-2">
-                    <input
-                        type={inputRequest.type}
-                        value={inputValue ?? ""}
-                        onChange={(e) => {
-                            let value: string | number = e.target.value;
-                            if (inputRequest.type === "number") {
-                                value = Number(value);
-                            }
-                            setInputValue(value);
-                        }}
-                        className="flex-1 px-3 py-2 rounded-md border"
-                        placeholder={
-                            inputRequest.type === "number"
-                                ? t(locale, "enterANumber")
-                                : t(locale, "typeYourResponse")
-                        }
-                        style={{
-                            backgroundColor: "var(--vscode-input-background)",
-                            color: "var(--vscode-input-foreground)",
-                            borderColor: "var(--vscode-input-border)",
-                        }}
-                    />
-                    <Button
-                        className="my-vscode-button"
-                        onClick={() => submitInput(inputValue)}
-                        variant="default"
-                    >
-                        {t(locale, "submit")}
-                    </Button>
-                </div>
-            )}
+            {inputRequest &&
+                (() => {
+                    const effectiveInputValue = inputValue ?? inputRequest.defaultValue ?? "";
+                    const canSubmit = String(effectiveInputValue).trim() !== "";
+                    return (
+                        <form
+                            className="mt-3 flex gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (canSubmit) submitInput(effectiveInputValue);
+                            }}
+                        >
+                            <input
+                                type={inputRequest.type}
+                                value={effectiveInputValue}
+                                onChange={(e) => {
+                                    let value: string | number = e.target.value;
+                                    if (inputRequest.type === "number") {
+                                        value = Number(value);
+                                    }
+                                    setInputValue(value);
+                                }}
+                                className="flex-1 px-3 py-2 rounded-md border"
+                                placeholder={
+                                    inputRequest.type === "number"
+                                        ? t(locale, "enterANumber")
+                                        : t(locale, "typeYourResponse")
+                                }
+                                style={{
+                                    backgroundColor: "var(--vscode-input-background)",
+                                    color: "var(--vscode-input-foreground)",
+                                    borderColor: "var(--vscode-input-border)",
+                                }}
+                            />
+                            <Button
+                                type="submit"
+                                className="my-vscode-button"
+                                disabled={!canSubmit}
+                                variant="default"
+                            >
+                                {t(locale, "submit")}
+                            </Button>
+                        </form>
+                    );
+                })()}
         </div>
     );
 }

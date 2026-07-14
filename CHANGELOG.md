@@ -9,10 +9,17 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Fixed
 
 - Markdown-style italic/bold decoration (`ink.markup: "Markdown"`) no longer misfires on ink tag content. A bare `#` always starts a tag in ink, never narrative text, but the editor decoration didn't know where a line's tag began — so a hashtag command containing an underscore (e.g. `# rename mc { input_value }`) had its `input_value` wrongly italicized. The markdown scan on a line now stops at the first unescaped `#`, whether the whole line is a tag or one follows some narrative text on the same line.
+- **pixi-vn engine only**: the interactive preview could intermittently stop partway through a story with no visible error. Two `useEffect`s in the preview both sent a `"ready"` message to the extension host — one of them on every player choice/input, not just on mount — and each `"ready"` made the host resend the whole compiled story, racing a fresh `Game.clear()` + `importJson()` + narration run against whichever run was already in progress on the same shared pixi-vn engine state. Only one `"ready"` is sent now (once, on mount), and any overlapping "compiled-story" messages that do arrive (e.g. a stray save event) are now serialized and the stale one's result discarded instead of corrupting the shared state.
+- **pixi-vn engine only**: `# request input ...` tags (e.g. `# request input type string default Peter`) failed their internal validation and did nothing — the preview sailed straight past the prompt instead of pausing for the player, because `@drincs/pixi-vn-ink`'s built-in hashtag-command operations (request input, pause, continue, show/remove, ...) need an explicit one-time `addBaseHashtagCommands()` call, which the preview never made. It's now called once at startup, alongside `Game.init()`.
+- **pixi-vn engine only**: the input prompt showed a `You: ...` line with the default value as if the player had already answered, even before they'd typed or submitted anything — the ink tag's own `default ...` value is set on `narration.inputValue` the moment the pause happens, and the preview mistook that pre-fill for a confirmed answer. That line now only appears once the player actually submits (or when replaying an already-answered input from history).
 
 ### Changed
 
 - Tags shown in the interactive preview are now slightly smaller and semi-transparent, so they read more clearly as secondary/meta information alongside dialogue rather than competing with it.
+
+### Added
+
+- **pixi-vn engine only**: the input prompt now pre-fills with the ink tag's `default ...` value (editable, not yet a confirmed answer), can only be submitted once some text is present, and can be confirmed by pressing Enter as well as clicking Submit.
 
 ## [0.6.0] - 2026-07-13
 
