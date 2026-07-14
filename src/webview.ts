@@ -17,8 +17,70 @@ import {
 } from "vscode";
 import { getInkRootFolder } from "./utils/include-utility";
 import { buildProjectAwareSource, compile, getRuntimeError } from "./utils/ink-utility";
+import { getAllKnotDefinitions, getProjectInkFiles } from "./utils/knot-utility";
 import { getPixiVnDevCharacterIds } from "./utils/pixi-vn-dev-data";
-import { compilePixiVN } from "./utils/pixi-vn-utility";
+import {
+    collectKnownPixiVnLabels,
+    compilePixiVN,
+    compilePixiVNLibraryFile,
+    extractReferencedKnotNames,
+    markUnresolvableLabelCalls,
+} from "./utils/pixi-vn-utility";
+
+/**
+ * Compiles `currentText` (the file actually being previewed, with any `-> entryKnot` already
+ * applied) for the `pixi-vn` engine, plus — lazily — every *other* project file it transitively
+ * needs: starting from the previewed file, each `->`/`<-` reference is resolved against a cheap,
+ * regex-only knot→file map (no full ink compile) built from every project file's headers; a
+ * reference that resolves to a file not yet compiled gets that file compiled too (as a plain
+ * library of callable knots, via {@link compilePixiVNLibraryFile} — no synthetic entry wrapper,
+ * that only makes sense for the previewed file itself) and scanned the same way in turn. No file
+ * is ever compiled twice (a `visited` set), which both caps the work to what's actually reachable
+ * — not every `.ink` file under the root folder, however large the project — and avoids looping
+ * on a cycle (two files threading/diverting into each other).
+ *
+ * Any remaining `call`/`jump` to a label absent from every file actually compiled this way (e.g.
+ * one only ever defined in the app's own TypeScript code) is then replaced with a visible notice
+ * instead of failing silently at runtime — see {@link markUnresolvableLabelCalls}.
+ */
+async function compilePixiVNProject(document: TextDocument, currentText: string, characterIds: ReadonlySet<string>) {
+    const projectFiles = await getProjectInkFiles(document);
+    const currentPath = path.resolve(document.uri.fsPath);
+
+    const contentByPath = new Map(projectFiles.map((f) => [path.resolve(f.path), f.content]));
+    const fileByKnotName = new Map<string, string>();
+    for (const def of getAllKnotDefinitions(projectFiles)) {
+        if (!fileByKnotName.has(def.knotName)) fileByKnotName.set(def.knotName, path.resolve(def.filePath));
+    }
+
+    type PendingFile = { path: string; text: string; isCurrentFile: boolean };
+    const visited = new Set<string>();
+    const queue: PendingFile[] = [{ path: currentPath, text: currentText, isCurrentFile: true }];
+    const compiledJsons: NonNullable<ReturnType<typeof compilePixiVN>>[] = [];
+
+    while (queue.length > 0) {
+        const next = queue.shift();
+        if (!next || visited.has(next.path)) continue;
+        visited.add(next.path);
+
+        const json = next.isCurrentFile
+            ? compilePixiVN(next.text, characterIds)
+            : compilePixiVNLibraryFile(next.text, characterIds);
+        if (json) compiledJsons.push(json);
+
+        for (const knotName of extractReferencedKnotNames(next.text)) {
+            const targetPath = fileByKnotName.get(knotName);
+            if (!targetPath || visited.has(targetPath)) continue;
+            const targetContent = contentByPath.get(targetPath);
+            if (targetContent === undefined) continue;
+            queue.push({ path: targetPath, text: targetContent, isCurrentFile: false });
+        }
+    }
+
+    if (compiledJsons.length === 0) return undefined;
+    const knownLabels = collectKnownPixiVnLabels(compiledJsons);
+    return compiledJsons.map((json) => markUnresolvableLabelCalls(json, knownLabels));
+}
 
 export function previewCommand(context: ExtensionContext) {
     return commands.registerCommand("ink.preview", async () => {
@@ -122,12 +184,15 @@ export async function openWebview(
     const getInkySource = (sourceText: string) =>
         buildProjectAwareSource(sourceText, uri.fsPath, rootFolderSetting, mainFileSetting, entryKnot);
 
+    const getCurrentDocument = async () =>
+        workspace.textDocuments.find((d) => d.uri.toString() === uri.toString()) ?? (await workspace.openTextDocument(uri));
+
     let compiled: string | undefined;
     let lineOffset = entryKnot ? 1 : 0;
     try {
         if (engine === "pixi-vn") {
-            const pixiVnJson = compilePixiVN(withEntryKnot(text), characterIds);
-            compiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
+            const pixiVnJsons = await compilePixiVNProject(await getCurrentDocument(), withEntryKnot(text), characterIds);
+            compiled = pixiVnJsons ? JSON.stringify(pixiVnJsons) : undefined;
         } else {
             const { source, fileHandler, lineOffset: offset } = getInkySource(text);
             lineOffset = offset;
@@ -179,9 +244,6 @@ export async function openWebview(
             }
         }
     };
-
-    const getCurrentDocument = async () =>
-        workspace.textDocuments.find((d) => d.uri.toString() === uri.toString()) ?? (await workspace.openTextDocument(uri));
 
     const highlightErrorLine = async (reportedLine: number) => {
         const line = reportedLine - lineOffset;
@@ -239,15 +301,15 @@ export async function openWebview(
     });
 
     // 🔹 Listen again to save events
-    const saveListener = workspace.onDidSaveTextDocument((doc: TextDocument) => {
+    const saveListener = workspace.onDidSaveTextDocument(async (doc: TextDocument) => {
         if (doc.uri.toString() === uri.toString()) {
             const newText = doc.getText();
             try {
                 const engine = config.get<"Inky" | "pixi-vn">("engine") || "Inky";
                 let updatedCompiled: string | undefined;
                 if (engine === "pixi-vn") {
-                    const pixiVnJson = compilePixiVN(withEntryKnot(newText), characterIds);
-                    updatedCompiled = pixiVnJson ? JSON.stringify(pixiVnJson) : undefined;
+                    const pixiVnJsons = await compilePixiVNProject(doc, withEntryKnot(newText), characterIds);
+                    updatedCompiled = pixiVnJsons ? JSON.stringify(pixiVnJsons) : undefined;
                 } else {
                     const { source, fileHandler } = getInkySource(newText);
                     updatedCompiled = compile(source, fileHandler).ToJson() ?? undefined;

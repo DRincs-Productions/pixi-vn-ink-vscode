@@ -38,6 +38,15 @@ type RuntimeError = {
     line?: number;
 };
 
+// A dialogue step whose `character` is one of these ids isn't real narration — it's a notice the
+// extension host injected (see `markUnresolvableLabelCalls` in src/utils/pixi-vn-utility.ts) for
+// a `call`/`jump` to a label absent from every compiled project file (e.g. one only ever defined
+// in the app's own TypeScript code). Rendered centered, localized, instead of as normal dialogue.
+// Must stay in sync with the matching constants on the extension host (separate bundles, can't
+// share a literal import).
+const NON_INK_LABEL_CALL_CHARACTER = "__non_ink_label_call__";
+const NON_INK_LABEL_JUMP_CHARACTER = "__non_ink_label_jump__";
+
 function parseRuntimeErrorLine(message: string): number | undefined {
     const match = message.match(/line (\d+)/);
     return match ? parseInt(match[1], 10) : undefined;
@@ -273,11 +282,22 @@ export default function NarrationView() {
                         case "pixi-vn": {
                             try {
                                 Game.clear();
-                                RegisteredCharacters.add(characters || []);
-                                // storyJson is a JSON string of an already-mapped PixiVNJson
-                                // (compilePixiVN runs the ink → PixiVNJson conversion, including
-                                // character-dialogue splitting, on the extension host via
-                                // @drincs/pixi-vn-ink/converter) — just parse it.
+                                // The two sentinel ids alongside the real characters so pixi-vn
+                                // doesn't log a "character not found" warning when a synthetic
+                                // "non-ink label" notice (see NON_INK_LABEL_*_CHARACTER above)
+                                // sets one of them as its dialogue's character.
+                                RegisteredCharacters.add([
+                                    ...(characters || []),
+                                    NON_INK_LABEL_CALL_CHARACTER,
+                                    NON_INK_LABEL_JUMP_CHARACTER,
+                                ]);
+                                // storyJson is a JSON string of an array of already-mapped
+                                // PixiVNJson — one per compiled project file, the previewed file
+                                // plus every other project file it transitively references
+                                // (compilePixiVNProject runs the ink → PixiVNJson conversion,
+                                // including character-dialogue splitting, on the extension host
+                                // via @drincs/pixi-vn-ink/converter) — importJson accepts an
+                                // array directly, so this just parses it.
                                 await importJson(JSON.parse(storyJson));
                                 const tempChoices = oldChoices
                                     .map((c) => (typeof c === "number" ? c : undefined))
@@ -590,42 +610,61 @@ export default function NarrationView() {
                                     </div>
                                 ))}
 
-                                {item.dialogue?.trim() && (
-                                    <div
-                                        key={`dialogue-${idx}`}
-                                        style={{
-                                            color: "var(--vscode-editor-foreground)",
-                                            textAlign: "left",
-                                            fontStyle: "normal",
-                                            display: "flex",
-                                            flexDirection: "row", // affianca chip e testo
-                                            gap: "8px",
-                                            alignItems: "flex-start",
-                                        }}
-                                    >
-                                        {/* Character chip */}
-                                        {item.character && (
-                                            <span
-                                                style={{
-                                                    display: "inline-block",
-                                                    backgroundColor:
-                                                        "var(--vscode-button-background)",
-                                                    color: "var(--vscode-button-foreground)",
-                                                    padding: "2px 6px",
-                                                    borderRadius: "12px",
-                                                    fontSize: "0.75rem",
-                                                    fontWeight: "bold",
-                                                    flexShrink: 0,
-                                                }}
-                                            >
-                                                {item.character}
-                                            </span>
-                                        )}
+                                {item.dialogue?.trim() &&
+                                    (item.character === NON_INK_LABEL_CALL_CHARACTER ||
+                                    item.character === NON_INK_LABEL_JUMP_CHARACTER ? (
+                                        <div
+                                            key={`dialogue-${idx}`}
+                                            style={{
+                                                color: "var(--vscode-editorHint-foreground)",
+                                                textAlign: "center",
+                                                fontStyle: "italic",
+                                            }}
+                                        >
+                                            {t(
+                                                locale,
+                                                item.character === NON_INK_LABEL_CALL_CHARACTER
+                                                    ? "nonInkLabelCall"
+                                                    : "nonInkLabelJump",
+                                                item.dialogue,
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div
+                                            key={`dialogue-${idx}`}
+                                            style={{
+                                                color: "var(--vscode-editor-foreground)",
+                                                textAlign: "left",
+                                                fontStyle: "normal",
+                                                display: "flex",
+                                                flexDirection: "row", // affianca chip e testo
+                                                gap: "8px",
+                                                alignItems: "flex-start",
+                                            }}
+                                        >
+                                            {/* Character chip */}
+                                            {item.character && (
+                                                <span
+                                                    style={{
+                                                        display: "inline-block",
+                                                        backgroundColor:
+                                                            "var(--vscode-button-background)",
+                                                        color: "var(--vscode-button-foreground)",
+                                                        padding: "2px 6px",
+                                                        borderRadius: "12px",
+                                                        fontSize: "0.75rem",
+                                                        fontWeight: "bold",
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    {item.character}
+                                                </span>
+                                            )}
 
-                                        {/* Dialogue text */}
-                                        <Text markup={markup}>{item.dialogue}</Text>
-                                    </div>
-                                )}
+                                            {/* Dialogue text */}
+                                            <Text markup={markup}>{item.dialogue}</Text>
+                                        </div>
+                                    ))}
 
                                 {item.inputRequest?.input !== undefined && (
                                     <div

@@ -15,6 +15,15 @@ import * as path from 'path';
 // isolation is what actually gives each scenario a clean slate.
 
 const runnerPath = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures', 'run-pixi-vn-story.mjs');
+const multiFileRunnerPath = path.join(
+	__dirname,
+	'..',
+	'..',
+	'src',
+	'test',
+	'fixtures',
+	'run-pixi-vn-multi-file-story.mjs',
+);
 
 interface RunResult {
 	compileErrors: { type: string; message: string }[];
@@ -37,6 +46,34 @@ interface RunResult {
 function runPixiVnStory(inkSource: string, inputAnswer?: string): RunResult {
 	const stdout = execFileSync(process.execPath, [runnerPath, ...(inputAnswer !== undefined ? [inputAnswer] : [])], {
 		input: inkSource,
+		encoding: 'utf-8',
+		cwd: path.join(__dirname, '..', '..'),
+	});
+	return JSON.parse(stdout);
+}
+
+interface MultiFileRunResult {
+	compileErrors: { type: string; message: string }[];
+	visitedFiles: string[];
+	steps: number;
+	hitStepCap: boolean;
+	isEnd: boolean;
+	canContinue: boolean;
+	notices: { kind: 'call' | 'jump'; label: string }[];
+	lastText: string | null;
+}
+
+// Mirrors `compilePixiVNProject` (src/webview.ts): compiles `files` starting from `currentPath`
+// (the file "being previewed"), lazily pulling in only the other files it actually references,
+// then runs the same narration loop as `runPixiVnStory`. `inputAnswer` answers the first
+// `# request input ...` the story hits, same as `runPixiVnStory`.
+function runMultiFilePixiVnStory(
+	files: { path: string; content: string }[],
+	currentPath: string,
+	inputAnswer?: string,
+): MultiFileRunResult {
+	const stdout = execFileSync(process.execPath, [multiFileRunnerPath], {
+		input: JSON.stringify({ files, currentPath, inputAnswer }),
 		encoding: 'utf-8',
 		cwd: path.join(__dirname, '..', '..'),
 	});
@@ -144,6 +181,90 @@ suite('pixi-vn preview runtime Test Suite', function () {
 		assert.deepStrictEqual(result.compileErrors, []);
 		assert.strictEqual(result.pausedForUnansweredInput, false, 'the supplied answer unblocked the pause');
 		assert.strictEqual(result.lastText, 'Nice to meet you.', 'continues past the question');
+		assert.strictEqual(result.isEnd, true);
+	});
+
+	// Regression tests for compilePixiVNProject (src/webview.ts): the previewed file used to be
+	// compiled alone, so a `->`/`<-` to a knot defined only in another project file was
+	// indistinguishable from one truly absent everywhere (examples/pixi-vn/start.ink's own
+	// `-> second_part` divert into second_part.ink was exactly this case). The preview now lazily
+	// discovers and compiles whichever other project files the previewed one actually references.
+
+	test('a divert to a knot defined only in another project file resolves once that file is lazily compiled too', () => {
+		const result = runMultiFilePixiVnStory(
+			[
+				{ path: '/virtual/main.ink', content: '-> start\n=== start ===\nHello from main.\n-> other_file_knot\n' },
+				{ path: '/virtual/lib.ink', content: '=== other_file_knot ===\nGreetings from another file!\n-> END\n' },
+			],
+			'/virtual/main.ink',
+		);
+
+		assert.deepStrictEqual(result.compileErrors, []);
+		assert.deepStrictEqual(new Set(result.visitedFiles), new Set(['/virtual/main.ink', '/virtual/lib.ink']));
+		assert.deepStrictEqual(result.notices, [], 'a resolvable cross-file divert is not a "non-ink label"');
+		assert.strictEqual(result.lastText, 'Greetings from another file!');
+		assert.strictEqual(result.isEnd, true);
+	});
+
+	test('a project file never referenced by the previewed file is not compiled at all', () => {
+		const result = runMultiFilePixiVnStory(
+			[
+				{ path: '/virtual/main.ink', content: '-> start\n=== start ===\nHello from main.\n-> END\n' },
+				{ path: '/virtual/unrelated.ink', content: '=== unrelated_knot ===\nNever reached.\n-> END\n' },
+			],
+			'/virtual/main.ink',
+		);
+
+		assert.deepStrictEqual(result.compileErrors, []);
+		assert.deepStrictEqual(result.visitedFiles, ['/virtual/main.ink']);
+	});
+
+	test('a thread (<-) to a label absent from every project file shows a centered "call" notice and continues normally', () => {
+		const result = runMultiFilePixiVnStory(
+			[
+				{
+					path: '/virtual/main.ink',
+					content: '-> main\n=== main ===\nMain start.\n<- totally_unknown_label\nAfter the unknown call.\n-> END\n',
+				},
+			],
+			'/virtual/main.ink',
+		);
+
+		assert.deepStrictEqual(result.compileErrors, []);
+		assert.deepStrictEqual(result.notices, [{ kind: 'call', label: 'totally_unknown_label' }]);
+		assert.strictEqual(result.lastText, 'After the unknown call.', 'a call notice still continues normally afterward');
+		assert.strictEqual(result.isEnd, true);
+	});
+
+	test('a divert (->) to a label absent from every project file shows a centered "jump" notice, closes just the current label, and resumes its caller', () => {
+		// main calls labelA (thread); labelA diverts (jump) to a label that doesn't exist anywhere.
+		const result = runMultiFilePixiVnStory(
+			[
+				{
+					path: '/virtual/main.ink',
+					content: [
+						'-> main',
+						'=== main ===',
+						'Main start.',
+						'<- labelA',
+						'Main after labelA call returns.',
+						'-> END',
+						'=== labelA ===',
+						'LabelA start.',
+						'-> totally_unknown_label',
+					].join('\n'),
+				},
+			],
+			'/virtual/main.ink',
+		);
+
+		assert.deepStrictEqual(result.compileErrors, []);
+		assert.deepStrictEqual(result.notices, [{ kind: 'jump', label: 'totally_unknown_label' }]);
+		assert.strictEqual(
+			result.lastText,
+			'Main after labelA call returns.',
+			'the jump notice closed only labelA (label_end), resuming main — the caller — rather than ending the whole story',
+		);
 		assert.strictEqual(result.isEnd, true);
 	});
 });

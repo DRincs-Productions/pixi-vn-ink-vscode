@@ -10,7 +10,9 @@ type Key =
     | "whatDoYouChoose"
     | "enterANumber"
     | "typeYourResponse"
-    | "submit";
+    | "submit"
+    | "nonInkLabelCall"
+    | "nonInkLabelJump";
 
 const dictionaries: Record<Locale, Record<Key, string>> = {
     en: {
@@ -24,6 +26,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Enter a number...",
         typeYourResponse: "Type your response...",
         submit: "Submit",
+        nonInkLabelCall: "(calling a label not defined in ink: {0})",
+        nonInkLabelJump: "(jumping to a label not defined in ink: {0})",
     },
     it: {
         back: "Indietro",
@@ -36,6 +40,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Inserisci un numero...",
         typeYourResponse: "Scrivi la tua risposta...",
         submit: "Invia",
+        nonInkLabelCall: "(chiamata a una label non definita in ink: {0})",
+        nonInkLabelJump: "(salto a una label non definita in ink: {0})",
     },
     ru: {
         back: "Назад",
@@ -48,6 +54,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Введите число...",
         typeYourResponse: "Введите ваш ответ...",
         submit: "Отправить",
+        nonInkLabelCall: "(вызов метки, не определённой в ink: {0})",
+        nonInkLabelJump: "(переход к метке, не определённой в ink: {0})",
     },
     "zh-cn": {
         back: "返回",
@@ -60,6 +68,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "输入一个数字…",
         typeYourResponse: "输入你的回复…",
         submit: "提交",
+        nonInkLabelCall: "(调用一个未在 ink 中定义的 label：{0})",
+        nonInkLabelJump: "(跳转到一个未在 ink 中定义的 label：{0})",
     },
     ja: {
         back: "戻る",
@@ -72,6 +82,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "数字を入力してください…",
         typeYourResponse: "返答を入力してください…",
         submit: "送信",
+        nonInkLabelCall: "(inkで定義されていないラベルを呼び出し中: {0})",
+        nonInkLabelJump: "(inkで定義されていないラベルへジャンプ中: {0})",
     },
     es: {
         back: "Atrás",
@@ -84,6 +96,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Introduce un número...",
         typeYourResponse: "Escribe tu respuesta...",
         submit: "Enviar",
+        nonInkLabelCall: "(llamando a una etiqueta no definida en ink: {0})",
+        nonInkLabelJump: "(saltando a una etiqueta no definida en ink: {0})",
     },
     fr: {
         back: "Retour",
@@ -96,6 +110,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Entrez un nombre...",
         typeYourResponse: "Saisissez votre réponse...",
         submit: "Envoyer",
+        nonInkLabelCall: "(appel d'un label non défini dans ink : {0})",
+        nonInkLabelJump: "(saut vers un label non défini dans ink : {0})",
     },
     ko: {
         back: "뒤로",
@@ -108,6 +124,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "숫자를 입력하세요...",
         typeYourResponse: "답변을 입력하세요...",
         submit: "제출",
+        nonInkLabelCall: "(ink에 정의되지 않은 라벨 호출 중: {0})",
+        nonInkLabelJump: "(ink에 정의되지 않은 라벨로 이동 중: {0})",
     },
     de: {
         back: "Zurück",
@@ -120,6 +138,8 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         enterANumber: "Gib eine Zahl ein...",
         typeYourResponse: "Gib deine Antwort ein...",
         submit: "Absenden",
+        nonInkLabelCall: "(Aufruf eines nicht in ink definierten Labels: {0})",
+        nonInkLabelJump: "(Sprung zu einem nicht in ink definierten Label: {0})",
     },
 };
 

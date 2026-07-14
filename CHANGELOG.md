@@ -20,6 +20,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Added
 
 - **pixi-vn engine only**: the input prompt now pre-fills with the ink tag's `default ...` value (editable, not yet a confirmed answer), can only be submitted once some text is present, and can be confirmed by pressing Enter as well as clicking Submit.
+- **pixi-vn engine only**: the preview now compiles every project `.ink` file the previewed one actually needs, not just the file itself — starting from the previewed file, each `->`/`<-` it references is resolved against the project's other files and lazily compiled in turn (recursively, without ever compiling the same file twice), so a divert/thread into a knot defined only in another file — like `examples/pixi-vn/start.ink`'s own `-> second_part` into `second_part.ink` — now resolves instead of behaving as if the target didn't exist.
+- **pixi-vn engine only**: a `call`/`jump` to a label absent from every compiled project file (e.g. one only ever defined in the app's own TypeScript code, such as `start.ink`'s `<- animation_01`) now shows a centered notice naming the label instead of silently stalling or ending with no explanation. A thread (`<- knot`, a "call") shows the notice and continues normally afterward; a divert (`-> knot`, a "jump") shows the notice and closes just the current label, resuming whichever label called into it — the same as if that label had reached its own natural end.
 
 ## [0.6.0] - 2026-07-13
 
