@@ -74,7 +74,11 @@
   "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.": "Функции нельзя создавать напрямую в ink для движка pixi-vn — \"{0}\" будет проигнорирована. Определите её в JavaScript/TypeScript ({1}), или, что ещё лучше, представьте её как Custom Hashtag Command.",
   "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.": "Рассмотрите возможность представить \"{0}\" как Custom Hashtag Command вместо функции.",
   "Divert target \"{0}\" not found in any known label source.": "Цель divert \"{0}\" не найдена ни в одном известном источнике меток.",
+  "Unknown hashtag command \"# {0}\": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.": "Неизвестная хештег-команда \"# {0}\": ни один зарегистрированный обработчик не соответствует этой команде. Это также может произойти, если сама команда верна, но опечатка в псевдониме/ID (ассета, бандла, персонажа или другого элемента) помешала её распознаванию.",
+  "Hashtag command \"# {0}\": \"{1}\" section — {2}: {3}": "Хештег-команда \"# {0}\": раздел \"{1}\" — {2}: {3}",
+  "PixiVN JSON schema: \"{0}\" - {1}": "JSON-схема PixiVN: \"{0}\" - {1}",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: распознан pixi-vn как id персонажа — эта строка является репликой, произносимой `{0}`, зарегистрированным на dev-сервере pixi-vn.\n\nПример:\n```ink\n{0}: Привет!\n```",
   "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "Запущенный dev-сервер pixi-vn использует версию @drincs/pixi-vn-ink старше {0}, которая может не поддерживать все функции этого расширения. Обновите её до версии {0} или новее для полной поддержки.",
-  "**{0}** (replaced by pixi-vn)": "**{0}** (заменяется pixi-vn)"
+  "**{0}** (replaced by pixi-vn)": "**{0}** (заменяется pixi-vn)",
+  "**{0}** (pixi-vn hashtag command)": "**{0}** (хештег-команда pixi-vn)"
 }

@@ -56,6 +56,77 @@ export function compilePixiVN(text: string, characterIds?: ReadonlySet<string>) 
     });
 }
 
+type RootPixiVnInkModule = {
+    addBaseHashtagCommands: (options?: unknown) => void;
+    convertInkToJson: typeof convertInkToJson;
+};
+
+let rootModulePromise: Promise<RootPixiVnInkModule | undefined> | undefined;
+let hashtagCommandsRegistered = false;
+
+/**
+ * Lazily, and only once, loads `@drincs/pixi-vn-ink`'s root export and calls its
+ * `addBaseHashtagCommands()` — needed for {@link compilePixiVNWithResolvedHashtagCommands} to see
+ * built-in commands (`show`/`edit`/`remove`/... for images, sound, text, canvas elements, ...)
+ * resolved into their real structured `PixiVNJson` operation at compile time, instead of left as
+ * an opaque `{ type: "operationtoconvert", values: [...] }` placeholder.
+ *
+ * A dynamic `import()`, not a static one: `addBaseHashtagCommands` is only available from the
+ * root export, which also re-exports `importJson`/`VariableGetter` — these need `@drincs/pixi-vn`'s
+ * live canvas runtime, harmless in the webview's real DOM context but a documented crash risk in
+ * the extension host (see {@link compilePixiVN}'s own doc comment on why it avoids the root
+ * export entirely). Loading it dynamically, wrapped in a `try`, contains that risk to this one
+ * lazily-invoked path — if it ever does fail, this silently falls back to `undefined` (letting
+ * {@link compilePixiVNWithResolvedHashtagCommands} fall back to the always-safe
+ * {@link compilePixiVN}) instead of taking down extension activation.
+ *
+ * Registering into the *root* export's own `HashtagCommands` matters specifically because it does
+ * NOT share state with `/converter`'s: confirmed empirically that calling `addBaseHashtagCommands`
+ * from the root while compiling via `/converter`'s `convertInkToJson` (as {@link compilePixiVN}
+ * does) leaves every hashtag command unresolved — the two entry points bundle separate copies of
+ * the same module-level registry.
+ */
+async function loadRootPixiVnInkWithHashtagCommands(): Promise<RootPixiVnInkModule | undefined> {
+    if (!rootModulePromise) {
+        rootModulePromise = (async () => {
+            try {
+                return (await import("@drincs/pixi-vn-ink")) as RootPixiVnInkModule;
+            } catch {
+                return undefined;
+            }
+        })();
+    }
+
+    const mod = await rootModulePromise;
+    if (mod && !hashtagCommandsRegistered) {
+        hashtagCommandsRegistered = true;
+        try {
+            mod.addBaseHashtagCommands();
+        } catch {
+            // Registration itself failed — keep going with whatever managed to register.
+        }
+    }
+    return mod;
+}
+
+/**
+ * Like {@link compilePixiVN}, but tries to first register pixi-vn's built-in hashtag commands
+ * (see {@link loadRootPixiVnInkWithHashtagCommands}) so the compiled JSON contains their real
+ * structured operations rather than opaque placeholders — needed for
+ * {@link ../../diagnostics!checkPixiVnJsonSchemaValidation} to actually see inside a `# show ...`
+ * / `# edit ...` / etc. command's arguments (e.g. an unrecognised `props` key). Falls back to the
+ * plain {@link compilePixiVN} (still useful — it validates everything else about the document)
+ * if that registration didn't succeed.
+ */
+export async function compilePixiVNWithResolvedHashtagCommands(text: string, characterIds?: ReadonlySet<string>) {
+    const root = await loadRootPixiVnInkWithHashtagCommands();
+    if (!root) return compilePixiVN(text, characterIds);
+
+    return root.convertInkToJson(`=== ${PIXI_VN_START_LABEL} ===\n${text}`, {
+        characters: characterIds ? [...characterIds] : [],
+    });
+}
+
 /**
  * Compiles a project `.ink` file that *isn't* the one being previewed — its own knots become
  * directly callable labels, with none of {@link compilePixiVN}'s synthetic entry-point wrapper

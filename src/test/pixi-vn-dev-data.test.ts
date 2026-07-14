@@ -2,7 +2,9 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import {
 	getPixiVnDevCharacterIds,
+	getPixiVnDevHashtagCommands,
 	getPixiVnDevLabelNames,
+	getPixiVnJsonSchemaValidator,
 	isVersionOlderThan,
 	pixiVnDevData,
 	refreshPixiVnDevData,
@@ -37,6 +39,46 @@ suite('pixi-vn-dev-data Test Suite', () => {
 		assert.deepStrictEqual(getPixiVnDevLabelNames(), []);
 		assert.deepStrictEqual(getPixiVnDevCharacterIds(), []);
 		pixiVnDevData.characters = undefined;
+	});
+
+	test('getPixiVnDevHashtagCommands: keeps well-formed entries, drops malformed ones, tolerates a non-array cache', () => {
+		pixiVnDevData.hashtagCommands = [
+			{ name: 'jump-command', validation: { type: 'regexp', source: '^jump\\b', flags: '' } },
+			{ description: 'missing its name' },
+			null,
+			'not an object',
+		];
+		assert.deepStrictEqual(
+			getPixiVnDevHashtagCommands().map((c) => c.name),
+			['jump-command'],
+		);
+
+		pixiVnDevData.hashtagCommands = { not: 'an array' };
+		assert.deepStrictEqual(getPixiVnDevHashtagCommands(), []);
+		pixiVnDevData.hashtagCommands = undefined;
+	});
+
+	suite('getPixiVnJsonSchemaValidator', () => {
+		test('returns undefined when no schema has been cached yet', () => {
+			pixiVnDevData.inkJsonSchema = undefined;
+			assert.strictEqual(getPixiVnJsonSchemaValidator(), undefined);
+		});
+
+		test('compiles and reuses a validator for the currently cached schema', () => {
+			pixiVnDevData.inkJsonSchema = { type: 'object', properties: { labels: { type: 'object' } }, required: ['labels'] };
+			const validator = getPixiVnJsonSchemaValidator();
+			assert.ok(validator);
+			assert.strictEqual(validator, getPixiVnJsonSchemaValidator(), 'same schema reference reuses the compiled validator');
+			assert.strictEqual(validator?.({ labels: {} }), true);
+			assert.strictEqual(validator?.({}), false);
+			pixiVnDevData.inkJsonSchema = undefined;
+		});
+
+		test('returns undefined instead of throwing for a malformed schema', () => {
+			pixiVnDevData.inkJsonSchema = 'not a schema object';
+			assert.strictEqual(getPixiVnJsonSchemaValidator(), undefined);
+			pixiVnDevData.inkJsonSchema = undefined;
+		});
 	});
 
 	suite('refreshPixiVnDevData (mocked dev server)', () => {
@@ -89,5 +131,24 @@ suite('pixi-vn-dev-data Test Suite', () => {
 				assert.deepStrictEqual(pixiVnDevData.labels, ['start']);
 			},
 		);
+
+		test('falls back to the public pixi-vn.com schema when INK_DEV_API_INFO cannot be obtained from the dev server', async () => {
+			global.fetch = (async (url: string | URL) => {
+				const u = String(url);
+				if (u.includes('pixi-vn.com/schemas/latest/schema.json')) {
+					return { ok: true, json: async () => ({ type: 'object', fromFallback: true }) } as Response;
+				}
+				if (u.includes('/__pixi-vn-ink/info')) {
+					throw new Error('connection refused');
+				}
+				return { ok: true, json: async () => [] } as Response;
+			}) as typeof fetch;
+
+			pixiVnDevData.inkJsonSchema = undefined;
+
+			await refreshPixiVnDevData();
+
+			assert.deepStrictEqual(pixiVnDevData.inkJsonSchema, { type: 'object', fromFallback: true });
+		});
 	});
 });

@@ -2,9 +2,11 @@ import {
     INK_DEV_API_HASHTAG_COMMANDS,
     INK_DEV_API_INFO,
     INK_DEV_API_TEXT_REPLACES,
+    type InkHashtagCommandInfo,
     type InkLibraryInfo,
     type InkTextReplaceInfo,
 } from "@drincs/pixi-vn-ink/dev-api";
+import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
 import { PIXIVN_DEV_API_ASSETS_MANIFEST, PIXIVN_DEV_API_CHARACTERS, PIXIVN_DEV_API_LABELS } from "@drincs/pixi-vn/vite";
 import type { ExtensionContext } from "vscode";
 import { l10n, window, workspace } from "vscode";
@@ -20,6 +22,11 @@ const LABELS_QUICK_FETCH_COOLDOWN_MS = 2_000;
 // it, but reports an older version, is missing whatever that version's release actually added, so
 // it's flagged the same way as a 404.
 const MIN_SUPPORTED_INK_VERSION = "1.1.5";
+
+// Used to validate an exported PixiVNJson against a schema even when no pixi-vn Vite dev server
+// is reachable at all (so `INK_DEV_API_INFO`'s own `schemaUrl` can never be learned) — the latest
+// published schema is still a reasonable, if slightly less version-precise, stand-in.
+const PIXI_VN_PUBLIC_SCHEMA_FALLBACK_URL = "https://pixi-vn.com/schemas/latest/schema.json";
 
 /**
  * In-memory cache of the pixi-vn Vite dev-server data (characters, narration labels, assets
@@ -80,6 +87,25 @@ let inkLibraryInfoResolved = false;
 let inkJsonSchemaResolved = false;
 
 /**
+ * Fetches the latest publicly published PixiVNJson schema as a stand-in for a `schemaUrl` this
+ * extension has no way to learn (no dev server reachable at all, or one too old to serve
+ * `INK_DEV_API_INFO`). Never overrides a schema already obtained from a real dev server's own
+ * `schemaUrl` ({@link inkJsonSchemaResolved}) — that one is preferred whenever it's available, so
+ * this is only ever a fallback for as long as it stays unavailable.
+ */
+async function fetchPublicSchemaFallback(): Promise<void> {
+    if (inkJsonSchemaResolved || pixiVnDevData.inkJsonSchema !== undefined) return;
+    try {
+        const res = await fetch(PIXI_VN_PUBLIC_SCHEMA_FALLBACK_URL);
+        if (res.ok) {
+            pixiVnDevData.inkJsonSchema = await res.json();
+        }
+    } catch {
+        // Public schema host unreachable too — try again on the next poll.
+    }
+}
+
+/**
  * One-shot (not periodic) fetch of `INK_DEV_API_INFO` and, once that's known, the JSON Schema
  * it points to — both are static for the lifetime of the running dev server, so once actually
  * obtained there is nothing to refresh and this becomes a no-op.
@@ -90,7 +116,10 @@ let inkJsonSchemaResolved = false;
  * {@link warnOutdatedInkVersion} (it may simply not support every feature this extension expects)
  * and never retried (an old server won't grow the endpoint while it keeps running). An
  * *unreachable* dev server (connection refused, not started yet, ...) isn't evidence of anything:
- * it's silently retried on the normal schedule, same as the rest.
+ * it's silently retried on the normal schedule, same as the rest. Either way, since there's no
+ * telling *when* (or if) a dev server will become reachable/support this endpoint, the JSON
+ * Schema itself falls back to {@link fetchPublicSchemaFallback} so schema validation still works
+ * without one.
  */
 async function refreshInkLibraryInfo(port: number): Promise<void> {
     if (!inkLibraryInfoResolved) {
@@ -98,6 +127,7 @@ async function refreshInkLibraryInfo(port: number): Promise<void> {
         try {
             res = await fetch(`http://localhost:${port}${INK_DEV_API_INFO}`);
         } catch {
+            await fetchPublicSchemaFallback();
             return; // Dev server unreachable — not evidence of anything, retry on the next poll.
         }
 
@@ -118,6 +148,7 @@ async function refreshInkLibraryInfo(port: number): Promise<void> {
         if (!info) {
             inkLibraryInfoResolved = true;
             warnOutdatedInkVersion();
+            await fetchPublicSchemaFallback();
             return;
         }
 
@@ -127,6 +158,12 @@ async function refreshInkLibraryInfo(port: number): Promise<void> {
         if (isVersionOlderThan(info.version, MIN_SUPPORTED_INK_VERSION)) {
             warnOutdatedInkVersion();
         }
+    } else if (!pixiVnDevData.inkLibraryInfo) {
+        // Already determined (in a previous poll) that this dev server won't ever provide
+        // INK_DEV_API_INFO (outdated version / malformed response) — keep retrying the public
+        // fallback on every poll, since `inkLibraryInfoResolved` alone would otherwise mean this
+        // function returns above without ever giving the fallback a second try.
+        await fetchPublicSchemaFallback();
     }
 
     const schemaUrl = pixiVnDevData.inkLibraryInfo?.schemaUrl;
@@ -180,6 +217,40 @@ export function getPixiVnDevLabelNames(): string[] {
  */
 export function getPixiVnDevCharacterIds(): string[] {
     return normalizeDevApiIds(pixiVnDevData.characters);
+}
+
+/**
+ * Returns the registered hashtag-command handlers, tolerating anything malformed in the cached
+ * response (the dev server's wire format for this endpoint isn't part of its typed surface).
+ */
+export function getPixiVnDevHashtagCommands(): InkHashtagCommandInfo[] {
+    if (!Array.isArray(pixiVnDevData.hashtagCommands)) return [];
+    return pixiVnDevData.hashtagCommands.filter(
+        (entry): entry is InkHashtagCommandInfo =>
+            Boolean(entry) && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string",
+    );
+}
+
+/**
+ * Compiles (and caches, by reference — the cache is only ever replaced wholesale by
+ * {@link refreshInkLibraryInfo}/{@link fetchPublicSchemaFallback}, never mutated in place) an Ajv
+ * validator for the currently cached PixiVNJson schema, or `undefined` when none has been
+ * obtained yet (no reachable dev server and the public fallback also failed).
+ */
+let cachedSchemaValidator: { schema: unknown; validator: ReturnType<typeof InkCompiler.getSchemaValidator> } | undefined;
+
+export function getPixiVnJsonSchemaValidator(): ReturnType<typeof InkCompiler.getSchemaValidator> | undefined {
+    const schema = pixiVnDevData.inkJsonSchema;
+    if (!schema || typeof schema !== "object") return undefined;
+
+    if (cachedSchemaValidator?.schema === schema) return cachedSchemaValidator.validator;
+    try {
+        const validator = InkCompiler.getSchemaValidator(schema);
+        cachedSchemaValidator = { schema, validator };
+        return validator;
+    } catch {
+        return undefined;
+    }
 }
 
 /**
@@ -257,21 +328,34 @@ export async function refreshPixiVnDevData(): Promise<void> {
  * Fetches characters/labels/assets-manifest/hashtag-commands/text-replaces from the pixi-vn Vite
  * dev server immediately, again after 1 and 4 minutes (the dev server may still be starting up),
  * then every {@link PERIODIC_INTERVAL_MS} afterwards, plus once each time an ink file is opened.
+ *
+ * `onUpdated`, when given, is called after every poll (successful or not) — semantic tokens and
+ * hover both read straight from {@link pixiVnDevData} on every request, so they already reflect
+ * fresh data on their own; what they *don't* get for free is a nudge to actually re-run. Without
+ * one, a document opened (and its semantic tokens computed, e.g. with no hashtag commands known
+ * yet) before the first successful poll keeps showing that first, now-stale result until VS Code
+ * decides to re-request tokens for some unrelated reason (e.g. the next edit) — the same staleness
+ * would affect diagnostics. Called unconditionally rather than only on an actual data change: a
+ * poll only happens a handful of times per file open plus every 10 minutes, so re-rendering even
+ * when nothing changed is cheap, and detecting "did anything change" would need a deep comparison
+ * for little benefit.
  */
-export function schedulePixiVnDevDataPolling(context: ExtensionContext) {
-    const timers = [
-        setTimeout(() => void refreshPixiVnDevData(), ONE_MINUTE_MS),
-        setTimeout(() => void refreshPixiVnDevData(), FOUR_MINUTES_MS),
-    ];
-    const interval = setInterval(() => void refreshPixiVnDevData(), PERIODIC_INTERVAL_MS);
+export function schedulePixiVnDevDataPolling(context: ExtensionContext, onUpdated?: () => void) {
+    const poll = async () => {
+        await refreshPixiVnDevData();
+        onUpdated?.();
+    };
+
+    const timers = [setTimeout(() => void poll(), ONE_MINUTE_MS), setTimeout(() => void poll(), FOUR_MINUTES_MS)];
+    const interval = setInterval(() => void poll(), PERIODIC_INTERVAL_MS);
 
     const openListener = workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "ink") {
-            void refreshPixiVnDevData();
+            void poll();
         }
     });
 
-    void refreshPixiVnDevData();
+    void poll();
 
     context.subscriptions.push(openListener, {
         dispose() {

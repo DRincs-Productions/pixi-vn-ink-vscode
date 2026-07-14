@@ -12,8 +12,14 @@ import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors, getProjectErrors } from "./utils/ink-utility";
 import { extractKnotDefinitions, getAllKnotDefinitions } from "./utils/knot-definitions";
 import { getProjectInkFiles } from "./utils/knot-utility";
-import { getPixiVnDevLabelNames } from "./utils/pixi-vn-dev-data";
-import { getErrorsPixiVN } from "./utils/pixi-vn-utility";
+import { locateHashtagSegment, truncateHashtagCommandForMessage } from "./utils/pixi-vn-hashtag";
+import {
+    getPixiVnDevCharacterIds,
+    getPixiVnDevHashtagCommands,
+    getPixiVnDevLabelNames,
+    getPixiVnJsonSchemaValidator,
+} from "./utils/pixi-vn-dev-data";
+import { compilePixiVNWithResolvedHashtagCommands, getErrorsPixiVN } from "./utils/pixi-vn-utility";
 
 export function updateDiagnostics(doc: TextDocument, diagnostics: Diagnostic[]) {
     const config = workspace.getConfiguration("ink");
@@ -161,6 +167,142 @@ export async function checkPixiVnUnknownDivertTargets(document: TextDocument, di
             new Diagnostic(
                 document.lineAt(lineIndex).range,
                 l10n.t('Divert target "{0}" not found in any known label source.', occurrence.target),
+                DiagnosticSeverity.Warning,
+            ),
+        );
+    }
+}
+
+/**
+ * Flags every `# ...` hashtag command that matches no registered pixi-vn `HashtagCommands`
+ * handler — the same check `vitePluginInk`'s `logUnknownHashtagCommands` runs at build/dev time,
+ * via the same `InkCompiler.getUnknownHashtagCommands` it calls, given the handlers registered on
+ * the pixi-vn dev server. Only runs once the dev server has actually returned some (without them
+ * there's no reliable way to tell a real typo from a command registered purely in JS, so — same
+ * as {@link checkPixiVnUnknownDivertTargets} — nothing is flagged). The whole `# ...` tag is
+ * underlined, not just the command name, mirroring the semantic-token/hover treatment of a
+ * *recognized* command (see extension.ts), which only colours the leading `#` itself.
+ */
+export function checkPixiVnUnknownHashtagCommands(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const hashtagCommands = getPixiVnDevHashtagCommands();
+    if (hashtagCommands.length === 0) return;
+
+    for (const occurrence of InkCompiler.getUnknownHashtagCommands(document.getText(), hashtagCommands)) {
+        const lineIndex = occurrence.line - 1;
+        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
+
+        const segment = locateHashtagSegment(document.lineAt(lineIndex).text, occurrence.command);
+        const range = segment
+            ? new Range(lineIndex, segment.start, lineIndex, segment.end)
+            : document.lineAt(lineIndex).range;
+
+        diagnostics.push(
+            new Diagnostic(
+                range,
+                l10n.t(
+                    'Unknown hashtag command "# {0}": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.',
+                    truncateHashtagCommandForMessage(occurrence.command),
+                ),
+                DiagnosticSeverity.Warning,
+            ),
+        );
+    }
+}
+
+/**
+ * For every hashtag command that *does* match a registered handler, additionally validates its
+ * order-independent keyed sections (e.g. `# show imagecontainer sly props xAlign 0.2 ...`) against
+ * that handler's own `keySchemas` — mirroring `vitePluginInk`'s `logHashtagKeySchemaIssues`, via
+ * the same `InkCompiler.getHashtagKeySchemaIssues`. Purely additive to
+ * {@link checkPixiVnUnknownHashtagCommands}: a command with no matching handler, or a matching one
+ * with no `keySchemas`, is simply skipped, never doubly reported.
+ */
+export function checkPixiVnHashtagKeySchemaIssues(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const hashtagCommands = getPixiVnDevHashtagCommands();
+    if (hashtagCommands.length === 0) return;
+
+    for (const issue of InkCompiler.getHashtagKeySchemaIssues(document.getText(), hashtagCommands)) {
+        const lineIndex = issue.line - 1;
+        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
+
+        const segment = locateHashtagSegment(document.lineAt(lineIndex).text, issue.command);
+        const range = segment
+            ? new Range(lineIndex, segment.start, lineIndex, segment.end)
+            : document.lineAt(lineIndex).range;
+
+        // `issue.element`/`issue.message` come from Ajv validating the project's own registered
+        // JSON Schema — arbitrary text this extension doesn't author, so it's passed through as-is
+        // rather than folded fully into the l10n template (same approach as the text-replace hover).
+        diagnostics.push(
+            new Diagnostic(
+                range,
+                l10n.t(
+                    'Hashtag command "# {0}": "{1}" section — {2}: {3}',
+                    truncateHashtagCommandForMessage(issue.command),
+                    issue.key,
+                    issue.element,
+                    issue.message,
+                ),
+                DiagnosticSeverity.Warning,
+            ),
+        );
+    }
+}
+
+/**
+ * Locates the document line whose text is (or contains) `origin` — the nearest ink source line
+ * `InkCompiler.validateAgainstJsonSchema` could trace a schema mismatch back to — falling back to
+ * the first line when `origin` is missing or not found verbatim (e.g. it was reformatted/generated
+ * rather than copied straight from source).
+ */
+function locateSchemaIssueRange(document: TextDocument, origin: string | undefined): Range {
+    const trimmedOrigin = origin?.trim();
+    if (trimmedOrigin) {
+        for (let i = 0; i < document.lineCount; i++) {
+            if (document.lineAt(i).text.trim() === trimmedOrigin) return document.lineAt(i).range;
+        }
+        for (let i = 0; i < document.lineCount; i++) {
+            if (document.lineAt(i).text.includes(trimmedOrigin)) return document.lineAt(i).range;
+        }
+    }
+    return document.lineAt(0).range;
+}
+
+/**
+ * Validates the current file, compiled to `PixiVNJson`, against the pixi-vn JSON Schema — the
+ * same `InkCompiler.validateAgainstJsonSchema` check `vitePluginInk`'s `validatePixiVNJsonAgainstSchema`
+ * runs at build/export time. The schema itself comes from the dev server's `INK_DEV_API_INFO`
+ * (`schemaUrl`), or, when no dev server is reachable at all, the latest published schema at
+ * https://pixi-vn.com/schemas/latest/schema.json (see {@link getPixiVnJsonSchemaValidator}).
+ * Unlike the hashtag-command checks above, this doesn't depend on the dev server's registered
+ * commands, so it runs whenever *a* schema (dev-server or fallback) is available.
+ *
+ * Compiles via {@link compilePixiVNWithResolvedHashtagCommands}, not the plain `compilePixiVN`
+ * used elsewhere: without it, every `# show ...`/`# edit ...`/... hashtag command stays an opaque
+ * `operationtoconvert` placeholder with no structured properties for the schema to check inside
+ * at all — e.g. a mistyped `props` key (`xAlgn` for `xAlign`) would silently compile clean.
+ */
+export async function checkPixiVnJsonSchemaValidation(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const validator = getPixiVnJsonSchemaValidator();
+    if (!validator) return;
+
+    const json = await compilePixiVNWithResolvedHashtagCommands(document.getText(), new Set(getPixiVnDevCharacterIds()));
+    if (!json) return;
+
+    for (const issue of InkCompiler.validateAgainstJsonSchema(json, validator)) {
+        diagnostics.push(
+            new Diagnostic(
+                locateSchemaIssueRange(document, issue.origin),
+                l10n.t('PixiVN JSON schema: "{0}" - {1}', issue.element, issue.message),
                 DiagnosticSeverity.Warning,
             ),
         );

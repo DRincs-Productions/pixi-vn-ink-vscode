@@ -20,9 +20,12 @@ import {
 import {
     checkIncludes,
     checkPixiVnFunctionCallHints,
+    checkPixiVnHashtagKeySchemaIssues,
     checkPixiVnInkFunctionDeclarations,
+    checkPixiVnJsonSchemaValidation,
     checkPixiVnUnimplementedFunctions,
     checkPixiVnUnknownDivertTargets,
+    checkPixiVnUnknownHashtagCommands,
     updateDiagnostics,
 } from "./diagnostics";
 import { inkFoldingRangeProvider } from "./folding";
@@ -45,8 +48,10 @@ import {
 import { includeCtrlClick, suggestionsInclude } from "./utils/include-utility";
 import { knotRunCodeLensProvider } from "./utils/knot-codelens";
 import { knotCompletionProvider, knotDefinitionProvider, registerInsertIncludeCommand } from "./utils/knot-utility";
+import { buildUnknownHashtagCommandIndex, findHashtagSegment, findMatchingHashtagCommand } from "./utils/pixi-vn-hashtag";
 import {
     getPixiVnDevCharacterIds,
+    getPixiVnDevHashtagCommands,
     getPixiVnDevTextReplaces,
     schedulePixiVnDevDataPolling,
 } from "./utils/pixi-vn-dev-data";
@@ -69,7 +74,11 @@ export {
 // Legend for the pixi-vn engine's semantic tokens: matched [ ] pairs in normal text use
 // the built-in "keyword" type (shares the theme colour already used by choice brackets in
 // the TextMate grammar), and a recognized "characterId: " dialogue speaker prefix uses
-// "function" (shares the colour already used for knot/stitch/divert names).
+// "function" (shares the colour already used for knot/stitch/divert names). A recognized/
+// unrecognized `#` hashtag command is coloured separately, via plain editor decorations with
+// fixed colours (see pixiVnRecognizedHashtagDecoration/pixiVnUnknownHashtagDecoration below) —
+// not through this semantic-token legend, since no theme-defined token type/scope reliably
+// delivers the specific "calm dark green" + "alarming red" pairing that distinction needs.
 const PIXI_VN_BRACKET_TOKEN_TYPE = 0;
 const PIXI_VN_CHARACTER_TOKEN_TYPE = 1;
 const pixiVnSemanticTokenLegend = new SemanticTokensLegend(["keyword", "function"], []);
@@ -270,10 +279,6 @@ export function activate(context: ExtensionContext) {
         }),
     );
 
-    // Keep the pixi-vn Vite dev-server data (characters, labels, assets manifest) cached
-    // and refreshed in the background for upcoming pixi-vn-aware features.
-    schedulePixiVnDevDataPolling(context);
-
     // Emitter used to tell VS Code to re-compute semantic tokens when the engine setting changes
     const onDidChangeSemanticTokensEmitter = new EventEmitter<void>();
     context.subscriptions.push(onDidChangeSemanticTokensEmitter);
@@ -296,7 +301,27 @@ export function activate(context: ExtensionContext) {
         color: new ThemeColor("symbolIcon.constructorForeground"),
         rangeBehavior: DecorationRangeBehavior.ClosedClosed,
     });
-    context.subscriptions.push(markdownItalicDecoration, markdownBoldDecoration, markdownSymbolDecoration);
+    // Explicit hex colours, not ThemeColor/semantic-token-scope references: a recognized `#`
+    // deliberately needs to read as calm/low-attention (a dark, muted green) and an unrecognized
+    // one as an alarm (a strong, saturated red) — no theme-defined colour (comment greys, diff
+    // green/red, ...) reliably delivers that specific pairing across every theme.
+    const pixiVnRecognizedHashtagDecoration = window.createTextEditorDecorationType({
+        light: { color: "#1B5E20" },
+        dark: { color: "#4CAF50" },
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+    const pixiVnUnknownHashtagDecoration = window.createTextEditorDecorationType({
+        light: { color: "#D32F2F" },
+        dark: { color: "#FF5555" },
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+    });
+    context.subscriptions.push(
+        markdownItalicDecoration,
+        markdownBoldDecoration,
+        markdownSymbolDecoration,
+        pixiVnRecognizedHashtagDecoration,
+        pixiVnUnknownHashtagDecoration,
+    );
 
     const refreshMarkdownDecorations = (editor?: TextEditor) => {
         if (editor?.document.languageId !== "ink") return;
@@ -385,6 +410,46 @@ export function activate(context: ExtensionContext) {
         }
     };
 
+    // Colours a recognized/unrecognized `#` hashtag command — see the decoration types above for
+    // why this uses fixed colours via editor decorations rather than the semantic-token API (no
+    // theme-defined scope reliably delivers "calm dark green" + "alarming red" together).
+    const refreshHashtagCommandDecorations = (editor?: TextEditor) => {
+        if (editor?.document.languageId !== "ink") return;
+
+        const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+        const hashtagCommands = engine === "pixi-vn" ? getPixiVnDevHashtagCommands() : [];
+        if (hashtagCommands.length === 0) {
+            editor.setDecorations(pixiVnRecognizedHashtagDecoration, []);
+            editor.setDecorations(pixiVnUnknownHashtagDecoration, []);
+            return;
+        }
+
+        const unknownHashtagIndex = buildUnknownHashtagCommandIndex(editor.document.getText(), hashtagCommands);
+        const recognizedRanges: Range[] = [];
+        const unknownRanges: Range[] = [];
+
+        for (let i = 0; i < editor.document.lineCount; i++) {
+            const hashtagSegment = findHashtagSegment(editor.document.lineAt(i).text);
+            if (!hashtagSegment) continue;
+
+            const range = new Range(i, hashtagSegment.start, i, hashtagSegment.start + 1);
+            if (unknownHashtagIndex.get(i + 1)?.has(hashtagSegment.command)) {
+                unknownRanges.push(range);
+            } else {
+                recognizedRanges.push(range);
+            }
+        }
+
+        editor.setDecorations(pixiVnRecognizedHashtagDecoration, recognizedRanges);
+        editor.setDecorations(pixiVnUnknownHashtagDecoration, unknownRanges);
+    };
+
+    const refreshVisibleHashtagCommandDecorations = () => {
+        for (const editor of window.visibleTextEditors) {
+            refreshHashtagCommandDecorations(editor);
+        }
+    };
+
     // Initial diagnostics for all open ink files
 
     const diagnostics = languages.createDiagnosticCollection("ink");
@@ -398,6 +463,9 @@ export function activate(context: ExtensionContext) {
         checkPixiVnInkFunctionDeclarations(doc, list);
         checkPixiVnFunctionCallHints(doc, list);
         await checkPixiVnUnknownDivertTargets(doc, list);
+        checkPixiVnUnknownHashtagCommands(doc, list);
+        checkPixiVnHashtagKeySchemaIssues(doc, list);
+        await checkPixiVnJsonSchemaValidation(doc, list);
         diagnostics.set(doc.uri, list);
     };
 
@@ -414,6 +482,7 @@ export function activate(context: ExtensionContext) {
             const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
             window.showInformationMessage(l10n.t("Engine changed to {0}", newEngine));
             onDidChangeSemanticTokensEmitter.fire();
+            refreshVisibleHashtagCommandDecorations();
             for (const doc of workspace.textDocuments) {
                 if (doc.languageId === "ink") {
                     void refreshDiagnostics(doc);
@@ -440,6 +509,7 @@ export function activate(context: ExtensionContext) {
             for (const editor of window.visibleTextEditors) {
                 if (editor.document === e.document) {
                     refreshMarkdownDecorations(editor);
+                    refreshHashtagCommandDecorations(editor);
                 }
             }
         }
@@ -451,9 +521,11 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         window.onDidChangeActiveTextEditor((editor) => {
             refreshMarkdownDecorations(editor);
+            refreshHashtagCommandDecorations(editor);
         }),
         window.onDidChangeVisibleTextEditors(() => {
             refreshVisibleMarkdownDecorations();
+            refreshVisibleHashtagCommandDecorations();
         }),
     );
 
@@ -542,6 +614,37 @@ export function activate(context: ExtensionContext) {
                                 new MarkdownString(header + body),
                                 new Range(position.line, openPos, position.line, closePos + 1),
                             );
+                        }
+                    }
+                }
+
+                // Hover for a `#` hashtag command recognized by a registered pixi-vn
+                // HashtagCommands handler — not restricted to isNormalTextLine above, since a
+                // hashtag command can annotate a choice/knot line just as well as narrative text.
+                // Only for *recognized* commands: an unrecognized one already gets a diagnostic
+                // (whose own hover already explains it), so nothing extra is added here for it.
+                if (engine === "pixi-vn" && line.includes("#")) {
+                    const hashtagCommands = getPixiVnDevHashtagCommands();
+                    const hashtagSegment = hashtagCommands.length > 0 ? findHashtagSegment(line) : undefined;
+                    // Only the `#` character itself triggers this hover — the coloured span is
+                    // just that one character too (see the semantic-token provider below).
+                    if (hashtagSegment && position.character === hashtagSegment.start) {
+                        const isUnknown = buildUnknownHashtagCommandIndex(document.getText(), hashtagCommands)
+                            .get(position.line + 1)
+                            ?.has(hashtagSegment.command);
+                        if (!isUnknown) {
+                            const matched = findMatchingHashtagCommand(hashtagSegment.command, hashtagCommands);
+                            if (matched) {
+                                // `matched.description` is arbitrary text supplied by the
+                                // project's own dev server, not authored by this extension —
+                                // appended as-is rather than folded into the l10n template.
+                                const header = l10n.t("**{0}** (pixi-vn hashtag command)", matched.name);
+                                const body = matched.description ? `\n\n${matched.description}` : "";
+                                return new Hover(
+                                    new MarkdownString(header + body),
+                                    new Range(position.line, hashtagSegment.start, position.line, hashtagSegment.start + 1),
+                                );
+                            }
                         }
                     }
                 }
@@ -875,6 +978,24 @@ export function activate(context: ExtensionContext) {
     );
 
     refreshVisibleMarkdownDecorations();
+    refreshVisibleHashtagCommandDecorations();
+
+    // Keep the pixi-vn Vite dev-server data (characters, labels, assets manifest, hashtag
+    // commands, text replaces) cached and refreshed in the background. Semantic tokens,
+    // diagnostics, and the hashtag-command decorations above all read straight from that cache,
+    // so whenever a poll actually happens they need to be recomputed too — otherwise a file
+    // opened before the first successful poll (e.g. right as the dev server was still starting
+    // up) keeps showing whatever it first saw (often "nothing recognized yet") until some
+    // unrelated edit happens to trigger a re-request.
+    schedulePixiVnDevDataPolling(context, () => {
+        onDidChangeSemanticTokensEmitter.fire();
+        refreshVisibleHashtagCommandDecorations();
+        for (const doc of workspace.textDocuments) {
+            if (doc.languageId === "ink") {
+                void refreshDiagnostics(doc);
+            }
+        }
+    });
 }
 
 export function isEndDoneHoverContext(line: string, wordStartChar: number) {
