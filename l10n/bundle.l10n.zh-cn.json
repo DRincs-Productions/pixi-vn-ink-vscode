@@ -74,7 +74,7 @@
   "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.": "在 pixi-vn 引擎中无法直接在 ink 里创建函数——\"{0}\" 将被忽略。请改为在 JavaScript/TypeScript 中定义它（{1}），或者更好的做法是将其暴露为自定义 Hashtag 命令。",
   "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.": "建议将 \"{0}\" 暴露为自定义 Hashtag 命令，而不是作为函数。",
   "Divert target \"{0}\" not found in any known label source.": "在任何已知的标签来源中都未找到转向目标 \"{0}\"。",
-  "Unknown hashtag command \"# {0}\": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.": "未知的井号命令 \"# {0}\"：没有任何已注册的处理程序与此命令匹配。即使命令本身正确，资源、资源包、角色或其他元素的别名/ID 拼写错误也可能导致无法识别。",
+  "Unknown hashtag command \"# {0}\": no registered handler matched this command.": "未知的井号命令 \"# {0}\"：没有任何已注册的处理程序与此命令匹配。",
   "Hashtag command \"# {0}\": \"{1}\" section — {2}: {3}": "井号命令 \"# {0}\"：\"{1}\" 部分 — {2}：{3}",
   "PixiVN JSON schema: \"{0}\" - {1}": "PixiVN JSON 架构：\"{0}\" - {1}",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**：被 pixi-vn 识别为角色 id —— 此行是由已在 pixi-vn 开发服务器上注册的 `{0}` 说出的对话。\n\n示例：\n```ink\n{0}: 你好！\n```",

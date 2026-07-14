@@ -45,10 +45,15 @@ export const PIXI_VN_START_LABEL = "__pixi_vn_start__";
  * `convertInkToJson` pipeline `vitePluginInk` itself uses to turn a `.ink` file into JSON.
  *
  * Imported from `@drincs/pixi-vn-ink/converter` specifically, not its root export: the root also
- * re-exports `importJson`/`VariableGetter`, which need `@drincs/pixi-vn`'s live canvas runtime —
- * harmless in the webview's real DOM context, but pulling that into the extension host (a plain
- * Node.js process with no `navigator`) crashes on activation the moment pixi.js's browser-only
- * `DOMAdapter` gets touched. `/converter` only reaches the pure ink→JSON conversion.
+ * re-exports `addBaseHashtagCommands`/`importJson`/`VariableGetter`, which transitively import
+ * `@drincs/pixi-vn/canvas` → `pixi.js` — and one of pixi.js's own submodules (`GlTextureSystem`,
+ * via its Safari-detection helper) reads `navigator.userAgent` at *module evaluation time*,
+ * throwing immediately in the extension host (a plain Node.js process with no `navigator`, unless
+ * shimmed — see {@link loadRootPixiVnInkWithHashtagCommands}). Every built-in hashtag command
+ * (`# show ...`, `# edit ...`, ...) necessarily stays an opaque `{ type: "operationtoconvert",
+ * values: [...] }` placeholder through *this* function specifically — invisible to schema
+ * validation — rather than its real structured operation; use
+ * {@link compilePixiVNWithResolvedHashtagCommands} instead when that matters.
  */
 export function compilePixiVN(text: string, characterIds?: ReadonlySet<string>) {
     return convertInkToJson(`=== ${PIXI_VN_START_LABEL} ===\n${text}`, {
@@ -62,51 +67,96 @@ type RootPixiVnInkModule = {
 };
 
 let rootModulePromise: Promise<RootPixiVnInkModule | undefined> | undefined;
-let hashtagCommandsRegistered = false;
 
 /**
- * Lazily, and only once, loads `@drincs/pixi-vn-ink`'s root export and calls its
- * `addBaseHashtagCommands()` — needed for {@link compilePixiVNWithResolvedHashtagCommands} to see
- * built-in commands (`show`/`edit`/`remove`/... for images, sound, text, canvas elements, ...)
- * resolved into their real structured `PixiVNJson` operation at compile time, instead of left as
- * an opaque `{ type: "operationtoconvert", values: [...] }` placeholder.
+ * Temporarily overrides the global `navigator` for the duration of `load`, restoring whatever was
+ * there before (present or not) once it settles, success or failure.
  *
- * A dynamic `import()`, not a static one: `addBaseHashtagCommands` is only available from the
- * root export, which also re-exports `importJson`/`VariableGetter` — these need `@drincs/pixi-vn`'s
- * live canvas runtime, harmless in the webview's real DOM context but a documented crash risk in
- * the extension host (see {@link compilePixiVN}'s own doc comment on why it avoids the root
- * export entirely). Loading it dynamically, wrapped in a `try`, contains that risk to this one
- * lazily-invoked path — if it ever does fail, this silently falls back to `undefined` (letting
+ * Needed once, to load `@drincs/pixi-vn-ink`'s root export (see
+ * {@link loadRootPixiVnInkWithHashtagCommands}): pixi.js's `GlTextureSystem` submodule reads
+ * `DOMAdapter.get().getNavigator().userAgent` at module-evaluation time to feature-detect Safari,
+ * and that call returns `undefined` in the extension host — even though modern Node.js (21+)
+ * itself defines a bare-bones global `navigator`, pixi.js's own adapter doesn't consult it and
+ * crashes regardless. That built-in `navigator`, when present, is a *configurable* accessor
+ * property, though (confirmed empirically), so it can be swapped for a minimal stand-in just long
+ * enough for pixi.js's module graph to finish loading without throwing.
+ *
+ * This mutates a genuinely global, process-wide object for that whole window — shared with every
+ * other extension running in the same extension host process — which would be too invasive to do
+ * permanently. Scoped to only the *one-time* module load (module state, once loaded, stays loaded;
+ * nothing here needs to repeat it), this narrows that window to something that only ever happens
+ * once per extension host lifetime, as early as possible, and never overlaps a real navigator
+ * consumer that isn't part of this one load.
+ */
+async function withNavigatorShim<T>(load: () => Promise<T>): Promise<T> {
+    const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    try {
+        Object.defineProperty(globalThis, "navigator", {
+            value: { userAgent: "Mozilla/5.0 VSCodeExtensionHost" },
+            configurable: true,
+            writable: true,
+        });
+    } catch {
+        // Not configurable in this environment after all — proceed without the shim; `load` will
+        // most likely fail the same way it always did, and its own caller falls back gracefully.
+    }
+
+    try {
+        return await load();
+    } finally {
+        if (original) {
+            Object.defineProperty(globalThis, "navigator", original);
+        } else {
+            Reflect.deleteProperty(globalThis, "navigator");
+        }
+    }
+}
+
+/**
+ * Lazily, and only once, loads `@drincs/pixi-vn-ink`'s root export (behind {@link withNavigatorShim})
+ * and calls its `addBaseHashtagCommands()` — needed for
+ * {@link compilePixiVNWithResolvedHashtagCommands} to see built-in commands (`show`/`edit`/
+ * `remove`/... for images, sound, text, canvas elements, ...) resolved into their real structured
+ * `PixiVNJson` operation at compile time, instead of left as an opaque `operationtoconvert`
+ * placeholder. Falls back to `undefined` (never throws) if the shim didn't help after all — an
+ * outdated pixi.js internal, or some other unrelated reason — letting
  * {@link compilePixiVNWithResolvedHashtagCommands} fall back to the always-safe
- * {@link compilePixiVN}) instead of taking down extension activation.
+ * {@link compilePixiVN} instead.
  *
  * Registering into the *root* export's own `HashtagCommands` matters specifically because it does
  * NOT share state with `/converter`'s: confirmed empirically that calling `addBaseHashtagCommands`
  * from the root while compiling via `/converter`'s `convertInkToJson` (as {@link compilePixiVN}
  * does) leaves every hashtag command unresolved — the two entry points bundle separate copies of
- * the same module-level registry.
+ * the same module-level registry. Every subsequent compile reuses this already-loaded module, so
+ * the navigator shim only ever wraps this one first call, never a later one.
  */
 async function loadRootPixiVnInkWithHashtagCommands(): Promise<RootPixiVnInkModule | undefined> {
     if (!rootModulePromise) {
-        rootModulePromise = (async () => {
+        rootModulePromise = withNavigatorShim(async () => {
             try {
-                return (await import("@drincs/pixi-vn-ink")) as RootPixiVnInkModule;
+                const mod = (await import("@drincs/pixi-vn-ink")) as RootPixiVnInkModule;
+                mod.addBaseHashtagCommands();
+                return mod;
             } catch {
                 return undefined;
             }
-        })();
+        });
     }
+    return rootModulePromise;
+}
 
-    const mod = await rootModulePromise;
-    if (mod && !hashtagCommandsRegistered) {
-        hashtagCommandsRegistered = true;
-        try {
-            mod.addBaseHashtagCommands();
-        } catch {
-            // Registration itself failed — keep going with whatever managed to register.
-        }
-    }
-    return mod;
+/**
+ * Kicks off {@link loadRootPixiVnInkWithHashtagCommands} in the background, without waiting for
+ * or doing anything with the result. `@drincs/pixi-vn-ink`'s root export pulls in `pixi.js`'s
+ * whole rendering stack (megabytes of code once bundled), so the *first* time anything actually
+ * needs it — e.g. the first `checkPixiVnJsonSchemaValidation` run after opening a file — importing
+ * and evaluating it all is noticeably slower than every later call, which just reuses the already
+ * -loaded module. Calling this once, early (e.g. right after the pixi-vn dev-server data first
+ * becomes available), absorbs that one-time cost in the background instead of it being felt as a
+ * delay on whatever diagnostics pass happens to be the first to actually need it.
+ */
+export function warmUpPixiVnInkRootModule(): void {
+    void loadRootPixiVnInkWithHashtagCommands();
 }
 
 /**
@@ -115,8 +165,8 @@ async function loadRootPixiVnInkWithHashtagCommands(): Promise<RootPixiVnInkModu
  * structured operations rather than opaque placeholders — needed for
  * {@link ../../diagnostics!checkPixiVnJsonSchemaValidation} to actually see inside a `# show ...`
  * / `# edit ...` / etc. command's arguments (e.g. an unrecognised `props` key). Falls back to the
- * plain {@link compilePixiVN} (still useful — it validates everything else about the document)
- * if that registration didn't succeed.
+ * plain {@link compilePixiVN} (still useful — it validates everything else about the document) if
+ * that registration didn't succeed.
  */
 export async function compilePixiVNWithResolvedHashtagCommands(text: string, characterIds?: ReadonlySet<string>) {
     const root = await loadRootPixiVnInkWithHashtagCommands();

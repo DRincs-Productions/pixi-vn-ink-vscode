@@ -56,6 +56,7 @@ import {
     schedulePixiVnDevDataPolling,
 } from "./utils/pixi-vn-dev-data";
 import { findMatchingTextReplace } from "./utils/pixi-vn-text-replace";
+import { warmUpPixiVnInkRootModule } from "./utils/pixi-vn-utility";
 import { previewCommand, runFromKnotCommand, runProjectCommand } from "./webview";
 
 export { collectCommentAbove } from "./utils/comments";
@@ -258,6 +259,14 @@ export function getMultilineBlockTypeKeywordAt(line: string, position: number): 
 }
 
 export function activate(context: ExtensionContext) {
+    // Absorbs the one-time cost of loading @drincs/pixi-vn-ink's root export (needed for
+    // checkPixiVnJsonSchemaValidation to see inside built-in hashtag commands) in the background,
+    // as early as possible, instead of it being felt as a delay on whichever diagnostics pass
+    // happens to need it first. No-op (and harmless) if the engine isn't pixi-vn.
+    if (workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky") === "pixi-vn") {
+        warmUpPixiVnInkRootModule();
+    }
+
     // Register the command to open the Ink Preview webview
 
     context.subscriptions.push(previewCommand(context));
@@ -481,6 +490,7 @@ export function activate(context: ExtensionContext) {
         if (event.affectsConfiguration("ink.engine")) {
             const newEngine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
             window.showInformationMessage(l10n.t("Engine changed to {0}", newEngine));
+            if (newEngine === "pixi-vn") warmUpPixiVnInkRootModule();
             onDidChangeSemanticTokensEmitter.fire();
             refreshVisibleHashtagCommandDecorations();
             for (const doc of workspace.textDocuments) {

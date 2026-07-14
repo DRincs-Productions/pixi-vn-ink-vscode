@@ -56,7 +56,7 @@
   "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.": "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.",
   "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.": "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.",
   "Divert target \"{0}\" not found in any known label source.": "Divert target \"{0}\" not found in any known label source.",
-  "Unknown hashtag command \"# {0}\": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.": "Unknown hashtag command \"# {0}\": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.",
+  "Unknown hashtag command \"# {0}\": no registered handler matched this command.": "Unknown hashtag command \"# {0}\": no registered handler matched this command.",
   "Hashtag command \"# {0}\": \"{1}\" section — {2}: {3}": "Hashtag command \"# {0}\": \"{1}\" section — {2}: {3}",
   "PixiVN JSON schema: \"{0}\" - {1}": "PixiVN JSON schema: \"{0}\" - {1}",
   "Included file \"{0}\" does not exist (resolved from \"{1}\").": "Included file \"{0}\" does not exist (resolved from \"{1}\").",

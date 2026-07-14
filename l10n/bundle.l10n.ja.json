@@ -74,7 +74,7 @@
   "Functions can't be created directly in ink for the pixi-vn engine — \"{0}\" will be ignored. Define it in JavaScript/TypeScript instead ({1}), or, better, expose it as a Custom Hashtag Command.": "pixi-vnエンジンでは関数をinkで直接作成することはできません — \"{0}\" は無視されます。代わりにJavaScript/TypeScript側で定義するか({1})、より良い方法としてCustom Hashtag Commandとして公開してください。",
   "Consider exposing \"{0}\" as a Custom Hashtag Command instead of as a function.": "\"{0}\" を関数として公開する代わりに、Custom Hashtag Commandとして公開することを検討してください。",
   "Divert target \"{0}\" not found in any known label source.": "ダイバートの対象 \"{0}\" が、既知のラベルのいずれにも見つかりませんでした。",
-  "Unknown hashtag command \"# {0}\": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.": "不明なハッシュタグコマンド \"# {0}\": このコマンドに一致する登録済みハンドラーがありません。コマンド自体は正しくても、エイリアスや ID(アセット、バンドル、キャラクターなどの要素の)のスペルミスが原因で認識されない場合もあります。",
+  "Unknown hashtag command \"# {0}\": no registered handler matched this command.": "不明なハッシュタグコマンド \"# {0}\": このコマンドに一致する登録済みハンドラーがありません。",
   "Hashtag command \"# {0}\": \"{1}\" section — {2}: {3}": "ハッシュタグコマンド \"# {0}\": \"{1}\" セクション — {2}: {3}",
   "PixiVN JSON schema: \"{0}\" - {1}": "PixiVN JSON スキーマ: \"{0}\" - {1}",
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: pixi-vn によってキャラクター ID として認識されています — この行は pixi-vn 開発サーバーに登録されている `{0}` が話すセリフです。\n\n例:\n```ink\n{0}: こんにちは!\n```",

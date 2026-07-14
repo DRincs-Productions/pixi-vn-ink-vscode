@@ -8,6 +8,7 @@ import {
     findPixiVnUnimplementedFunctionCalls,
     PIXI_VN_ISSUES_URL,
 } from "./utils/builtin-functions";
+import { escapeRegExp } from "./utils/divert-context";
 import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors, getProjectErrors } from "./utils/ink-utility";
 import { extractKnotDefinitions, getAllKnotDefinitions } from "./utils/knot-definitions";
@@ -203,7 +204,7 @@ export function checkPixiVnUnknownHashtagCommands(document: TextDocument, diagno
             new Diagnostic(
                 range,
                 l10n.t(
-                    'Unknown hashtag command "# {0}": no registered handler matched this command. This can also happen when the command itself is correct but a misspelled alias/id (of an asset, bundle, character, or other element) prevented it from being recognized.',
+                    'Unknown hashtag command "# {0}": no registered handler matched this command.',
                     truncateHashtagCommandForMessage(occurrence.command),
                 ),
                 DiagnosticSeverity.Warning,
@@ -256,22 +257,40 @@ export function checkPixiVnHashtagKeySchemaIssues(document: TextDocument, diagno
 }
 
 /**
- * Locates the document line whose text is (or contains) `origin` — the nearest ink source line
- * `InkCompiler.validateAgainstJsonSchema` could trace a schema mismatch back to — falling back to
- * the first line when `origin` is missing or not found verbatim (e.g. it was reformatted/generated
- * rather than copied straight from source).
+ * Locates the exact span of `element` (e.g. an unrecognised property's name) within the document
+ * line whose text is (or contains) `origin` — the nearest ink source line
+ * `InkCompiler.validateAgainstJsonSchema` could trace a schema mismatch back to. Falls back to
+ * underlining the whole line when `origin` can't be matched verbatim (e.g. it was reformatted
+ * rather than copied straight from source), or when `element` isn't literally present on it as
+ * its own word (e.g. a `"(root)"` element, or one naming something structural rather than a
+ * token actually written in the source).
  */
-function locateSchemaIssueRange(document: TextDocument, origin: string | undefined): Range {
+function locateSchemaIssueRange(document: TextDocument, origin: string | undefined, element: string): Range {
     const trimmedOrigin = origin?.trim();
+    let lineIndex: number | undefined;
     if (trimmedOrigin) {
         for (let i = 0; i < document.lineCount; i++) {
-            if (document.lineAt(i).text.trim() === trimmedOrigin) return document.lineAt(i).range;
+            if (document.lineAt(i).text.trim() === trimmedOrigin) {
+                lineIndex = i;
+                break;
+            }
         }
-        for (let i = 0; i < document.lineCount; i++) {
-            if (document.lineAt(i).text.includes(trimmedOrigin)) return document.lineAt(i).range;
+        if (lineIndex === undefined) {
+            for (let i = 0; i < document.lineCount; i++) {
+                if (document.lineAt(i).text.includes(trimmedOrigin)) {
+                    lineIndex = i;
+                    break;
+                }
+            }
         }
     }
-    return document.lineAt(0).range;
+    if (lineIndex === undefined) return document.lineAt(0).range;
+
+    const line = document.lineAt(lineIndex);
+    const match = new RegExp(`\\b${escapeRegExp(element)}\\b`).exec(line.text);
+    if (!match) return line.range;
+
+    return new Range(lineIndex, match.index, lineIndex, match.index + element.length);
 }
 
 /**
@@ -301,7 +320,7 @@ export async function checkPixiVnJsonSchemaValidation(document: TextDocument, di
     for (const issue of InkCompiler.validateAgainstJsonSchema(json, validator)) {
         diagnostics.push(
             new Diagnostic(
-                locateSchemaIssueRange(document, issue.origin),
+                locateSchemaIssueRange(document, issue.origin, issue.element),
                 l10n.t('PixiVN JSON schema: "{0}" - {1}', issue.element, issue.message),
                 DiagnosticSeverity.Warning,
             ),
