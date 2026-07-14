@@ -213,6 +213,9 @@ export async function openWebview(
     // Open webview ONLY if there are no errors
     const panel = window.createWebviewPanel("inkPreview", panelTitle, ViewColumn.Beside, {
         enableScripts: true,
+        // Lets the user open VS Code's own native find widget (Ctrl/Cmd+F) while the preview is
+        // focused — search only, no replace, same as it behaves for any other webview.
+        enableFindWidget: true,
     });
 
     // Tab icon
