@@ -80,5 +80,6 @@
   "**{0}**: recognized by pixi-vn as a character id — this line is dialogue spoken by `{0}`, registered on the pixi-vn dev server.\n\nExample:\n```ink\n{0}: Hello!\n```": "**{0}**: распознан pixi-vn как id персонажа — эта строка является репликой, произносимой `{0}`, зарегистрированным на dev-сервере pixi-vn.\n\nПример:\n```ink\n{0}: Привет!\n```",
   "The running pixi-vn dev server uses a version of @drincs/pixi-vn-ink older than {0}, which may not support all of this extension's features. Update it to {0} or later for full support.": "Запущенный dev-сервер pixi-vn использует версию @drincs/pixi-vn-ink старше {0}, которая может не поддерживать все функции этого расширения. Обновите её до версии {0} или новее для полной поддержки.",
   "**{0}** (replaced by pixi-vn)": "**{0}** (заменяется pixi-vn)",
-  "**{0}** (pixi-vn hashtag command)": "**{0}** (хештег-команда pixi-vn)"
+  "**{0}** (pixi-vn hashtag command)": "**{0}** (хештег-команда pixi-vn)",
+  "**`_input_value_`**: In the **pixi-vn** engine, this special variable contains the value supplied by an input prompt.\n\n[Pixi'VN input documentation](https://pixi-vn.com/ink/input)": "**`_input_value_`**: в движке **pixi-vn** эта специальная переменная содержит значение, введённое в запросе ввода.\n\n[Документация по вводу Pixi'VN](https://pixi-vn.com/ink/input)"
 }

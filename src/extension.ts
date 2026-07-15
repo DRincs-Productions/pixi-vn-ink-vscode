@@ -140,6 +140,17 @@ const PIXI_VN_DIVERT_NOTE = () =>
 const PIXI_VN_TUNNEL_CALL_NOTE = () =>
     l10n.t("In the **pixi-vn** engine, this corresponds to performing a **call** to a `label`.");
 
+// `_input_value_` is reserved by pixi-vn-ink to expose the value confirmed in a
+// `# request input` prompt. It is deliberately not documented for Inky, where it
+// has no special meaning.
+export const PIXI_VN_INPUT_VALUE_DOC = l10n.t(
+    "**`_input_value_`**: In the **pixi-vn** engine, this special variable contains the value supplied by an input prompt.\n\n[Pixi'VN input documentation](https://pixi-vn.com/ink/input)",
+);
+
+export function getPixiVnInputValueDoc(engine: "Inky" | "pixi-vn"): string | undefined {
+    return engine === "pixi-vn" ? PIXI_VN_INPUT_VALUE_DOC : undefined;
+}
+
 /**
  * Returns the hover text for a `->` of the given kind (see getDivertArrowHoverKind),
  * appending a pixi-vn-specific note for the kinds whose Pixi'VN runtime behaviour is
@@ -672,6 +683,14 @@ export function activate(context: ExtensionContext) {
                 }
 
                 if (!word) return;
+
+                // `_input_value_` is a pixi-vn-ink special variable containing the result
+                // of an input prompt. Keep this popup engine-specific: in standard Ink it is
+                // just an ordinary identifier, if it exists at all.
+                const pixiVnInputValueDoc = word === "_input_value_" ? getPixiVnInputValueDoc(engine) : undefined;
+                if (pixiVnInputValueDoc && range) {
+                    return new Hover(new MarkdownString(pixiVnInputValueDoc), range);
+                }
 
                 // Hover for END / DONE — only after a divert arrow.
                 if (word === "END" || word === "DONE") {

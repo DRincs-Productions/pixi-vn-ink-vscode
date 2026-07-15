@@ -13,6 +13,8 @@ import {
 	getDeclaredSymbolHoverText,
 	getDivertArrowHoverKind,
 	getMultilineBlockTypeKeywordAt,
+	getPixiVnInputValueDoc,
+	PIXI_VN_INPUT_VALUE_DOC,
 	getTunnelCallLineDestination,
 	getTunnelReturnDestination,
 	isChoiceBracketContext,
@@ -489,6 +491,13 @@ suite('Extension Test Suite', () => {
 			assert.ok(DECLARATION_KEYWORD_DOCS[name]?.length, `missing hover text for ${name}`);
 			assert.ok(DECLARATION_KEYWORD_DOCS[name].includes(name), `hover text for ${name} should mention its own name`);
 		}
+	});
+
+	test('PIXI_VN_INPUT_VALUE_DOC: documents the special input result variable with a link', () => {
+		assert.ok(PIXI_VN_INPUT_VALUE_DOC.includes('`_input_value_`'));
+		assert.ok(PIXI_VN_INPUT_VALUE_DOC.includes('https://pixi-vn.com/ink/input'));
+		assert.strictEqual(getPixiVnInputValueDoc('pixi-vn'), PIXI_VN_INPUT_VALUE_DOC);
+		assert.strictEqual(getPixiVnInputValueDoc('Inky'), undefined);
 	});
 
 	test('isDeclarationKeywordContext: true only when the keyword opens the line', () => {
