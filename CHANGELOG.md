@@ -4,7 +4,7 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
-## [Unreleased]
+## [0.6.1] - 2026-07-15
 
 ### Fixed
 
@@ -29,6 +29,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 - **pixi-vn engine only**: calling a non-built-in function from ink (e.g. `~ myFunction()`) now shows an informational hint recommending a Custom Hashtag Command ([pixi-vn.com/ink/hashtag](https://pixi-vn.com/ink/hashtag)) instead.
 - **pixi-vn engine only**: hashtag commands (e.g. `# jump target`, or `text <> # wait 3`) are now validated against the Custom Hashtag Commands registered on the pixi-vn dev server, the same way `vitePluginInk` does at build time. A command that matches no registered handler has its leading `#` coloured a strong red and the whole tag underlined with a warning (the command text shortened to 30 characters in the message itself, so a long `# show imagecontainer ...` doesn't dominate the Problems panel entry); a recognized one has just its `#` coloured a muted dark green (it's confirming something is fine, not asking for attention) — both fixed colours (adapting to light/dark themes), not theme-defined ones, so they show up consistently regardless of the active colour theme. Hovering a recognized `#` shows the handler's own name and description. A recognized command's own keyed sections (e.g. `props`/`movein` in `# show imagecontainer sly props xAlign 0.2 ... movein direction right ...`) are additionally checked against that handler's JSON Schemas, with any mismatch reported as a warning. All of this only runs once the dev server has actually returned some registered commands, and stays up to date as that data arrives in the background (not just when reopening the file).
 - **pixi-vn engine only**: the current file, compiled to PixiVNJson, is now validated against the PixiVN JSON Schema — fetched from the dev server (`INK_DEV_API_INFO`'s `schemaUrl`), or, when no dev server is reachable at all, from the latest published schema at [pixi-vn.com/schemas/latest/schema.json](https://pixi-vn.com/schemas/latest/schema.json). Any mismatch (e.g. a mistyped `props` key such as `xAlgn` for `xAlign` inside `# show imagecontainer ...`) is reported as a warning on the ink source line it could be traced back to. Built-in hashtag commands are resolved into their real structured operation for this check specifically, so a mistyped argument inside one of them is actually visible to the schema instead of staying opaque.
+- **pixi-vn engine only**: a bare `# pause` tag now actually blocks the interactive preview right there — not after silently running through every tag/operation that followed it first — until the player clicks a "Continue" button, showing its tag chip as usual plus a centered "(Narrative pause)" notice (no leftover dialogue text from before the pause). Going back (or reloading the preview) past an already-continued pause replays through it automatically, same as an already-answered choice/input.
+- **pixi-vn engine only**: glued (`<>`) dialogue/choice text fragments are now joined with a space instead of directly concatenated — pixi-vn's own glue handling hands each fragment over separately without folding adjacent whitespace back together, so joining with nothing could run words together.
+- After making a choice, the preview (both engines) now shows a centered "(You chose: ...)" notice at that point in the transcript, the chosen option's text shortened to 10 characters (with "...") if longer.
 
 ## [0.6.0] - 2026-07-13
 

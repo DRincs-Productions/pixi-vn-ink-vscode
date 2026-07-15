@@ -16,6 +16,8 @@ type HistoryItem = {
     dialogue?: string | null;
     choices?: Choice[];
     inputRequest?: InputRequest;
+    /** A bare `# pause` was hit right after this step — narration is blocked until the player clicks Continue. */
+    pauseRequest?: boolean;
     tags: string[] | null;
     choice?: number;
     character?: string;
@@ -52,6 +54,15 @@ function parseRuntimeErrorLine(message: string): number | undefined {
     return match ? parseInt(match[1], 10) : undefined;
 }
 
+const CHOICE_NOTICE_MAX_LENGTH = 10;
+
+/** Shortens a chosen option's text for the "(You chose: ...)" notice — full text, not a summary. */
+function truncateChoiceText(text: string): string {
+    return text.length > CHOICE_NOTICE_MAX_LENGTH
+        ? `${text.slice(0, CHOICE_NOTICE_MAX_LENGTH)}...`
+        : text;
+}
+
 // inkjs reports runtime errors (out-of-bound divert, missing content, etc.) via
 // `story.onError` instead of throwing, so callers must inspect the returned
 // errors after each step rather than relying solely on try/catch.
@@ -75,6 +86,7 @@ function nextChoices(
     while (story.canContinue || (!story.canContinue && list.length > 0)) {
         if (!story.canContinue && list.length > 0) {
             const choice = list.shift();
+            if (history.length > 0) history[history.length - 1].choice = choice;
             story.ChooseChoiceIndex(choice!);
         }
         const text = story.Continue();
@@ -88,7 +100,11 @@ function nextChoices(
 function pushPixiHistory(history: HistoryItem[], tags: string[] | null) {
     const choices: Choice[] | undefined = narration.choices?.map((c) => ({
         index: c.choiceIndex,
-        text: Array.isArray(c.text) ? c.text.join("") : c.text,
+        // pixi-vn's own glue handling (unlike raw inkjs) hands us each glued fragment as its own
+        // array entry without folding adjacent whitespace back together, so a plain "" join can
+        // run words together — " " keeps them apart, at the cost of an occasional doubled space
+        // where a fragment already carried its own trailing/leading whitespace.
+        text: Array.isArray(c.text) ? c.text.join(" ") : c.text,
     }));
     let text = narration.dialogue?.text;
     let character = narration.dialogue?.character;
@@ -96,7 +112,7 @@ function pushPixiHistory(history: HistoryItem[], tags: string[] | null) {
         character = character.id;
     }
     if (Array.isArray(text)) {
-        text = text.join("");
+        text = text.join(" ");
     }
     // `narration.inputValue` may already hold the ink tag's `default ...` value the moment the
     // pause happens (before the player has typed or submitted anything) — that's surfaced as
@@ -117,13 +133,31 @@ async function nextChoicesPixi(
     history: HistoryItem[] = [],
     oldChoices: number[] = [],
     oldInputs: (string | number)[] = [],
+    oldPauseCount = 0,
 ): Promise<HistoryItem[]> {
     const listChoices = [...oldChoices];
     const listInputs = [...oldInputs];
+    // How many bare `# pause`s to sail straight through without stopping — the ones a previous
+    // run already stopped at and the player already clicked Continue for (replayed via
+    // `goBack`/reloading the preview), mirroring how `listChoices`/`listInputs` replay past
+    // already-answered choices/inputs. Only a count is needed (not, say, their original relative
+    // order against choices/inputs): which queue to consume from is always unambiguous from the
+    // live narration state at the time (`isRequiredInput` for input, "this step raised `paused`"
+    // for a pause), exactly like the existing choice-vs-input disambiguation below.
+    let pausesToSkip = oldPauseCount;
     let isEnd = false;
+    let paused = false;
     let tags: string[] = [];
     onInkHashtagScript((script) => {
         if (script.length === 0) return true;
+        if (script.length === 1 && script[0] === "pause") {
+            paused = true;
+            // Still shown as an ordinary tag chip (right-aligned, alongside any other tags on
+            // this step, same as every other tag below — no leading "#") — the centered
+            // "narrative pause" notice + Continue button below are additional, not a replacement.
+            tags.push(script.join(" "));
+            return true;
+        }
         if (script.length > 1) {
             switch (script[1]) {
                 case "input":
@@ -142,9 +176,33 @@ async function nextChoicesPixi(
         isEnd = true;
         history.pop();
     });
+
+    // Pushes the step just completed and reports whether the loop should stop right here: a
+    // fresh bare `# pause` (no arguments — `# pause all sounds`/`# pause video ...`/etc. are
+    // unrelated sound/video commands, already handled generically as inert display tags above)
+    // blocks narration until the player clicks Continue, unless it's one already resolved in an
+    // earlier run (see `pausesToSkip` above).
+    const recordStep = (): boolean => {
+        pushPixiHistory(history, tags.length > 0 ? tags : null);
+        const wasPaused = paused;
+        paused = false;
+        if (!wasPaused) return false;
+        // A bare `# pause` produces no dialogue of its own — `narration.dialogue` was just left
+        // holding whatever the previous real dialogue line set, so `pushPixiHistory` above would
+        // otherwise re-display that stale text alongside the pause tag/notice.
+        history[history.length - 1].dialogue = undefined;
+        if (pausesToSkip > 0) {
+            pausesToSkip--;
+            return false;
+        }
+        history[history.length - 1].pauseRequest = true;
+        return true;
+    };
+
     await start();
-    pushPixiHistory(history, tags.length > 0 ? tags : null);
+    let stopped = recordStep();
     while (
+        !stopped &&
         !isEnd &&
         (narration.canContinue ||
             (!narration.canContinue && (listChoices.length > 0 || listInputs.length > 0)))
@@ -159,18 +217,18 @@ async function nextChoicesPixi(
                     input: input,
                 };
                 await narration.continue({});
-                pushPixiHistory(history, tags.length > 0 ? tags : null);
             } else {
                 const choiceIndex = listChoices.shift();
                 const choice = narration.choices?.find((c) => c.choiceIndex === choiceIndex);
                 history[history.length - 1].choice = choiceIndex;
                 await narration.selectChoice(choice!, {});
-                pushPixiHistory(history, tags.length > 0 ? tags : null);
             }
+            stopped = recordStep();
+            if (stopped) break;
         }
         tags = [];
         await narration.continue({});
-        pushPixiHistory(history, tags.length > 0 ? tags : null);
+        stopped = recordStep();
     }
     return history;
 }
@@ -194,10 +252,10 @@ export default function NarrationView() {
     const [error, setError] = useState<RuntimeError>();
     const [inputValue, setInputValue] = useState<string | number>();
     const [oldChoices, setOldChoices] = useState<
-        (number | { type: "input"; value: string | number })[]
+        (number | { type: "input"; value: string | number } | { type: "pause" })[]
     >([]);
     const currentState = history.length > 0 ? history[history.length - 1] : undefined;
-    const { choices, inputRequest } = currentState || {};
+    const { choices, inputRequest, pauseRequest } = currentState || {};
     const [markup, setMarkup] = useState<"Markdown" | null>(null); // Stato centralizzato del markup
     const [locale, setLocale] = useState<Locale>("en");
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -309,11 +367,15 @@ export default function NarrationView() {
                                             : undefined,
                                     )
                                     .filter((c): c is string | number => c !== undefined);
+                                const tempPauseCount = oldChoices.filter(
+                                    (c) => typeof c === "object" && c.type === "pause",
+                                ).length;
                                 const history: HistoryItem[] = await nextChoicesPixi(
                                     () => narration.call("__pixi_vn_start__", {}),
                                     [],
                                     tempChoices,
                                     tempInputs,
+                                    tempPauseCount,
                                 );
                                 if (isStale()) return;
                                 setHistory(history);
@@ -382,6 +444,9 @@ export default function NarrationView() {
                 let newHistory = [...history];
                 const pixiChoice = narration.choices?.find((c) => c.choiceIndex === choice.index);
                 if (!pixiChoice) return;
+                if (newHistory.length > 0) {
+                    newHistory[newHistory.length - 1].choice = choice.index;
+                }
                 setOldChoices((oldChoices) => [...oldChoices, choice.index]);
                 newHistory = await nextChoicesPixi(
                     () => narration.selectChoice(pixiChoice, {}),
@@ -398,6 +463,9 @@ export default function NarrationView() {
                 ];
                 try {
                     const newHistory = [...history];
+                    if (newHistory.length > 0) {
+                        newHistory[newHistory.length - 1].choice = choice.index;
+                    }
                     story.ChooseChoiceIndex(choice.index);
                     setOldChoices((oldChoices) => [...oldChoices, choice.index]);
                     const { result, error: runtimeError } = runInkAction(story, () =>
@@ -436,6 +504,20 @@ export default function NarrationView() {
         }
     };
 
+    const resumeFromPause = async () => {
+        switch (engine) {
+            case "pixi-vn": {
+                setOldChoices((values) => [...values, { type: "pause" }]);
+                const newHistory = await nextChoicesPixi(
+                    () => narration.continue({}),
+                    [...history],
+                );
+                setHistory(newHistory);
+                break;
+            }
+        }
+    };
+
     const goBack = async () => {
         switch (engine) {
             case "pixi-vn": {
@@ -447,11 +529,15 @@ export default function NarrationView() {
                 const tempInputs = oldChoices
                     .map((c) => (typeof c === "object" && c.type === "input" ? c.value : undefined))
                     .filter((c): c is string | number => c !== undefined);
+                const tempPauseCount = oldChoices.filter(
+                    (c) => typeof c === "object" && c.type === "pause",
+                ).length;
                 const newHistory = await nextChoicesPixi(
                     () => narration.call("__pixi_vn_start__", {}),
                     [],
                     tempChoices,
                     tempInputs,
+                    tempPauseCount,
                 );
                 setHistory(newHistory);
                 break;
@@ -678,6 +764,43 @@ export default function NarrationView() {
                                         {t(locale, "you")}: {item.inputRequest.input}
                                     </div>
                                 )}
+
+                                {item.pauseRequest && (
+                                    <div
+                                        key={`pause-${idx}`}
+                                        style={{
+                                            color: "var(--vscode-editorHint-foreground)",
+                                            textAlign: "center",
+                                            fontStyle: "italic",
+                                        }}
+                                    >
+                                        {t(locale, "narrativePause")}
+                                    </div>
+                                )}
+
+                                {item.choice !== undefined &&
+                                    (() => {
+                                        const chosenText = item.choices?.find(
+                                            (c) => c.index === item.choice,
+                                        )?.text;
+                                        if (chosenText === undefined) return null;
+                                        return (
+                                            <div
+                                                key={`choice-${idx}`}
+                                                style={{
+                                                    color: "var(--vscode-editorHint-foreground)",
+                                                    textAlign: "center",
+                                                    fontStyle: "italic",
+                                                }}
+                                            >
+                                                {t(
+                                                    locale,
+                                                    "youChose",
+                                                    truncateChoiceText(chosenText),
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                             </div>
                         ))}
                         {error && (
@@ -699,6 +822,21 @@ export default function NarrationView() {
                     </>
                 )}
             </div>
+
+            {/* Pause (bare `# pause`): narration is blocked until the player clicks Continue */}
+            {!inputRequest && !choices?.length && pauseRequest && (
+                <div className="mt-3">
+                    <Separator className="mb-2" />
+                    <Button
+                        className="my-vscode-button"
+                        onClick={resumeFromPause}
+                        variant="default"
+                        style={{ width: "100%" }}
+                    >
+                        {t(locale, "continue")}
+                    </Button>
+                </div>
+            )}
 
             {/* Choices */}
             {!inputRequest && choices && choices?.length > 0 && (

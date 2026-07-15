@@ -279,3 +279,50 @@ export function markUnresolvableLabelCalls(json: PixiVNJson, knownLabels: Readon
     }
     return { ...json, labels };
 }
+
+/**
+ * Whether `step`'s sole operation is an unresolved bare `# pause` hashtag-command placeholder —
+ * the shape {@link compilePixiVN} leaves a `# pause` tag in, since it compiles without
+ * `@drincs/pixi-vn-ink`'s built-in hashtag-command mappers registered (see that function's own
+ * doc comment on why).
+ */
+function isBarePauseStep(step: PixiVNJsonLabelStep): boolean {
+    const ops = step.operations;
+    if (!Array.isArray(ops) || ops.length !== 1) return false;
+    const op = ops[0] as Record<string, unknown>;
+    return (
+        op?.type === "operationtoconvert" &&
+        Array.isArray(op.values) &&
+        op.values.length === 1 &&
+        typeof op.values[0] === "string" &&
+        op.values[0].trim() === "pause"
+    );
+}
+
+/**
+ * Returns a copy of `json` where every {@link isBarePauseStep} step has its `goNextStep` forced to
+ * `false`.
+ *
+ * Without this, pixi-vn's own engine auto-chains straight through it: a tag-only step that
+ * produces no dialogue compiles with `goNextStep: true` by default (confirmed against the real
+ * compiler and engine), which makes a single `narration.continue()` call keep auto-advancing
+ * through every subsequent same-shaped step *internally* — without ever returning control to the
+ * caller — until it reaches one that actually stops (real dialogue text, a choice, or a required
+ * input). That means the preview's own webview-side "a bare `# pause` should pause narration"
+ * handling (the `paused` flag `onInkHashtagScript` sets in `NarrationView.tsx.tsx`) would never
+ * get a chance to run before several *more* tags/operations after the pause had already silently
+ * executed within that same call. Forcing `goNextStep: false` on just this one step doesn't affect
+ * any other step's own, independently-evaluated `goNextStep` — it only stops the auto-chain
+ * exactly at the pause, hands control back to the webview's `narration.continue()` caller, and
+ * that's what actually detects "we've paused" and stops asking for more (`narration.canContinue`
+ * alone can't tell — confirmed it stays `true` right after stopping here).
+ */
+export function markBarePauseSteps(json: PixiVNJson): PixiVNJson {
+    if (!json.labels) return json;
+
+    const labels: Record<string, PixiVNJsonLabelStep[]> = {};
+    for (const [labelId, steps] of Object.entries(json.labels)) {
+        labels[labelId] = steps.map((step) => (isBarePauseStep(step) ? { ...step, goNextStep: false } : step));
+    }
+    return { ...json, labels };
+}

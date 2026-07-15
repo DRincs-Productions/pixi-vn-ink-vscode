@@ -24,6 +24,7 @@ import {
     compilePixiVN,
     compilePixiVNLibraryFile,
     extractReferencedKnotNames,
+    markBarePauseSteps,
     markUnresolvableLabelCalls,
 } from "./utils/pixi-vn-utility";
 
@@ -79,7 +80,7 @@ async function compilePixiVNProject(document: TextDocument, currentText: string,
 
     if (compiledJsons.length === 0) return undefined;
     const knownLabels = collectKnownPixiVnLabels(compiledJsons);
-    return compiledJsons.map((json) => markUnresolvableLabelCalls(json, knownLabels));
+    return compiledJsons.map((json) => markBarePauseSteps(markUnresolvableLabelCalls(json, knownLabels)));
 }
 
 export function previewCommand(context: ExtensionContext) {
