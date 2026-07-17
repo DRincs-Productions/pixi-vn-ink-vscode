@@ -4,6 +4,16 @@ All notable changes to the "pixi-vn-ink-vscode" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 
+## [Unreleased]
+
+### Added
+
+- **pixi-vn engine only**: the interactive preview now applies every known, registered text-replace handler (from the pixi-vn dev server) to dialogue and choice text before display. A `[key]` whose content matches a handler's validation rule (e.g. a registered character id) is now shown as the bare `key` with its brackets stripped (e.g. `[mc]` -> `mc`), instead of leaking the raw, un-replaced ink syntax into the preview. The preview only ever knows a handler's validation rule, never its actual replacement function (arbitrary app code that can't safely be shipped over the dev API), so this is the closest approximation available — not the real display value (e.g. a character's actual name) the running app would show. A `[...]` matching no known handler is left completely untouched.
+
+### Fixed
+
+- **pixi-vn engine only**: a diagnostics check referencing `InkCompiler.getLikelyUnknownHashtagCommandSchemaIssues` — a method not present in every published `@drincs/pixi-vn-ink` version — could throw on every diagnostics refresh (i.e. on every keystroke in an open `.ink` file). Since that check ran inside a fire-and-forget async call, the resulting unhandled rejection could take down the whole extension host, breaking diagnostics, semantic-token coloring, and character recognition all at once. It's now skipped silently until the method is actually available in the installed `@drincs/pixi-vn-ink` version.
+
 ## [0.6.1] - 2026-07-15
 
 ### Fixed

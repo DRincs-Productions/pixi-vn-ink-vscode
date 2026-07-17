@@ -1,7 +1,9 @@
 import * as assert from 'assert';
+import type { InkTextReplaceInfo } from '@drincs/pixi-vn-ink/dev-api';
 import {
 	NON_INK_LABEL_CALL_CHARACTER,
 	NON_INK_LABEL_JUMP_CHARACTER,
+	applyKnownTextReplaces,
 	collectKnownPixiVnLabels,
 	extractReferencedKnotNames,
 	markUnresolvableLabelCalls,
@@ -142,6 +144,120 @@ suite('pixi-vn-utility Test Suite', () => {
 		test('a json with no labels at all is returned as-is', () => {
 			const json = {};
 			assert.strictEqual(markUnresolvableLabelCalls(json, new Set()), json);
+		});
+	});
+
+	suite('applyKnownTextReplaces', () => {
+		const characterIds = new Set(['mc']);
+		const textReplaces: InkTextReplaceInfo[] = [
+			{
+				name: 'character-name',
+				description: 'Replaces a registered character id with its display name.',
+				validation: { type: 'literal', value: 'characterId' },
+			},
+		];
+
+		test('a plain string dialogue (no character) has its known `[key]` replaced', () => {
+			const json = { labels: { main: [{ dialogue: 'I take his hand and shake, [mc].' }] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.deepStrictEqual(result.labels?.main, [{ dialogue: 'I take his hand and shake, mc.' }]);
+		});
+
+		test('a `{ character, text }` dialogue object has only its `text` rewritten', () => {
+			const json = { labels: { main: [{ dialogue: { character: 'james', text: 'Ooh, [mc]! Nice handshake!' } }] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.deepStrictEqual(result.labels?.main, [
+				{ dialogue: { character: 'james', text: 'Ooh, mc! Nice handshake!' } },
+			]);
+		});
+
+		test('an array-of-fragments dialogue text has each string fragment rewritten, non-strings left untouched', () => {
+			const valueGet = { type: 'value' as const, storageOperationType: 'get' as const, key: 'someVar', storageType: 'storage' as const };
+			const json = { labels: { main: [{ dialogue: { character: 'james', text: ['Hi [mc], ', valueGet] } }] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.deepStrictEqual(result.labels?.main, [
+				{ dialogue: { character: 'james', text: ['Hi mc, ', valueGet] } },
+			]);
+		});
+
+		test("a choice's text has its known `[key]` replaced", () => {
+			const json = { labels: { main: [{ choices: [{ text: 'Greet [mc]', label: 'greet', type: 'call' as const, props: {} }] }] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.deepStrictEqual(result.labels?.main, [
+				{ choices: [{ text: 'Greet mc', label: 'greet', type: 'call' as const, props: {} }] },
+			]);
+		});
+
+		test('a `[key]` matching no known handler is left completely untouched', () => {
+			const step = { dialogue: 'Something [unrelated] here.' };
+			const json = { labels: { main: [step] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.deepStrictEqual(result.labels?.main, [step]);
+		});
+
+		test('a step with no dialogue/choices at all is left untouched', () => {
+			const step = { goNextStep: true };
+			const json = { labels: { main: [step] } };
+
+			const result = applyKnownTextReplaces(json, textReplaces, characterIds);
+
+			assert.strictEqual(result.labels?.main[0], step);
+		});
+
+		test('an empty text-replaces list returns the json as-is', () => {
+			const json = { labels: { main: [{ dialogue: 'Hello [mc]!' }] } };
+			assert.strictEqual(applyKnownTextReplaces(json, [], characterIds), json);
+		});
+
+		test('a json with no labels at all is returned as-is', () => {
+			const json = {};
+			assert.strictEqual(applyKnownTextReplaces(json, textReplaces, characterIds), json);
+		});
+	});
+
+	// End-to-end regression using a real multi-step transcript and a text-replace list recorded
+	// from `GET /__pixi-vn-ink/text-replaces` on a live pixi-vn dev server.
+	suite('applyKnownTextReplaces — multi-step transcript', () => {
+		const liveTextReplaces: InkTextReplaceInfo[] = [
+			{
+				name: 'character name',
+				description: "Replaces a character ID with the character's name in the game.",
+				validation: { type: 'literal', value: 'characterId' },
+				type: 'after-translation',
+			},
+		];
+		const transcriptJson = {
+			labels: {
+				main: [
+					{ dialogue: { character: 'james', text: "Don't worry, [mc], she's just giving you the run-down." } },
+					{ dialogue: '[sly] thrusts her hand out to shake mine.' },
+				],
+			},
+		};
+
+		test('resolves every step once "mc"/"sly" are registered character ids', () => {
+			const result = applyKnownTextReplaces(transcriptJson, liveTextReplaces, new Set(['mc', 'sly']));
+
+			assert.strictEqual(
+				(result.labels?.main[0].dialogue as { text: string }).text,
+				"Don't worry, mc, she's just giving you the run-down.",
+			);
+			assert.strictEqual(result.labels?.main[1].dialogue, 'sly thrusts her hand out to shake mine.');
+		});
+
+		test('leaves every step untouched with no registered character ids', () => {
+			const result = applyKnownTextReplaces(transcriptJson, liveTextReplaces, new Set());
+			assert.deepStrictEqual(result, transcriptJson);
 		});
 	});
 });

@@ -18,8 +18,9 @@ import {
 import { getInkRootFolder } from "./utils/include-utility";
 import { buildProjectAwareSource, compile, getRuntimeError } from "./utils/ink-utility";
 import { getAllKnotDefinitions, getProjectInkFiles } from "./utils/knot-utility";
-import { getPixiVnDevCharacterIds } from "./utils/pixi-vn-dev-data";
+import { getPixiVnDevCharacterIds, getPixiVnDevTextReplaces } from "./utils/pixi-vn-dev-data";
 import {
+    applyKnownTextReplaces,
     collectKnownPixiVnLabels,
     compilePixiVN,
     compilePixiVNLibraryFile,
@@ -80,7 +81,14 @@ async function compilePixiVNProject(document: TextDocument, currentText: string,
 
     if (compiledJsons.length === 0) return undefined;
     const knownLabels = collectKnownPixiVnLabels(compiledJsons);
-    return compiledJsons.map((json) => markBarePauseSteps(markUnresolvableLabelCalls(json, knownLabels)));
+    const textReplaces = getPixiVnDevTextReplaces();
+    return compiledJsons.map((json) =>
+        applyKnownTextReplaces(
+            markBarePauseSteps(markUnresolvableLabelCalls(json, knownLabels)),
+            textReplaces,
+            characterIds,
+        ),
+    );
 }
 
 export function previewCommand(context: ExtensionContext) {

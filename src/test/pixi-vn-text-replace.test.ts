@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import type { InkTextReplaceInfo } from '@drincs/pixi-vn-ink/dev-api';
 import type { InkValidationInfo } from '@drincs/pixi-vn-ink/parser';
-import { findMatchingTextReplace, matchesTextReplaceValidation } from '../utils/pixi-vn-text-replace';
+import { findMatchingTextReplace, matchesTextReplaceValidation, replaceKnownTextReplaces } from '../utils/pixi-vn-text-replace';
 
 suite('pixi-vn-text-replace Test Suite', () => {
 	const characterIds = new Set(['mc', 'sly']);
@@ -130,6 +130,89 @@ suite('pixi-vn-text-replace Test Suite', () => {
 				{ name: 'character-name', validation: { type: 'literal', value: 'characterId' } } as InkTextReplaceInfo,
 			];
 			assert.strictEqual(findMatchingTextReplace('sly', withGarbage, characterIds)?.name, 'character-name');
+		});
+	});
+
+	suite('replaceKnownTextReplaces', () => {
+		const textReplaces: InkTextReplaceInfo[] = [
+			{
+				name: 'character-name',
+				description: 'Replaces a registered character id with its display name.',
+				validation: { type: 'literal', value: 'characterId' },
+			},
+		];
+
+		test('a `[key]` matching a known handler is replaced with the bare key, brackets stripped', () => {
+			assert.strictEqual(
+				replaceKnownTextReplaces('Ooh, [mc]! Nice, firm handshake!', textReplaces, characterIds),
+				'Ooh, mc! Nice, firm handshake!',
+			);
+		});
+
+		test('a `[key]` matching no known handler is left completely untouched', () => {
+			assert.strictEqual(
+				replaceKnownTextReplaces('Something [unrelated] here.', textReplaces, characterIds),
+				'Something [unrelated] here.',
+			);
+		});
+
+		test('every matching occurrence in the text is replaced', () => {
+			assert.strictEqual(
+				replaceKnownTextReplaces('[mc] shakes hands with [sly].', textReplaces, characterIds),
+				'mc shakes hands with sly.',
+			);
+		});
+
+		test('an empty handler list leaves the text completely untouched', () => {
+			assert.strictEqual(replaceKnownTextReplaces('Hello [mc]!', [], characterIds), 'Hello [mc]!');
+		});
+
+		test('text with no `[...]` span at all is returned as-is', () => {
+			assert.strictEqual(replaceKnownTextReplaces('Just plain narration.', textReplaces, characterIds), 'Just plain narration.');
+		});
+	});
+
+	// A real handler list recorded from `GET /__pixi-vn-ink/text-replaces` on a running pixi-vn dev
+	// server, exercising the real wire shape (a regexp handler alongside a `characterId` one).
+	suite('real dev-server fixture', () => {
+		const liveTextReplaces: InkTextReplaceInfo[] = [
+			{
+				name: 'steph_fullname',
+				description: "Replaces the placeholder 'steph_fullname' with the full name of the character Stephanie.",
+				validation: { type: 'regexp', source: 'steph_fullname', flags: '' },
+				type: 'after-translation',
+			},
+			{
+				name: 'character name',
+				description: "Replaces a character ID with the character's name in the game.",
+				validation: { type: 'literal', value: 'characterId' },
+				type: 'after-translation',
+			},
+		];
+
+		test('a regexp handler matches regardless of registered character ids', () => {
+			assert.strictEqual(
+				replaceKnownTextReplaces('Say hi to [steph_fullname].', liveTextReplaces, new Set()),
+				'Say hi to steph_fullname.',
+			);
+		});
+
+		// A `characterId` handler can only match ids `getPixiVnDevCharacterIds()` actually knows
+		// about — an empty set (e.g. the dev server hasn't reported any character yet) correctly
+		// leaves a character-id `[key]` untouched rather than guessing.
+		test('a characterId handler only matches ids present in the given set', () => {
+			assert.strictEqual(
+				replaceKnownTextReplaces("Don't worry, [mc], she's just giving you the run-down.", liveTextReplaces, new Set()),
+				"Don't worry, [mc], she's just giving you the run-down.",
+			);
+			assert.strictEqual(
+				replaceKnownTextReplaces(
+					"Don't worry, [mc], she's just giving you the run-down.",
+					liveTextReplaces,
+					new Set(['mc', 'sly']),
+				),
+				"Don't worry, mc, she's just giving you the run-down.",
+			);
 		});
 	});
 });

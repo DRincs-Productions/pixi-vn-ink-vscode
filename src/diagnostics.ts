@@ -214,6 +214,53 @@ export function checkPixiVnUnknownHashtagCommands(document: TextDocument, diagno
 }
 
 /**
+ * Adds Ajv's precise mismatch to the existing unknown-command warning when an unknown `# ...`
+ * command is an extremely close match for a registered Zod handler/mapper. This remains pixi-vn
+ * only and deliberately runs after {@link checkPixiVnUnknownHashtagCommands}: the broad warning
+ * is never replaced, merely made actionable (for example, an invalid enum/property token).
+ */
+export function checkPixiVnLikelyUnknownHashtagCommandSchemaIssues(
+    document: TextDocument,
+    diagnostics: Diagnostic[],
+) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const hashtagCommands = getPixiVnDevHashtagCommands();
+    if (hashtagCommands.length === 0) return;
+
+    // Not present in every published `@drincs/pixi-vn-ink` version this extension might be
+    // running against — calling it unconditionally would throw on every diagnostics refresh
+    // (every keystroke) and, since `refreshDiagnostics` is invoked fire-and-forget, take down the
+    // whole extension host on the resulting unhandled rejection. Skip silently until it's there.
+    if (typeof InkCompiler.getLikelyUnknownHashtagCommandSchemaIssues !== "function") return;
+
+    for (const issue of InkCompiler.getLikelyUnknownHashtagCommandSchemaIssues(document.getText(), hashtagCommands)) {
+        const lineIndex = issue.line - 1;
+        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
+
+        const segment = locateHashtagSegment(document.lineAt(lineIndex).text, issue.command);
+        const range = segment
+            ? new Range(lineIndex, segment.start, lineIndex, segment.end)
+            : document.lineAt(lineIndex).range;
+
+        diagnostics.push(
+            new Diagnostic(
+                range,
+                l10n.t(
+                    'Likely hashtag command "# {0}" ({1}): "{2}" — {3}',
+                    truncateHashtagCommandForMessage(issue.command),
+                    issue.handlerName,
+                    issue.element,
+                    issue.message,
+                ),
+                DiagnosticSeverity.Warning,
+            ),
+        );
+    }
+}
+
+/**
  * For every hashtag command that *does* match a registered handler, additionally validates its
  * order-independent keyed sections (e.g. `# show imagecontainer sly props xAlign 0.2 ...`) against
  * that handler's own `keySchemas` — mirroring `vitePluginInk`'s `logHashtagKeySchemaIssues`, via

@@ -1,5 +1,7 @@
 import { convertInkToJson } from "@drincs/pixi-vn-ink/converter";
+import type { InkTextReplaceInfo } from "@drincs/pixi-vn-ink/dev-api";
 import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
+import { replaceKnownTextReplaces } from "./pixi-vn-text-replace";
 
 /**
  * Returns every compile issue (error/warning/author note, with its line) for `text` under the
@@ -323,6 +325,94 @@ export function markBarePauseSteps(json: PixiVNJson): PixiVNJson {
     const labels: Record<string, PixiVNJsonLabelStep[]> = {};
     for (const [labelId, steps] of Object.entries(json.labels)) {
         labels[labelId] = steps.map((step) => (isBarePauseStep(step) ? { ...step, goNextStep: false } : step));
+    }
+    return { ...json, labels };
+}
+
+/**
+ * Recurses into a compiled `PixiVNJsonDialogText` value (a plain string, or an array mixing
+ * strings with dynamic `PixiVNJsonValueGet`/conditional fragments), applying
+ * {@link replaceKnownTextReplaces} to every string it finds. A `[key]` literal only ever appears
+ * inside a literal string fragment (never inside a dynamic fragment), so leaving anything that
+ * isn't a string or array completely untouched is safe, not just conservative.
+ */
+function replaceTextValue(
+    value: unknown,
+    textReplaces: readonly InkTextReplaceInfo[],
+    characterIds: ReadonlySet<string>,
+): unknown {
+    if (typeof value === "string") return replaceKnownTextReplaces(value, textReplaces, characterIds);
+    if (Array.isArray(value)) return value.map((entry) => replaceTextValue(entry, textReplaces, characterIds));
+    return value;
+}
+
+/**
+ * Applies {@link replaceKnownTextReplaces} across a step's `dialogue` and `choices` text.
+ *
+ * Only the shapes a `[key]` literal can actually appear in are handled: a plain `dialogue` text
+ * value, or a `{ character, text }` dialogue object's `text`; and each `choices` entry's `text`.
+ * A step whose `dialogue`/`choices` is instead a whole conditional-statement wrapper (chosen at
+ * runtime based on story state) is left untouched — same conservative approach as
+ * {@link rewriteStep} takes for a `labelToOpen` it can't validate statically.
+ */
+function rewriteStepTextReplaces(
+    step: PixiVNJsonLabelStep,
+    textReplaces: readonly InkTextReplaceInfo[],
+    characterIds: ReadonlySet<string>,
+): PixiVNJsonLabelStep {
+    let changed = false;
+    let dialogue = step.dialogue;
+    if (dialogue !== undefined) {
+        if (typeof dialogue === "object" && dialogue !== null && !Array.isArray(dialogue) && "text" in dialogue) {
+            const text = replaceTextValue(dialogue.text, textReplaces, characterIds);
+            if (text !== dialogue.text) {
+                dialogue = { ...dialogue, text } as typeof dialogue;
+                changed = true;
+            }
+        } else {
+            const text = replaceTextValue(dialogue, textReplaces, characterIds);
+            if (text !== dialogue) {
+                dialogue = text as typeof dialogue;
+                changed = true;
+            }
+        }
+    }
+
+    let choices = step.choices;
+    if (Array.isArray(choices)) {
+        const newChoices = choices.map((choice) => {
+            if (choice && typeof choice === "object" && "text" in choice) {
+                const text = replaceTextValue(choice.text, textReplaces, characterIds);
+                if (text !== choice.text) {
+                    changed = true;
+                    return { ...choice, text };
+                }
+            }
+            return choice;
+        });
+        if (changed) choices = newChoices as typeof choices;
+    }
+
+    return changed ? { ...step, dialogue, choices } : step;
+}
+
+/**
+ * Returns a copy of `json` where every known, registered pixi-vn text-replace (see
+ * {@link replaceKnownTextReplaces}) has been applied across every step's dialogue/choice text —
+ * so a `[key]` the running app would normally substitute at display time (e.g. `[mc]` -> the
+ * player's chosen name) shows at least as the bare `key` in the preview, instead of the raw,
+ * un-replaced ink syntax.
+ */
+export function applyKnownTextReplaces(
+    json: PixiVNJson,
+    textReplaces: readonly InkTextReplaceInfo[],
+    characterIds: ReadonlySet<string>,
+): PixiVNJson {
+    if (!json.labels || textReplaces.length === 0) return json;
+
+    const labels: Record<string, PixiVNJsonLabelStep[]> = {};
+    for (const [labelId, steps] of Object.entries(json.labels)) {
+        labels[labelId] = steps.map((step) => rewriteStepTextReplaces(step, textReplaces, characterIds));
     }
     return { ...json, labels };
 }

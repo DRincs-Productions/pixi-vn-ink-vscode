@@ -23,6 +23,7 @@ import {
     checkPixiVnHashtagKeySchemaIssues,
     checkPixiVnInkFunctionDeclarations,
     checkPixiVnJsonSchemaValidation,
+    checkPixiVnLikelyUnknownHashtagCommandSchemaIssues,
     checkPixiVnUnimplementedFunctions,
     checkPixiVnUnknownDivertTargets,
     checkPixiVnUnknownHashtagCommands,
@@ -484,6 +485,7 @@ export function activate(context: ExtensionContext) {
         checkPixiVnFunctionCallHints(doc, list);
         await checkPixiVnUnknownDivertTargets(doc, list);
         checkPixiVnUnknownHashtagCommands(doc, list);
+        checkPixiVnLikelyUnknownHashtagCommandSchemaIssues(doc, list);
         checkPixiVnHashtagKeySchemaIssues(doc, list);
         await checkPixiVnJsonSchemaValidation(doc, list);
         diagnostics.set(doc.uri, list);

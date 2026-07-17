@@ -74,3 +74,32 @@ export function findMatchingTextReplace(
 ): InkTextReplaceInfo | undefined {
     return textReplaces.find((entry) => matchesTextReplaceValidation(content, entry.validation, characterIds));
 }
+
+// Mirrors `TextReplaces.options.replaceRegex`'s own default (`/\[([^\]]+)\]/`) — the actual
+// running app's own `replaceRegex` is configurable and thus not visible to the dev API, but every
+// project seen so far leaves it at the default.
+const TEXT_REPLACE_TOKEN_REGEX = /\[([^\]]+)\]/g;
+
+/**
+ * Replaces every `[key]` span in `text` whose content matches a known, registered text-replace
+ * handler's validation rule with the bare `key` itself (brackets stripped) — e.g. `[mc]` -> `mc`.
+ *
+ * The preview only ever sees the dev server's *validation* rule for each handler, never the
+ * handler function itself (arbitrary app code that can't safely be shipped over the dev API), so
+ * it has no way to reproduce the real replaced value (e.g. a character's actual display name).
+ * Substituting the bare key is the closest approximation available — it at least stops the raw,
+ * un-replaced `[key]` ink syntax from leaking into the preview looking like a bug.
+ *
+ * A `[...]` span whose content matches no known handler is left completely untouched, so
+ * unrelated bracketed text already present in the source doesn't get silently mangled.
+ */
+export function replaceKnownTextReplaces(
+    text: string,
+    textReplaces: readonly InkTextReplaceInfo[],
+    characterIds: ReadonlySet<string>,
+): string {
+    if (textReplaces.length === 0) return text;
+    return text.replace(TEXT_REPLACE_TOKEN_REGEX, (span, content: string) =>
+        findMatchingTextReplace(content, textReplaces, characterIds) ? content : span,
+    );
+}
