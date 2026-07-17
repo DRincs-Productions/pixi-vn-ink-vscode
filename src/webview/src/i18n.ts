@@ -6,7 +6,6 @@ type Key =
     | "loadingStory"
     | "errorRunningStory"
     | "lineNumber"
-    | "you"
     | "whatDoYouChoose"
     | "enterANumber"
     | "typeYourResponse"
@@ -14,6 +13,7 @@ type Key =
     | "continue"
     | "narrativePause"
     | "youChose"
+    | "youAnswered"
     | "nonInkLabelCall"
     | "nonInkLabelJump";
 
@@ -24,7 +24,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Loading story...",
         errorRunningStory: "An error occurred while running the story",
         lineNumber: "Line {0}",
-        you: "You",
         whatDoYouChoose: "What do you choose?",
         enterANumber: "Enter a number...",
         typeYourResponse: "Type your response...",
@@ -32,6 +31,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Continue",
         narrativePause: "(Narrative pause)",
         youChose: "(You chose: {0})",
+        youAnswered: "(You answered: {0})",
         nonInkLabelCall: "(calling a label not defined in ink: {0})",
         nonInkLabelJump: "(jumping to a label not defined in ink: {0})",
     },
@@ -41,7 +41,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Caricamento della storia...",
         errorRunningStory: "Si è verificato un errore durante l'esecuzione della storia",
         lineNumber: "Riga {0}",
-        you: "Tu",
         whatDoYouChoose: "Cosa scegli?",
         enterANumber: "Inserisci un numero...",
         typeYourResponse: "Scrivi la tua risposta...",
@@ -49,6 +48,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Continua",
         narrativePause: "(Pausa narrativa)",
         youChose: "(Hai scelto: {0})",
+        youAnswered: "(Il tuo input è stato: {0})",
         nonInkLabelCall: "(chiamata a una label non definita in ink: {0})",
         nonInkLabelJump: "(salto a una label non definita in ink: {0})",
     },
@@ -58,7 +58,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Загрузка истории...",
         errorRunningStory: "Произошла ошибка при выполнении истории",
         lineNumber: "Строка {0}",
-        you: "Вы",
         whatDoYouChoose: "Что вы выбираете?",
         enterANumber: "Введите число...",
         typeYourResponse: "Введите ваш ответ...",
@@ -66,6 +65,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Продолжить",
         narrativePause: "(Пауза в повествовании)",
         youChose: "(Вы выбрали: {0})",
+        youAnswered: "(Вы ответили: {0})",
         nonInkLabelCall: "(вызов метки, не определённой в ink: {0})",
         nonInkLabelJump: "(переход к метке, не определённой в ink: {0})",
     },
@@ -75,7 +75,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "正在加载故事…",
         errorRunningStory: "运行故事时发生错误",
         lineNumber: "第 {0} 行",
-        you: "你",
         whatDoYouChoose: "你选择什么?",
         enterANumber: "输入一个数字…",
         typeYourResponse: "输入你的回复…",
@@ -83,6 +82,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "继续",
         narrativePause: "(叙事暂停)",
         youChose: "(你选择了：{0})",
+        youAnswered: "(你的输入是：{0})",
         nonInkLabelCall: "(调用一个未在 ink 中定义的 label：{0})",
         nonInkLabelJump: "(跳转到一个未在 ink 中定义的 label：{0})",
     },
@@ -92,7 +92,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "物語を読み込み中…",
         errorRunningStory: "物語の実行中にエラーが発生しました",
         lineNumber: "{0} 行目",
-        you: "あなた",
         whatDoYouChoose: "どちらを選びますか?",
         enterANumber: "数字を入力してください…",
         typeYourResponse: "返答を入力してください…",
@@ -100,6 +99,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "続ける",
         narrativePause: "(物語の一時停止)",
         youChose: "(選んだ内容: {0})",
+        youAnswered: "(あなたの回答: {0})",
         nonInkLabelCall: "(inkで定義されていないラベルを呼び出し中: {0})",
         nonInkLabelJump: "(inkで定義されていないラベルへジャンプ中: {0})",
     },
@@ -109,7 +109,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Cargando historia...",
         errorRunningStory: "Se produjo un error al ejecutar la historia",
         lineNumber: "Línea {0}",
-        you: "Tú",
         whatDoYouChoose: "¿Qué eliges?",
         enterANumber: "Introduce un número...",
         typeYourResponse: "Escribe tu respuesta...",
@@ -117,6 +116,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Continuar",
         narrativePause: "(Pausa narrativa)",
         youChose: "(Has elegido: {0})",
+        youAnswered: "(Tu respuesta fue: {0})",
         nonInkLabelCall: "(llamando a una etiqueta no definida en ink: {0})",
         nonInkLabelJump: "(saltando a una etiqueta no definida en ink: {0})",
     },
@@ -126,7 +126,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Chargement de l'histoire...",
         errorRunningStory: "Une erreur s'est produite lors de l'exécution de l'histoire",
         lineNumber: "Ligne {0}",
-        you: "Vous",
         whatDoYouChoose: "Que choisissez-vous ?",
         enterANumber: "Entrez un nombre...",
         typeYourResponse: "Saisissez votre réponse...",
@@ -134,6 +133,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Continuer",
         narrativePause: "(Pause narrative)",
         youChose: "(Vous avez choisi : {0})",
+        youAnswered: "(Votre réponse était : {0})",
         nonInkLabelCall: "(appel d'un label non défini dans ink : {0})",
         nonInkLabelJump: "(saut vers un label non défini dans ink : {0})",
     },
@@ -143,7 +143,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "이야기를 불러오는 중…",
         errorRunningStory: "이야기를 실행하는 중 오류가 발생했습니다",
         lineNumber: "{0}번째 줄",
-        you: "당신",
         whatDoYouChoose: "무엇을 선택하시겠습니까?",
         enterANumber: "숫자를 입력하세요...",
         typeYourResponse: "답변을 입력하세요...",
@@ -151,6 +150,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "계속",
         narrativePause: "(내러티브 일시정지)",
         youChose: "(선택함: {0})",
+        youAnswered: "(입력한 답변: {0})",
         nonInkLabelCall: "(ink에 정의되지 않은 라벨 호출 중: {0})",
         nonInkLabelJump: "(ink에 정의되지 않은 라벨로 이동 중: {0})",
     },
@@ -160,7 +160,6 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         loadingStory: "Geschichte wird geladen ...",
         errorRunningStory: "Beim Ausführen der Geschichte ist ein Fehler aufgetreten",
         lineNumber: "Zeile {0}",
-        you: "Du",
         whatDoYouChoose: "Was wählst du?",
         enterANumber: "Gib eine Zahl ein...",
         typeYourResponse: "Gib deine Antwort ein...",
@@ -168,6 +167,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = {
         continue: "Weiter",
         narrativePause: "(Erzählpause)",
         youChose: "(Du hast gewählt: {0})",
+        youAnswered: "(Deine Antwort war: {0})",
         nonInkLabelCall: "(Aufruf eines nicht in ink definierten Labels: {0})",
         nonInkLabelJump: "(Sprung zu einem nicht in ink definierten Label: {0})",
     },

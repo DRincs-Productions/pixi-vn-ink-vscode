@@ -54,13 +54,11 @@ function parseRuntimeErrorLine(message: string): number | undefined {
     return match ? parseInt(match[1], 10) : undefined;
 }
 
-const CHOICE_NOTICE_MAX_LENGTH = 10;
+const NOTICE_MAX_LENGTH = 10;
 
-/** Shortens a chosen option's text for the "(You chose: ...)" notice — full text, not a summary. */
-function truncateChoiceText(text: string): string {
-    return text.length > CHOICE_NOTICE_MAX_LENGTH
-        ? `${text.slice(0, CHOICE_NOTICE_MAX_LENGTH)}...`
-        : text;
+/** Shortens text for the "(You chose: ...)" / "(You answered: ...)" notices. */
+function truncateNoticeText(text: string): string {
+    return text.length > NOTICE_MAX_LENGTH ? `${text.slice(0, NOTICE_MAX_LENGTH)}...` : text;
 }
 
 // inkjs reports runtime errors (out-of-bound divert, missing content, etc.) via
@@ -161,6 +159,10 @@ async function nextChoicesPixi(
         if (script.length > 1) {
             switch (script[1]) {
                 case "input":
+                    // Shown as an ordinary tag chip like every other tag below (right-aligned,
+                    // no leading "#") — `false` still lets the built-in "Request input" mapper
+                    // run so the input prompt itself keeps working.
+                    tags.push(script.join(" "));
                     return false;
             }
         }
@@ -754,14 +756,18 @@ export default function NarrationView() {
 
                                 {item.inputRequest?.input !== undefined && (
                                     <div
-                                        key={`input-${idx}`}
+                                        key={`input-answer-${idx}`}
                                         style={{
-                                            color: "var(--vscode-editor-foreground)",
-                                            textAlign: "left",
-                                            fontWeight: "bold",
+                                            color: "var(--vscode-editorHint-foreground)",
+                                            textAlign: "center",
+                                            fontStyle: "italic",
                                         }}
                                     >
-                                        {t(locale, "you")}: {item.inputRequest.input}
+                                        {t(
+                                            locale,
+                                            "youAnswered",
+                                            truncateNoticeText(String(item.inputRequest.input)),
+                                        )}
                                     </div>
                                 )}
 
@@ -796,7 +802,7 @@ export default function NarrationView() {
                                                 {t(
                                                     locale,
                                                     "youChose",
-                                                    truncateChoiceText(chosenText),
+                                                    truncateNoticeText(chosenText),
                                                 )}
                                             </div>
                                         );

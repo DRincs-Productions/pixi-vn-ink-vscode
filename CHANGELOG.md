@@ -13,6 +13,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for guidelines.
 ### Fixed
 
 - **pixi-vn engine only**: a diagnostics check referencing `InkCompiler.getLikelyUnknownHashtagCommandSchemaIssues` — a method not present in every published `@drincs/pixi-vn-ink` version — could throw on every diagnostics refresh (i.e. on every keystroke in an open `.ink` file). Since that check ran inside a fire-and-forget async call, the resulting unhandled rejection could take down the whole extension host, breaking diagnostics, semantic-token coloring, and character recognition all at once. It's now skipped silently until the method is actually available in the installed `@drincs/pixi-vn-ink` version.
+- **pixi-vn engine only**: the `# request input ...` tag that triggered an input prompt was never shown in the preview, unlike every other tag on the same step — the preview's internal handling of that tag skipped adding it to the displayed list. It's now shown right-aligned alongside any other tags, exactly like `# show ...`/`# rename ...`/etc.
+- **pixi-vn engine only**: after answering an input prompt, the preview now shows a centered "(You answered: ...)" notice at that point in the transcript — the same treatment choices already got — with the answer shortened to 10 characters (with "...") if longer. The redundant "You: ..." line shown right after the prompt itself has been removed, since this notice now covers that.
 
 ## [0.6.1] - 2026-07-15
 
