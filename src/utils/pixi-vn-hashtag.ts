@@ -72,6 +72,17 @@ export function locateHashtagSegment(line: string, command: string): HashtagSegm
 }
 
 /**
+ * Whether a registered hashtag command was registered with `deprecated: true` (`HashtagCommands.add`'s
+ * own `HashtagHandlerOptions.deprecated`). Not part of {@link InkHashtagCommandInfo}'s published
+ * type — the dev-server API's `.d.ts` hasn't caught up to it yet — but already present at runtime
+ * on `GET /__pixi-vn-ink/hashtag-commands`' response for a handler registered with that option, so
+ * it's read as an untyped extra field rather than waited on.
+ */
+export function isDeprecatedHashtagCommand(command: InkHashtagCommandInfo): boolean {
+    return (command as { deprecated?: unknown }).deprecated === true;
+}
+
+/**
  * Returns the first registered hashtag command that recognizes `command`, or `undefined` if none
  * does — used to show a recognized command's own name/description in a hover, once
  * {@link buildUnknownHashtagCommandIndex} (also backed by this same real function) has already

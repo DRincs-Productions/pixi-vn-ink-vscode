@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { InkCompiler } from "@drincs/pixi-vn-ink/parser";
 import { ErrorType } from "inkjs/engine/Error";
 import path from "node:path";
-import { Diagnostic, DiagnosticSeverity, l10n, Range, type TextDocument, Uri, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, DiagnosticTag, l10n, Range, type TextDocument, Uri, workspace } from "vscode";
 import {
     findPixiVnCustomFunctionCalls,
     findPixiVnUnimplementedFunctionCalls,
@@ -13,7 +13,13 @@ import { getInkRootFolder, loadInkFileContent } from "./utils/include-utility";
 import { getErrors, getProjectErrors } from "./utils/ink-utility";
 import { extractKnotDefinitions, getAllKnotDefinitions } from "./utils/knot-definitions";
 import { getProjectInkFiles } from "./utils/knot-utility";
-import { locateHashtagSegment, truncateHashtagCommandForMessage } from "./utils/pixi-vn-hashtag";
+import {
+    findHashtagSegment,
+    findMatchingHashtagCommand,
+    isDeprecatedHashtagCommand,
+    locateHashtagSegment,
+    truncateHashtagCommandForMessage,
+} from "./utils/pixi-vn-hashtag";
 import {
     getPixiVnDevCharacterIds,
     getPixiVnDevHashtagCommands,
@@ -210,6 +216,63 @@ export function checkPixiVnUnknownHashtagCommands(document: TextDocument, diagno
                 DiagnosticSeverity.Warning,
             ),
         );
+    }
+}
+
+/**
+ * Flags every `# ...` hashtag command that matches a registered handler marked
+ * `deprecated: true` (see {@link isDeprecatedHashtagCommand}) — the pixi-vn-ink equivalent of a
+ * deprecated JS/TS API. Tagged `DiagnosticTag.Deprecated` rather than plain `Warning`/`Information`,
+ * the same mechanism the built-in JavaScript/TypeScript extension itself relies on: VS Code renders
+ * the tagged range with a strikethrough and folds this diagnostic's own message into the hover
+ * popup shown over it, with no separate decoration or hover-provider wiring needed on top.
+ * `DiagnosticSeverity.Hint` keeps it out of the Problems panel by default, matching how the
+ * JS/TS extension itself reports deprecations.
+ *
+ * Matching is done per hashtag-command line, not via {@link buildUnknownHashtagCommandIndex}
+ * (built for the opposite question — "no handler matches at all"): duplicate command texts on
+ * different lines reuse the same {@link findMatchingHashtagCommand} lookup instead of repeating it.
+ */
+export function checkPixiVnDeprecatedHashtagCommands(document: TextDocument, diagnostics: Diagnostic[]) {
+    const engine = workspace.getConfiguration("ink").get<"Inky" | "pixi-vn">("engine", "Inky");
+    if (engine !== "pixi-vn") return;
+
+    const hashtagCommands = getPixiVnDevHashtagCommands();
+    if (hashtagCommands.length === 0) return;
+
+    const matchCache = new Map<string, ReturnType<typeof findMatchingHashtagCommand>>();
+    const resolveMatch = (command: string) => {
+        if (!matchCache.has(command)) {
+            matchCache.set(command, findMatchingHashtagCommand(command, hashtagCommands));
+        }
+        return matchCache.get(command);
+    };
+
+    for (let i = 0; i < document.lineCount; i++) {
+        const segment = findHashtagSegment(document.lineAt(i).text);
+        if (!segment) continue;
+
+        const matched = resolveMatch(segment.command);
+        if (!matched || !isDeprecatedHashtagCommand(matched)) continue;
+
+        const diagnostic = new Diagnostic(
+            new Range(i, segment.start, i, segment.end),
+            matched.description
+                ? l10n.t(
+                      'Hashtag command "# {0}" ({1}) is deprecated: {2}',
+                      truncateHashtagCommandForMessage(segment.command),
+                      matched.name,
+                      matched.description,
+                  )
+                : l10n.t(
+                      'Hashtag command "# {0}" ({1}) is deprecated.',
+                      truncateHashtagCommandForMessage(segment.command),
+                      matched.name,
+                  ),
+            DiagnosticSeverity.Hint,
+        );
+        diagnostic.tags = [DiagnosticTag.Deprecated];
+        diagnostics.push(diagnostic);
     }
 }
 

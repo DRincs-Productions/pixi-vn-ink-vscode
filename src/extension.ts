@@ -19,6 +19,7 @@ import {
 } from "vscode";
 import {
     checkIncludes,
+    checkPixiVnDeprecatedHashtagCommands,
     checkPixiVnFunctionCallHints,
     checkPixiVnHashtagKeySchemaIssues,
     checkPixiVnInkFunctionDeclarations,
@@ -485,6 +486,7 @@ export function activate(context: ExtensionContext) {
         checkPixiVnFunctionCallHints(doc, list);
         await checkPixiVnUnknownDivertTargets(doc, list);
         checkPixiVnUnknownHashtagCommands(doc, list);
+        checkPixiVnDeprecatedHashtagCommands(doc, list);
         checkPixiVnLikelyUnknownHashtagCommandSchemaIssues(doc, list);
         checkPixiVnHashtagKeySchemaIssues(doc, list);
         await checkPixiVnJsonSchemaValidation(doc, list);

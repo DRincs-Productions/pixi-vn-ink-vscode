@@ -4,6 +4,7 @@ import {
 	buildUnknownHashtagCommandIndex,
 	findHashtagSegment,
 	findMatchingHashtagCommand,
+	isDeprecatedHashtagCommand,
 	locateHashtagSegment,
 	truncateHashtagCommandForMessage,
 } from '../utils/pixi-vn-hashtag';
@@ -123,6 +124,20 @@ suite('pixi-vn-hashtag Test Suite', () => {
 
 		test('returns undefined for an empty command list', () => {
 			assert.strictEqual(findMatchingHashtagCommand('jump target', []), undefined);
+		});
+	});
+
+	suite('isDeprecatedHashtagCommand', () => {
+		test('returns false for a command with no `deprecated` field', () => {
+			assert.strictEqual(isDeprecatedHashtagCommand(jumpCommand), false);
+		});
+
+		test('returns false when `deprecated` is explicitly false', () => {
+			assert.strictEqual(isDeprecatedHashtagCommand({ ...jumpCommand, deprecated: false }), false);
+		});
+
+		test('returns true when `deprecated` is true — a field present at runtime (HashtagHandlerOptions.deprecated) but absent from InkHashtagCommandInfo\'s published type', () => {
+			assert.strictEqual(isDeprecatedHashtagCommand({ ...jumpCommand, deprecated: true }), true);
 		});
 	});
 
